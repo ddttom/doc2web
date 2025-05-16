@@ -16,7 +16,7 @@ This tool extracts content from DOCX files while maintaining:
 ```bash
 doc2web/
 ├── doc2web.js               # Main converter script
-├── markdownify.js           # HTML to Markdown converter
+├── markdownify.js           # HTML to Markdown converter markdownify
 ├── style-extractor.js       # Document style extraction
 ├── docx-style-parser.js     # DOCX XML structure parser
 ├── process-find.sh          # Helper for processing file lists
