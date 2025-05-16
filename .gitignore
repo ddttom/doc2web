@@ -3,6 +3,7 @@ node_modules/
 
 # Output directory (generated files)
 output/
+input/
 
 # Logs
 logs
@@ -23,6 +24,7 @@ coverage/
 .tmp
 .cache
 tmp/
+scratch/
 
 # Editor directories and files
 .idea/
