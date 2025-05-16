@@ -5,6 +5,59 @@ const { DOMParser } = require('jsdom').JSDOM;
 const xpath = require('xpath');
 const dom = require('xmldom').DOMParser;
 
+// Define XML namespaces used in DOCX files
+const NAMESPACES = {
+  w: 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+  a: 'http://schemas.openxmlformats.org/drawingml/2006/main',
+  r: 'http://schemas.openxmlformats.org/officeDocument/2006/relationships',
+  m: 'http://schemas.openxmlformats.org/officeDocument/2006/math',
+  v: 'urn:schemas-microsoft-com:vml',
+  wp: 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
+  mc: 'http://schemas.openxmlformats.org/markup-compatibility/2006'
+};
+
+/**
+ * Create an XPath selector with namespaces registered
+ * @param {string} expression - XPath expression
+ * @returns {xpath.XPathSelect} - XPath selector with namespaces
+ */
+function createXPathSelector(expression) {
+  const select = xpath.useNamespaces(NAMESPACES);
+  return select(expression);
+}
+
+/**
+ * Select nodes using XPath with namespaces
+ * @param {string} expression - XPath expression
+ * @param {Document} doc - XML document
+ * @returns {Node[]} - Selected nodes
+ */
+function selectNodes(expression, doc) {
+  try {
+    const select = xpath.useNamespaces(NAMESPACES);
+    return select(expression, doc) || [];
+  } catch (error) {
+    console.error(`Error selecting nodes with expression "${expression}":`, error.message);
+    return [];
+  }
+}
+
+/**
+ * Select a single node using XPath with namespaces
+ * @param {string} expression - XPath expression
+ * @param {Document|Node} doc - XML document or node
+ * @returns {Node|null} - Selected node or null
+ */
+function selectSingleNode(expression, doc) {
+  try {
+    const select = xpath.useNamespaces(NAMESPACES);
+    return select(expression, doc, true);
+  } catch (error) {
+    console.error(`Error selecting single node with expression "${expression}":`, error.message);
+    return null;
+  }
+}
+
 /**
  * Parse a DOCX file to extract detailed style information
  * @param {string} docxPath - Path to the DOCX file
@@ -112,11 +165,11 @@ function parseStyles(styleDoc) {
     const tableStylesXPath = "//w:style[@w:type='table']";
     const numberingStylesXPath = "//w:style[@w:type='numbering']";
     
-    // Select nodes
-    const paragraphStyleNodes = xpath.select(paragraphStylesXPath, styleDoc) || [];
-    const characterStyleNodes = xpath.select(characterStylesXPath, styleDoc) || [];
-    const tableStyleNodes = xpath.select(tableStylesXPath, styleDoc) || [];
-    const numberingStyleNodes = xpath.select(numberingStylesXPath, styleDoc) || [];
+    // Select nodes using namespace-aware selectors
+    const paragraphStyleNodes = selectNodes(paragraphStylesXPath, styleDoc);
+    const characterStyleNodes = selectNodes(characterStylesXPath, styleDoc);
+    const tableStyleNodes = selectNodes(tableStylesXPath, styleDoc);
+    const numberingStyleNodes = selectNodes(numberingStylesXPath, styleDoc);
     
     // Process paragraph styles
     paragraphStyleNodes.forEach(node => {
@@ -159,23 +212,23 @@ function parseStyleNode(node) {
     const type = node.getAttribute('w:type');
     
     // Get style name
-    const nameNode = xpath.select1("w:name", node);
+    const nameNode = selectSingleNode("w:name", node);
     const name = nameNode ? nameNode.getAttribute('w:val') : styleId;
     
     // Get based on style
-    const basedOnNode = xpath.select1("w:basedOn", node);
+    const basedOnNode = selectSingleNode("w:basedOn", node);
     const basedOn = basedOnNode ? basedOnNode.getAttribute('w:val') : null;
     
     // Check if default style
-    const defaultNode = xpath.select1("@w:default", node);
+    const defaultNode = selectSingleNode("@w:default", node);
     const isDefault = defaultNode && defaultNode.value === '1';
     
     // Parse running properties (text formatting)
-    const rPrNode = xpath.select1("w:rPr", node);
+    const rPrNode = selectSingleNode("w:rPr", node);
     const runningProps = rPrNode ? parseRunningProperties(rPrNode) : {};
     
     // Parse paragraph properties
-    const pPrNode = xpath.select1("w:pPr", node);
+    const pPrNode = selectSingleNode("w:pPr", node);
     const paragraphProps = pPrNode ? parseParagraphProperties(pPrNode) : {};
     
     // Combine all properties
@@ -204,7 +257,7 @@ function parseRunningProperties(rPrNode) {
   
   try {
     // Font
-    const fontNode = xpath.select1("w:rFonts", rPrNode);
+    const fontNode = selectSingleNode("w:rFonts", rPrNode);
     if (fontNode) {
       props.font = {
         ascii: fontNode.getAttribute('w:ascii'),
@@ -215,7 +268,7 @@ function parseRunningProperties(rPrNode) {
     }
     
     // Size
-    const szNode = xpath.select1("w:sz", rPrNode);
+    const szNode = selectSingleNode("w:sz", rPrNode);
     if (szNode) {
       // Size is in half-points, convert to points
       const sizeHalfPoints = parseInt(szNode.getAttribute('w:val'), 10) || 22; // Default 11pt
@@ -223,15 +276,15 @@ function parseRunningProperties(rPrNode) {
     }
     
     // Bold
-    const bNode = xpath.select1("w:b", rPrNode);
+    const bNode = selectSingleNode("w:b", rPrNode);
     props.bold = bNode !== null;
     
     // Italic
-    const iNode = xpath.select1("w:i", rPrNode);
+    const iNode = selectSingleNode("w:i", rPrNode);
     props.italic = iNode !== null;
     
     // Underline
-    const uNode = xpath.select1("w:u", rPrNode);
+    const uNode = selectSingleNode("w:u", rPrNode);
     if (uNode) {
       props.underline = {
         type: uNode.getAttribute('w:val') || 'single'
@@ -239,7 +292,7 @@ function parseRunningProperties(rPrNode) {
     }
     
     // Color
-    const colorNode = xpath.select1("w:color", rPrNode);
+    const colorNode = selectSingleNode("w:color", rPrNode);
     if (colorNode) {
       const colorVal = colorNode.getAttribute('w:val');
       if (colorVal) {
@@ -248,7 +301,7 @@ function parseRunningProperties(rPrNode) {
     }
     
     // Highlight
-    const highlightNode = xpath.select1("w:highlight", rPrNode);
+    const highlightNode = selectSingleNode("w:highlight", rPrNode);
     if (highlightNode) {
       props.highlight = highlightNode.getAttribute('w:val');
     }
@@ -269,13 +322,13 @@ function parseParagraphProperties(pPrNode) {
   
   try {
     // Alignment
-    const jcNode = xpath.select1("w:jc", pPrNode);
+    const jcNode = selectSingleNode("w:jc", pPrNode);
     if (jcNode) {
       props.alignment = jcNode.getAttribute('w:val');
     }
     
     // Indentation
-    const indNode = xpath.select1("w:ind", pPrNode);
+    const indNode = selectSingleNode("w:ind", pPrNode);
     if (indNode) {
       props.indentation = {
         left: indNode.getAttribute('w:left'),
@@ -286,7 +339,7 @@ function parseParagraphProperties(pPrNode) {
     }
     
     // Spacing
-    const spacingNode = xpath.select1("w:spacing", pPrNode);
+    const spacingNode = selectSingleNode("w:spacing", pPrNode);
     if (spacingNode) {
       props.spacing = {
         before: spacingNode.getAttribute('w:before'),
@@ -297,13 +350,13 @@ function parseParagraphProperties(pPrNode) {
     }
     
     // Borders
-    const pBdrNode = xpath.select1("w:pBdr", pPrNode);
+    const pBdrNode = selectSingleNode("w:pBdr", pPrNode);
     if (pBdrNode) {
       props.borders = parseBorders(pBdrNode);
     }
     
     // Shading
-    const shadingNode = xpath.select1("w:shd", pPrNode);
+    const shadingNode = selectSingleNode("w:shd", pPrNode);
     if (shadingNode) {
       props.shading = {
         value: shadingNode.getAttribute('w:val'),
@@ -328,7 +381,7 @@ function parseBorders(borderNode) {
   
   try {
     // Top border
-    const topNode = xpath.select1("w:top", borderNode);
+    const topNode = selectSingleNode("w:top", borderNode);
     if (topNode) {
       borders.top = {
         value: topNode.getAttribute('w:val'),
@@ -338,7 +391,7 @@ function parseBorders(borderNode) {
     }
     
     // Bottom border
-    const bottomNode = xpath.select1("w:bottom", borderNode);
+    const bottomNode = selectSingleNode("w:bottom", borderNode);
     if (bottomNode) {
       borders.bottom = {
         value: bottomNode.getAttribute('w:val'),
@@ -348,7 +401,7 @@ function parseBorders(borderNode) {
     }
     
     // Left border
-    const leftNode = xpath.select1("w:left", borderNode);
+    const leftNode = selectSingleNode("w:left", borderNode);
     if (leftNode) {
       borders.left = {
         value: leftNode.getAttribute('w:val'),
@@ -358,7 +411,7 @@ function parseBorders(borderNode) {
     }
     
     // Right border
-    const rightNode = xpath.select1("w:right", borderNode);
+    const rightNode = selectSingleNode("w:right", borderNode);
     if (rightNode) {
       borders.right = {
         value: rightNode.getAttribute('w:val'),
@@ -394,10 +447,10 @@ function parseTheme(themeDoc) {
   
   try {
     // Parse font scheme
-    const fontSchemeNode = xpath.select1("//a:fontScheme", themeDoc);
+    const fontSchemeNode = selectSingleNode("//a:fontScheme", themeDoc);
     if (fontSchemeNode) {
-      const majorNode = xpath.select1(".//a:majorFont/a:latin", fontSchemeNode);
-      const minorNode = xpath.select1(".//a:minorFont/a:latin", fontSchemeNode);
+      const majorNode = selectSingleNode(".//a:majorFont/a:latin", fontSchemeNode);
+      const minorNode = selectSingleNode(".//a:minorFont/a:latin", fontSchemeNode);
       
       if (majorNode && majorNode.getAttribute('typeface')) {
         theme.fonts.major = majorNode.getAttribute('typeface');
@@ -409,10 +462,10 @@ function parseTheme(themeDoc) {
     }
     
     // Parse color scheme
-    const clrSchemeNode = xpath.select1("//a:clrScheme", themeDoc);
+    const clrSchemeNode = selectSingleNode("//a:clrScheme", themeDoc);
     if (clrSchemeNode) {
       // Get main theme colors
-      const colorNodes = xpath.select("./a:*", clrSchemeNode) || [];
+      const colorNodes = selectNodes("./a:*", clrSchemeNode);
       colorNodes.forEach(node => {
         const name = node.nodeName.split(':')[1];
         const colorValue = getColorValue(node);
@@ -436,13 +489,13 @@ function parseTheme(themeDoc) {
 function getColorValue(colorNode) {
   try {
     // Check srgbClr (standard RGB)
-    const srgbNode = xpath.select1("./a:srgbClr", colorNode);
+    const srgbNode = selectSingleNode("./a:srgbClr", colorNode);
     if (srgbNode && srgbNode.getAttribute('val')) {
       return '#' + srgbNode.getAttribute('val');
     }
     
     // Check system color
-    const sysClrNode = xpath.select1("./a:sysClr", colorNode);
+    const sysClrNode = selectSingleNode("./a:sysClr", colorNode);
     if (sysClrNode && sysClrNode.getAttribute('lastClr')) {
       return '#' + sysClrNode.getAttribute('lastClr');
     }
@@ -466,19 +519,19 @@ function parseDocumentDefaults(styleDoc) {
   
   try {
     // Get document defaults section
-    const docDefaultsNode = xpath.select1("//w:docDefaults", styleDoc);
+    const docDefaultsNode = selectSingleNode("//w:docDefaults", styleDoc);
     if (!docDefaultsNode) {
       return defaults;
     }
     
     // Get paragraph defaults
-    const pPrDefaultNode = xpath.select1(".//w:pPrDefault/w:pPr", docDefaultsNode);
+    const pPrDefaultNode = selectSingleNode(".//w:pPrDefault/w:pPr", docDefaultsNode);
     if (pPrDefaultNode) {
       defaults.paragraph = parseParagraphProperties(pPrDefaultNode);
     }
     
     // Get character defaults
-    const rPrDefaultNode = xpath.select1(".//w:rPrDefault/w:rPr", docDefaultsNode);
+    const rPrDefaultNode = selectSingleNode(".//w:rPrDefault/w:rPr", docDefaultsNode);
     if (rPrDefaultNode) {
       defaults.character = parseRunningProperties(rPrDefaultNode);
     }
@@ -508,7 +561,7 @@ function parseSettings(settingsDoc) {
   
   try {
     // Default tab stop
-    const defaultTabStopNode = xpath.select1("//w:defaultTabStop", settingsDoc);
+    const defaultTabStopNode = selectSingleNode("//w:defaultTabStop", settingsDoc);
     if (defaultTabStopNode) {
       const val = defaultTabStopNode.getAttribute('w:val');
       if (val) {
@@ -517,7 +570,7 @@ function parseSettings(settingsDoc) {
     }
     
     // Character spacing control
-    const characterSpacingControlNode = xpath.select1("//w:characterSpacingControl", settingsDoc);
+    const characterSpacingControlNode = selectSingleNode("//w:characterSpacingControl", settingsDoc);
     if (characterSpacingControlNode) {
       const val = characterSpacingControlNode.getAttribute('w:val');
       if (val) {
@@ -526,14 +579,14 @@ function parseSettings(settingsDoc) {
     }
     
     // Do not hyphenate capital letters
-    const doNotHyphenateCapsNode = xpath.select1("//w:doNotHyphenateCaps", settingsDoc);
+    const doNotHyphenateCapsNode = selectSingleNode("//w:doNotHyphenateCaps", settingsDoc);
     if (doNotHyphenateCapsNode) {
       const val = doNotHyphenateCapsNode.getAttribute('w:val');
       settings.doNotHyphenateCaps = val === 'true' || val === '1';
     }
     
     // Right-to-left document gutter
-    const rtlGutterNode = xpath.select1("//w:rtlGutter", settingsDoc);
+    const rtlGutterNode = selectSingleNode("//w:rtlGutter", settingsDoc);
     if (rtlGutterNode) {
       const val = rtlGutterNode.getAttribute('w:val');
       settings.rtlGutter = val === 'true' || val === '1';
@@ -683,15 +736,15 @@ function getBorderStyle(style, side) {
   }
   
   const border = style.borders[side];
-  if (border.value === 'nil' || border.value === 'none') {
+  if (!border.value || border.value === 'nil' || border.value === 'none') {
     return `border-${side}: none;`;
   }
   
   const width = border.size ? convertBorderSizeToPt(border.size) : 1;
   const color = border.color ? `#${border.color}` : 'black';
-  const style = getBorderTypeValue(border.value);
+  const borderStyle = getBorderTypeValue(border.value);
   
-  return `border-${side}: ${width}pt ${style} ${color};`;
+  return `border-${side}: ${width}pt ${borderStyle} ${color};`;
 }
 
 /**

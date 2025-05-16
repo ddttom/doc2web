@@ -30,15 +30,31 @@ doc2web/
 
 ### Initial Setup
 
-1. Clone or download all project files to a directory
+1. Clone or download all project files to a directory:
 
- ```bash
+   ```bash
+   git clone https://github.com/ddttom/doc2web.git
+   cd doc2web
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Make the helper scripts executable (Unix/Linux/macOS):
+
+   ```bash
+   chmod +x *.sh
+   ```
 
 ## Usage
 
 ### Command Line
 
 Process a single DOCX file:
+
 ```bash
 node doc2web.js path/to/document.docx
 ```
@@ -88,6 +104,30 @@ output/
 
 - `--html-only`: Generate only HTML output, skip markdown
 - `--list`: Treat the input file as a list of files to process
+
+## Recent Fixes
+
+### v1.0.1 (2025-05-16)
+
+- Fixed an issue in `docx-style-parser.js` where undefined border values could cause errors
+- Improved XML namespace handling for better compatibility with different DOCX file formats
+- Added proper error handling for XPath queries to prevent crashes during style extraction
+
+## Troubleshooting
+
+### XML Namespace Errors
+
+If you encounter errors like `Cannot resolve QName w` or `Cannot resolve QName a`, this indicates an issue with XML namespace resolution in the DOCX file. These errors have been fixed in v1.0.1.
+
+### Border Style Errors
+
+If you see errors related to border values or styles, ensure you're using the latest version which includes fixes for handling undefined or missing border properties.
+
+### General Issues
+
+1. Make sure your DOCX file is not corrupted or password-protected
+2. Check that you have all required dependencies installed
+3. For large files, consider processing them individually rather than in batch mode
 
 ## Contributing
 
