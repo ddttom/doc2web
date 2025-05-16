@@ -114,9 +114,10 @@ async function processDocxFile(filePath, options) {
     
     // Extract styles and convert to styled HTML
     console.log(`Extracting styled content from "${filePath}"...`);
-    const { html, styles } = await extractAndApplyStyles(filePath);
+    const cssFilename = path.basename(outputPaths.cssFile);
+    const { html, styles } = await extractAndApplyStyles(filePath, cssFilename);
     
-    // Save the HTML with embedded styles
+    // Save the HTML with link to external CSS
     await writeFile(outputPaths.htmlFile, html, 'utf8');
     
     // Save separate CSS file

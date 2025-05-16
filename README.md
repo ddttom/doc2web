@@ -107,6 +107,32 @@ output/
 
 ## Recent Fixes
 
+### v1.0.3 (2025-05-16)
+
+- Refactored CSS handling to improve separation of concerns:
+  - Moved all CSS from inline `<style>` tags to external CSS files
+  - Updated HTML files to use `<link>` tags to reference external CSS
+  - Improved file organization and reduced HTML file size
+  - Added 20px margin to body element for better readability
+- Fixed URL handling in markdown generation:
+  - Properly escaped special characters in URLs (parentheses, ampersands, etc.)
+  - Improved handling of empty link text
+  - Enhanced compatibility with markdown parsers and linters
+- Fixed list formatting in markdown generation:
+  - Added proper blank lines before and after lists (MD032)
+  - Ensured consistent spacing in list items
+  - Improved overall markdown structure and readability
+
+### v1.0.2 (2025-05-16)
+
+- Enhanced `markdownify.js` to fix markdown linting issues in generated files:
+  - Fixed hard tabs, trailing spaces, and trailing punctuation in headings
+  - Ensured proper spacing around list markers and correct ordered list numbering
+  - Added proper blank lines around headings
+  - Fixed spaces inside emphasis markers
+  - Ensured first line is a top-level heading and prevented multiple top-level headings
+  - Improved handling of empty links
+
 ### v1.0.1 (2025-05-16)
 
 - Fixed an issue in `docx-style-parser.js` where undefined border values could cause errors

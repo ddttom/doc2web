@@ -614,7 +614,7 @@ body {
   font-family: "${styleInfo.theme.fonts.minor}", sans-serif;
   font-size: ${styleInfo.documentDefaults.character.fontSize || '11pt'};
   line-height: 1.15;
-  margin: 0;
+  margin: 20px;
   padding: 0;
 }
 `;
@@ -691,7 +691,7 @@ body {
     
     // Provide fallback CSS
     css = `
-body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.15; }
+body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.15; margin: 20px; }
 h1, h2, h3, h4, h5, h6 { font-family: "Calibri Light", sans-serif; color: #2F5496; }
 h1 { font-size: 16pt; }
 h2 { font-size: 13pt; }

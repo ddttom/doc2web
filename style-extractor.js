@@ -1,14 +1,16 @@
 // style-extractor.js
 const mammoth = require('mammoth');
 const { JSDOM } = require('jsdom');
+const path = require('path');
 const { parseDocxStyles, generateCssFromStyleInfo } = require('./docx-style-parser');
 
 /**
  * Extract and apply styles from a DOCX document to HTML
  * @param {string} docxPath - Path to the DOCX file
+ * @param {string} cssFilename - Filename for the CSS file (without path)
  * @returns {Promise<{html: string, styles: string}>} - HTML with embedded styles
  */
-async function extractAndApplyStyles(docxPath) {
+async function extractAndApplyStyles(docxPath, cssFilename = null) {
   try {
     // First, extract the raw styles from the document
     const styleInfo = await parseDocxStyles(docxPath);
@@ -19,8 +21,11 @@ async function extractAndApplyStyles(docxPath) {
     // Convert DOCX to HTML with style preservation
     const htmlResult = await convertToStyledHtml(docxPath, styleInfo);
     
+    // Get the CSS filename
+    const cssFile = cssFilename || path.basename(docxPath, path.extname(docxPath)) + '.css';
+    
     // Combine HTML and CSS
-    const styledHtml = applyStylesToHtml(htmlResult.value, css, styleInfo);
+    const styledHtml = applyStylesToHtml(htmlResult.value, css, styleInfo, cssFile);
     
     return {
       html: styledHtml,
@@ -133,20 +138,29 @@ function createDocumentTransformer(styleInfo) {
  * @param {Object} styleInfo - Style information for reference
  * @returns {string} - HTML with embedded styles
  */
-function applyStylesToHtml(html, css, styleInfo) {
+/**
+ * Apply generated CSS to HTML
+ * @param {string} html - HTML content
+ * @param {string} css - CSS styles
+ * @param {Object} styleInfo - Style information for reference
+ * @param {string} cssFilename - Filename for the CSS file
+ * @returns {string} - HTML with link to external CSS
+ */
+function applyStylesToHtml(html, css, styleInfo, cssFilename) {
   // Create a DOM to manipulate the HTML
   const dom = new JSDOM(html);
   const document = dom.window.document;
   
-  // Create a style element
-  const styleElement = document.createElement('style');
-  styleElement.textContent = css;
-  
   // Ensure we have a proper HTML structure
   ensureHtmlStructure(document);
   
+  // Instead of embedding CSS, add a link to the external CSS file
+  const linkElement = document.createElement('link');
+  linkElement.rel = 'stylesheet';
+  linkElement.href = `./${cssFilename}`; // Use relative path to the CSS file
+  
   // Add to document head
-  document.head.appendChild(styleElement);
+  document.head.appendChild(linkElement);
   
   // Add metadata
   addDocumentMetadata(document, styleInfo);
