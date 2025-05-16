@@ -5,6 +5,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 ## Overview
 
 This tool extracts content from DOCX files while maintaining:
+
 - Document structure and formatting
 - Images and tables
 - Styles and layout
@@ -12,7 +13,7 @@ This tool extracts content from DOCX files while maintaining:
 
 ## Project Structure
 
-```
+```bash
 doc2web/
 ├── doc2web.js               # Main converter script
 ├── markdownify.js           # HTML to Markdown converter
@@ -30,28 +31,8 @@ doc2web/
 ### Initial Setup
 
 1. Clone or download all project files to a directory
-2. Run the initialization script:
 
-```bash
-chmod +x init-doc2web.sh
-./init-doc2web.sh
-```
-
-This script will:
-- Initialize a Git repository
-- Create a .gitignore file
-- Set up required dependencies
-- Make scripts executable
-- Create an initial commit
-
-### Manual Installation
-
-If you prefer to install manually:
-
-```bash
-chmod +x doc2web-install.sh
-./doc2web-install.sh
-```
+ ```bash
 
 ## Usage
 
@@ -63,11 +44,13 @@ node doc2web.js path/to/document.docx
 ```
 
 Process all DOCX files in a directory:
+
 ```bash
 node doc2web.js path/to/directory/
 ```
 
 Process a list of files:
+
 ```bash
 node doc2web.js file-list.txt --list
 ```
@@ -75,6 +58,7 @@ node doc2web.js file-list.txt --list
 ### Interactive Mode
 
 For a user-friendly interface:
+
 ```bash
 node doc2web-run.js
 ```
@@ -90,7 +74,7 @@ find . -name "*.docx" > docx-files.txt
 
 All processed files are stored in the `./output` directory, preserving the original directory structure:
 
-```
+```bash
 output/
 └── original/
     └── path/

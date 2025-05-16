@@ -38,31 +38,22 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 
 ### Automatic Installation
 
-1. Download all project files to a directory
-2. Run the initialization script:
+Download all project files to a directory
 
-```bash
-chmod +x init-doc2web.sh
-./init-doc2web.sh
-```
+Make the installation script executable:
 
-This will set up the project, install dependencies, and make all scripts executable.
-
-### Manual Installation
-
-If you prefer to install manually:
-
-1. Make the installation script executable:
 ```bash
 chmod +x doc2web-install.sh
 ```
 
-2. Run the installation script:
+Run the installation script:
+
 ```bash
 ./doc2web-install.sh
 ```
 
-3. Make helper scripts executable:
+Make helper scripts executable:
+
 ```bash
 chmod +x doc2web-run.js
 chmod +x process-find.sh
@@ -79,9 +70,10 @@ node doc2web.js path/to/your/document.docx
 ```
 
 This will create in the `output` directory:
+
 - A markdown version (.md)
 - An HTML version with styles (.html)
-- A CSS file with extracted styles (.css) 
+- A CSS file with extracted styles (.css)
 - An images folder with any extracted images
 
 ### Output Location
@@ -117,14 +109,16 @@ node doc2web.js /path/to/documents/folder
 
 To process multiple specific files:
 
-1. Create a text file with one filepath per line:
-```
+Create a text file with one filepath per line:
+
+```bash
 /path/to/first/document.docx
 /path/to/second/document.docx
 /another/path/report.docx
 ```
 
-2. Process the list:
+Process the list:
+
 ```bash
 node doc2web.js file-list.txt --list
 ```
@@ -145,7 +139,7 @@ find /search/path -name "*.docx" > docx-files.txt
 
 ### doc2web.js Options
 
-```
+```bash
 node doc2web.js <input> [options]
 ```
 
@@ -160,7 +154,7 @@ node doc2web.js <input> [options]
 
 ### process-find.sh
 
-```
+```bash
 ./process-find.sh <find-output-file>
 ```
 
@@ -168,7 +162,7 @@ Processes a file containing the output of a find command.
 
 ### doc2web-run.js
 
-```
+```bash
 node doc2web-run.js
 ```
 
@@ -208,6 +202,7 @@ For each processed DOCX file, doc2web generates:
 doc2web preserves the following elements:
 
 ### Document Structure
+
 - Headings (H1-H6)
 - Paragraphs with proper spacing
 - Lists (ordered and unordered)
@@ -215,6 +210,7 @@ doc2web preserves the following elements:
 - Images with captions
 
 ### Text Formatting
+
 - Bold, italic, underline
 - Strikethrough
 - Superscript and subscript
@@ -222,6 +218,7 @@ doc2web preserves the following elements:
 - Text colors (in HTML output)
 
 ### Advanced Elements
+
 - Hyperlinks
 - Blockquotes
 - Code blocks
