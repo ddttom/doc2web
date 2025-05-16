@@ -1,0 +1,27 @@
+{
+  "name": "doc2web",
+  "version": "1.0.0",
+  "description": "Convert DOCX documents to markdown and HTML with style preservation",
+  "main": "doc2web.js",
+  "scripts": {
+    "start": "node doc2web.js",
+    "html": "node doc2web.js --html-only"
+  },
+  "keywords": [
+    "docx",
+    "markdown",
+    "converter",
+    "word",
+    "document",
+    "styles"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "mammoth": "^1.6.0",
+    "jsdom": "^22.1.0",
+    "jszip": "^3.10.1",
+    "xmldom": "^0.6.0",
+    "xpath": "^0.0.33"
+  }
+}
