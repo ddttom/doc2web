@@ -273,6 +273,12 @@ function processNode(node, depth = 0) {
     const dir = node.getAttribute('dir');
     const isRTL = dir === 'rtl';
     
+    // Check for placeholder class
+    const isPlaceholder = node.classList && node.classList.contains('docx-placeholder');
+    if (isPlaceholder) {
+      return `\n\n**${node.textContent.trim()}**\n\n`;
+    }
+    
     // Process different element types
     switch (nodeName) {
       case 'h1':

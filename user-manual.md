@@ -199,7 +199,7 @@ For each processed DOCX file, doc2web generates:
 
 ## Formatting Features
 
-doc2web preserves the following elements:
+doc2web preserves the following elements and provides special handling for navigation elements:
 
 ### Document Structure
 
@@ -223,6 +223,18 @@ doc2web preserves the following elements:
 - Blockquotes
 - Code blocks
 - Horizontal rules
+
+### Table of Contents and Index Handling
+
+doc2web intelligently detects and handles navigation elements:
+
+- Automatically identifies Table of Contents (TOC) sections
+- Detects Index sections at the end of documents
+- Replaces these elements with clear placeholders instead of converting their full content
+- In HTML output: `<p class="docx-placeholder">** TOC HERE **</p>` or `<p class="docx-placeholder">** INDEX HERE **</p>`
+- In Markdown output: `**TOC HERE**` or `**INDEX HERE**`
+
+This feature prevents unnecessary duplication of navigation elements that aren't needed in web formats, improving readability and reducing file size.
 
 ## Multilingual Support
 
@@ -360,6 +372,9 @@ A: Not yet, all outputs go to the `./output` directory.
 
 **Q: How closely does the HTML match the original document?**  
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
+
+**Q: Why are Table of Contents and Index sections replaced with placeholders?**  
+A: These navigation elements are typically not needed in web formats and can create unnecessary duplication. The placeholders make it clear where these elements were in the original document without cluttering the output.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.

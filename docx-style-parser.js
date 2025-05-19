@@ -685,6 +685,15 @@ body {
 .docx-image { max-width: 100%; height: auto; display: block; margin: 10px 0; }
 .docx-table-default { width: 100%; border-collapse: collapse; margin: 10px 0; }
 .docx-table-default td, .docx-table-default th { border: 1px solid #ddd; padding: 5pt; }
+.docx-placeholder { 
+  font-weight: bold; 
+  text-align: center; 
+  padding: 15px; 
+  margin: 20px 0; 
+  background-color: #f0f0f0; 
+  border: 1px dashed #999; 
+  border-radius: 5px; 
+}
 `;
   } catch (error) {
     console.error('Error generating CSS:', error);

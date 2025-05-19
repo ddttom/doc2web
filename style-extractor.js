@@ -179,6 +179,9 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
   // Handle language-specific elements
   processLanguageElements(document);
   
+  // Detect and replace TOC and index elements
+  detectAndReplaceTocAndIndex(document);
+  
   // Serialize back to HTML string
   return dom.serialize();
 }
@@ -304,6 +307,174 @@ function processLanguageElements(document) {
   rtlElements.forEach(el => {
     el.classList.add('docx-rtl');
   });
+}
+
+/**
+ * Detect and replace table of contents and index elements with a placeholder
+ * @param {Document} document - DOM document
+ */
+function detectAndReplaceTocAndIndex(document) {
+  // Common patterns for TOC elements
+  const tocPatterns = [
+    // Look for TOC field codes or TOC headings
+    { selector: 'p.TOC, p.TOCHeading, div.TOC', type: 'TOC' },
+    // Look for elements with TOC-specific classes
+    { selector: '[class*="toc"]', type: 'TOC' },
+    // Look for elements with index-specific classes
+    { selector: '[class*="index"]', type: 'INDEX' },
+    // Look for common TOC structures (lists following a TOC heading)
+    { selector: 'p:contains("Table of Contents"), p:contains("Contents"), h1:contains("Contents"), h2:contains("Contents")', type: 'TOC' },
+    // Look for common Index structures
+    { selector: 'p:contains("Index"), h1:contains("Index"), h2:contains("Index")', type: 'INDEX' }
+  ];
+
+  // Custom implementation of :contains selector since JSDOM doesn't support it natively
+  const findElementsContainingText = (selector, text) => {
+    const elements = document.querySelectorAll(selector);
+    return Array.from(elements).filter(el => 
+      el.textContent.toLowerCase().includes(text.toLowerCase())
+    );
+  };
+
+  // Process each pattern
+  tocPatterns.forEach(pattern => {
+    try {
+      let elements = [];
+      
+      // Handle the custom :contains selector
+      if (pattern.selector.includes(':contains(')) {
+        const [baseSelector, containsText] = pattern.selector.split(':contains(');
+        const text = containsText.replace(/[")]/g, '');
+        elements = findElementsContainingText(baseSelector, text);
+      } else {
+        // Standard selector
+        elements = document.querySelectorAll(pattern.selector);
+      }
+
+      // Process found elements
+      elements.forEach(el => {
+        // Check if this is likely a TOC or Index
+        if (isTocOrIndexElement(el, pattern.type)) {
+          // Replace the element with a placeholder
+          replaceTocOrIndexElement(el, pattern.type);
+        }
+      });
+    } catch (error) {
+      console.error(`Error processing pattern ${pattern.selector}:`, error);
+    }
+  });
+
+  // Additional heuristic detection for TOC and Index
+  detectTocByStructure(document);
+}
+
+/**
+ * Determine if an element is likely a TOC or Index element
+ * @param {Element} element - DOM element
+ * @param {string} type - 'TOC' or 'INDEX'
+ * @returns {boolean} - True if element is likely a TOC or Index
+ */
+function isTocOrIndexElement(element, type) {
+  // Check element text content
+  const text = element.textContent.toLowerCase();
+  
+  if (type === 'TOC') {
+    // Check for TOC indicators
+    if (text.includes('table of contents') || text.includes('contents')) {
+      return true;
+    }
+    
+    // Check for TOC structure (list of items with page numbers)
+    const nextSibling = element.nextElementSibling;
+    if (nextSibling && (nextSibling.nodeName === 'UL' || nextSibling.nodeName === 'OL')) {
+      return true;
+    }
+  } else if (type === 'INDEX') {
+    // Check for Index indicators
+    if (text.includes('index')) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
+/**
+ * Replace a TOC or Index element with a placeholder
+ * @param {Element} element - DOM element to replace
+ * @param {string} type - 'TOC' or 'INDEX'
+ */
+function replaceTocOrIndexElement(element, type) {
+  // Create placeholder element
+  const placeholder = element.ownerDocument.createElement('p');
+  placeholder.classList.add('docx-placeholder');
+  placeholder.textContent = `** ${type} HERE **`;
+  
+  // Replace the element with the placeholder
+  element.parentNode.replaceChild(placeholder, element);
+  
+  // If this is a TOC heading, also remove the following list if present
+  if (type === 'TOC') {
+    const nextSibling = placeholder.nextElementSibling;
+    if (nextSibling && (nextSibling.nodeName === 'UL' || nextSibling.nodeName === 'OL')) {
+      nextSibling.parentNode.removeChild(nextSibling);
+    }
+  }
+}
+
+/**
+ * Detect TOC by analyzing document structure
+ * @param {Document} document - DOM document
+ */
+function detectTocByStructure(document) {
+  // Look for sequences of paragraphs with tab characters and page numbers
+  // which is a common pattern in TOCs
+  const paragraphs = document.querySelectorAll('p');
+  let consecutiveTocLikeParagraphs = 0;
+  let tocStartElement = null;
+  
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+    const text = p.textContent;
+    
+    // Check if paragraph looks like a TOC entry (contains tabs and ends with a number)
+    if (text.includes('\t') && /\d+\s*$/.test(text)) {
+      consecutiveTocLikeParagraphs++;
+      
+      // Remember the first element in the sequence
+      if (consecutiveTocLikeParagraphs === 1) {
+        tocStartElement = p;
+      }
+      
+      // If we've found several consecutive TOC-like paragraphs, it's likely a TOC
+      if (consecutiveTocLikeParagraphs >= 3) {
+        // Replace the first element with a placeholder
+        if (tocStartElement) {
+          const placeholder = document.createElement('p');
+          placeholder.classList.add('docx-placeholder');
+          placeholder.textContent = '** TOC HERE **';
+          
+          // Insert placeholder before the TOC
+          tocStartElement.parentNode.insertBefore(placeholder, tocStartElement);
+          
+          // Remove all the TOC paragraphs
+          for (let j = 0; j < consecutiveTocLikeParagraphs; j++) {
+            if (i - j >= 0 && paragraphs[i - j]) {
+              paragraphs[i - j].parentNode.removeChild(paragraphs[i - j]);
+            }
+          }
+          
+          // Reset counter and break the loop
+          consecutiveTocLikeParagraphs = 0;
+          break;
+        }
+      }
+    } else {
+      // Reset counter if we encounter a non-TOC-like paragraph
+      consecutiveTocLikeParagraphs = 0;
+      tocStartElement = null;
+    }
+  }
 }
 
 module.exports = {
