@@ -136,13 +136,6 @@ function createDocumentTransformer(styleInfo) {
  * @param {string} html - HTML content
  * @param {string} css - CSS styles
  * @param {Object} styleInfo - Style information for reference
- * @returns {string} - HTML with embedded styles
- */
-/**
- * Apply generated CSS to HTML
- * @param {string} html - HTML content
- * @param {string} css - CSS styles
- * @param {Object} styleInfo - Style information for reference
  * @param {string} cssFilename - Filename for the CSS file
  * @returns {string} - HTML with link to external CSS
  */
@@ -178,6 +171,9 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
   
   // Handle language-specific elements
   processLanguageElements(document);
+  
+  // Process numbered paragraphs
+  processNumberedParagraphs(document);
   
   // Detect and replace TOC and index elements
   detectAndReplaceTocAndIndex(document);
@@ -310,6 +306,91 @@ function processLanguageElements(document) {
 }
 
 /**
+ * Process numbered paragraphs for better styling
+ * @param {Document} document - DOM document
+ */
+function processNumberedParagraphs(document) {
+  const paragraphs = document.querySelectorAll('p');
+  
+  // Patterns for identifying different types of paragraph numbering
+  const numberPattern = /^\s*(\d+)\.(.+)$/;
+  const alphaPattern = /^\s*([a-z])\.(.+)$/;
+  const romanPattern = /^\s*([ivx]+)\.(.+)$/;
+  
+  // Check for sequential paragraphs that might form a list
+  let currentListType = null;
+  let currentList = null;
+  let currentItem = null;
+  
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+    const text = p.textContent;
+    
+    // Check for different numbering patterns
+    let match = null;
+    let listType = null;
+    
+    if (numberPattern.test(text)) {
+      match = text.match(numberPattern);
+      listType = 'numbered';
+    } else if (alphaPattern.test(text)) {
+      match = text.match(alphaPattern);
+      listType = 'alpha';
+    } else if (romanPattern.test(text)) {
+      match = text.match(romanPattern);
+      listType = 'roman';
+    }
+    
+    if (match) {
+      // Extract the number/letter and content
+      const prefix = match[1];
+      const content = match[2].trim();
+      
+      // If this is a continuation of a list or a new list
+      if (listType !== currentListType || !currentList) {
+        // Create a new list
+        currentList = document.createElement('ol');
+        currentList.className = `docx-${listType}-list`;
+        p.parentNode.insertBefore(currentList, p);
+        currentListType = listType;
+      }
+      
+      // Create list item
+      currentItem = document.createElement('li');
+      currentItem.textContent = content;
+      
+      // Add a data attribute to store the original number/letter
+      currentItem.setAttribute('data-prefix', prefix);
+      
+      // Replace the paragraph with the list item
+      currentList.appendChild(currentItem);
+      p.parentNode.removeChild(p);
+      
+      // Adjust the counter for the loop since we've removed an element
+      i--;
+    } else {
+      // Reset list tracking when encountering a non-numbered paragraph
+      currentListType = null;
+      currentList = null;
+      currentItem = null;
+      
+      // Special case for paragraphs that have numbering but don't match the patterns above
+      // Often these are manually formatted numbers
+      if (/^\s*\d+\.\s+/.test(text) || /^\s*[a-z]\.\s+/.test(text)) {
+        const parts = text.split(/^(\s*\S+\.\s+)/);
+        if (parts.length >= 3) {
+          const numPrefix = parts[1];
+          const content = parts.slice(2).join('');
+          
+          // Wrap the number in a span for styling
+          p.innerHTML = `<span class="docx-num">${numPrefix.trim()}</span> ${content}`;
+        }
+      }
+    }
+  }
+}
+
+/**
  * Detect and replace table of contents and index elements with a placeholder
  * @param {Document} document - DOM document
  */
@@ -432,13 +513,38 @@ function detectTocByStructure(document) {
   const paragraphs = document.querySelectorAll('p');
   let consecutiveTocLikeParagraphs = 0;
   let tocStartElement = null;
+  let tocEndElement = null;
+  
+  // First, try to find an explicit TOC heading
+  let tocHeading = null;
+  for (let i = 0; i < paragraphs.length; i++) {
+    const text = paragraphs[i].textContent.toLowerCase().trim();
+    if (text === 'table of contents' || text === 'contents' || text.includes('table of contents:')) {
+      tocHeading = paragraphs[i];
+      break;
+    }
+  }
+  
+  // Define patterns for TOC entries
+  const pageNumberPattern = /\[\d+\]$/;  // Pattern for page numbers in brackets [123]
+  const sectionPattern = /^(\d+\.|[a-z]\.|[ivx]+\.)|\d+\s/; // Pattern for section numbers
   
   for (let i = 0; i < paragraphs.length; i++) {
     const p = paragraphs[i];
     const text = p.textContent;
     
-    // Check if paragraph looks like a TOC entry (contains tabs and ends with a number)
-    if (text.includes('\t') && /\d+\s*$/.test(text)) {
+    // Check if paragraph looks like a TOC entry using various patterns
+    const hasSectionNumber = sectionPattern.test(text.trim());
+    const hasPageNumber = pageNumberPattern.test(text.trim()) || /\d+\s*$/.test(text.trim());
+    const hasTabOrMultipleSpaces = text.includes('\t') || /\s{3,}/.test(text);
+    
+    // If it's near a TOC heading, be more lenient with the pattern matching
+    const nearTocHeading = tocHeading && Math.abs(i - Array.from(paragraphs).indexOf(tocHeading)) < 20;
+    
+    if ((hasSectionNumber && hasPageNumber) || 
+        (hasTabOrMultipleSpaces && hasPageNumber) ||
+        (nearTocHeading && (hasSectionNumber || hasPageNumber))) {
+      
       consecutiveTocLikeParagraphs++;
       
       // Remember the first element in the sequence
@@ -446,21 +552,42 @@ function detectTocByStructure(document) {
         tocStartElement = p;
       }
       
+      // Remember the last element
+      tocEndElement = p;
+      
       // If we've found several consecutive TOC-like paragraphs, it's likely a TOC
       if (consecutiveTocLikeParagraphs >= 3) {
-        // Replace the first element with a placeholder
+        // We have enough evidence this is a TOC
         if (tocStartElement) {
+          // Create a placeholder
           const placeholder = document.createElement('p');
           placeholder.classList.add('docx-placeholder');
           placeholder.textContent = '** TOC HERE **';
           
           // Insert placeholder before the TOC
-          tocStartElement.parentNode.insertBefore(placeholder, tocStartElement);
-          
-          // Remove all the TOC paragraphs
-          for (let j = 0; j < consecutiveTocLikeParagraphs; j++) {
-            if (i - j >= 0 && paragraphs[i - j]) {
-              paragraphs[i - j].parentNode.removeChild(paragraphs[i - j]);
+          if (tocHeading) {
+            // If we found a TOC heading, insert after it
+            tocHeading.parentNode.insertBefore(placeholder, tocHeading.nextSibling);
+            
+            // Remove the TOC entries but keep the heading
+            let current = placeholder.nextSibling;
+            while (current && current !== tocEndElement.nextSibling) {
+              const next = current.nextSibling;
+              current.parentNode.removeChild(current);
+              current = next;
+            }
+          } else {
+            // No heading found, insert before the first TOC entry
+            tocStartElement.parentNode.insertBefore(placeholder, tocStartElement);
+            
+            // Remove all the TOC paragraphs
+            let current = placeholder.nextSibling;
+            let removedCount = 0;
+            while (current && removedCount < consecutiveTocLikeParagraphs) {
+              const next = current.nextSibling;
+              current.parentNode.removeChild(current);
+              current = next;
+              removedCount++;
             }
           }
           
@@ -470,6 +597,32 @@ function detectTocByStructure(document) {
         }
       }
     } else {
+      // If we have some TOC-like paragraphs but hit a non-TOC paragraph, 
+      // check if we have enough to consider it a complete TOC
+      if (consecutiveTocLikeParagraphs >= 3) {
+        // We have enough evidence this is a TOC
+        if (tocStartElement) {
+          // Create a placeholder
+          const placeholder = document.createElement('p');
+          placeholder.classList.add('docx-placeholder');
+          placeholder.textContent = '** TOC HERE **';
+          
+          // Insert placeholder before the TOC
+          tocStartElement.parentNode.insertBefore(placeholder, tocStartElement);
+          
+          // Remove all the TOC paragraphs
+          for (let j = 0; j < consecutiveTocLikeParagraphs; j++) {
+            if (i - j - 1 >= 0 && paragraphs[i - j - 1]) {
+              paragraphs[i - j - 1].parentNode.removeChild(paragraphs[i - j - 1]);
+            }
+          }
+          
+          // Reset counter and break the loop
+          consecutiveTocLikeParagraphs = 0;
+          break;
+        }
+      }
+      
       // Reset counter if we encounter a non-TOC-like paragraph
       consecutiveTocLikeParagraphs = 0;
       tocStartElement = null;
