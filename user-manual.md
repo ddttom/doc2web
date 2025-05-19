@@ -230,11 +230,11 @@ doc2web intelligently detects and handles navigation elements:
 
 - Automatically identifies Table of Contents (TOC) sections
 - Detects Index sections at the end of documents
-- Replaces these elements with clear placeholders instead of converting their full content
-- In HTML output: `<p class="docx-placeholder">** TOC HERE **</p>` or `<p class="docx-placeholder">** INDEX HERE **</p>`
-- In Markdown output: `**TOC HERE**` or `**INDEX HERE**`
+- Properly decorates these elements with appropriate styling in the output
+- In HTML output: Elements are styled with the appropriate CSS classes
+- In Markdown output: Elements are formatted with proper structure
 
-This feature prevents unnecessary duplication of navigation elements that aren't needed in web formats, improving readability and reducing file size.
+This feature prevents unnecessary duplication of navigation elements in web formats while maintaining their visual structure, improving readability and organization.
 
 ## Multilingual Support
 
@@ -373,8 +373,8 @@ A: Not yet, all outputs go to the `./output` directory.
 **Q: How closely does the HTML match the original document?**  
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
 
-**Q: Why are Table of Contents and Index sections replaced with placeholders?**  
-A: These navigation elements are typically not needed in web formats and can create unnecessary duplication. The placeholders make it clear where these elements were in the original document without cluttering the output.
+**Q: How does doc2web handle Table of Contents and Index sections?**  
+A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.

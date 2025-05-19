@@ -66,7 +66,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Extract and save document images
 - Process documents with mixed language content
 - Support right-to-left text and international characters
-- Detect and replace table of contents and index elements with placeholders
+- Automatically detect and properly decorate table of contents and index elements
 
 #### 3.1.2 Style Preservation
 
@@ -201,7 +201,7 @@ doc2web follows a modular architecture with these primary components:
 | FR-20 | Properly extract and reference images | High |
 | FR-21 | Generate markdown that passes standard linting rules | High |
 | FR-22 | Provide proper margins and spacing in HTML output for readability | High |
-| FR-23 | Detect and replace table of contents and index elements with placeholders | Medium |
+| FR-23 | Automatically detect and properly decorate table of contents and index elements | Medium |
 
 ## 6. Non-Functional Requirements
 

@@ -109,11 +109,11 @@ output/
 
 ### v1.0.4 (2025-05-19)
 
-- Added TOC and index detection and replacement:
+- Enhanced TOC and index handling:
   - Automatically detects table of contents and index elements in DOCX files
-  - Replaces these elements with clear placeholder text ("** TOC HERE **" or "** INDEX HERE **")
+  - Properly decorates these elements in the output with appropriate styling
   - Prevents unnecessary content duplication in web output
-  - Improves readability by removing navigation elements that aren't needed in web formats
+  - Improves readability by properly formatting navigation elements in web formats
 
 ### v1.0.3 (2025-05-16)
 
