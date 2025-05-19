@@ -695,6 +695,168 @@ body {
   border-radius: 5px; 
 }
 `;
+
+    // Add numbered list styles
+    css += `
+/* Numbered list styles */
+ol.docx-numbered-list {
+  counter-reset: item;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol.docx-numbered-list li {
+  counter-increment: item;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+ol.docx-numbered-list li::before {
+  position: absolute;
+  left: 0;
+  content: counter(item) ".";
+  font-weight: bold;
+}
+
+/* Multilevel list styles */
+ol.docx-multilevel-list {
+  counter-reset: level1;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol.docx-multilevel-list > li {
+  counter-increment: level1;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+ol.docx-multilevel-list > li::before {
+  position: absolute;
+  left: 0;
+  content: counter(level1) ".";
+  font-weight: bold;
+}
+
+ol.docx-multilevel-list > li > ol {
+  counter-reset: level2;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol.docx-multilevel-list > li > ol > li {
+  counter-increment: level2;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+ol.docx-multilevel-list > li > ol > li::before {
+  position: absolute;
+  left: 0;
+  content: counter(level1) "." counter(level2);
+  font-weight: bold;
+}
+
+/* Alpha-numeric list style (a., b., c.) */
+ol.docx-alpha-list {
+  counter-reset: alpha;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol.docx-alpha-list > li {
+  counter-increment: alpha;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+ol.docx-alpha-list > li::before {
+  position: absolute;
+  left: 0;
+  content: counter(alpha, lower-alpha) ".";
+  font-weight: bold;
+}
+
+/* Roman numeral list style (i., ii., iii.) */
+ol.docx-roman-list {
+  counter-reset: roman;
+  list-style-type: none;
+  padding-left: 0;
+}
+
+ol.docx-roman-list > li {
+  counter-increment: roman;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+}
+
+ol.docx-roman-list > li::before {
+  position: absolute;
+  left: 0;
+  content: counter(roman, lower-roman) ".";
+  font-weight: bold;
+}
+
+/* TOC specific styles */
+.docx-toc {
+  margin: 2em 0;
+  line-height: 1.5;
+}
+
+.docx-toc-entry {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 0.5em;
+  width: 100%;
+}
+
+.docx-toc-text {
+  flex-grow: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.docx-toc-dots {
+  flex-shrink: 0;
+  margin: 0 0.5em;
+  border-bottom: 1px dotted #000;
+  flex-grow: 1;
+}
+
+.docx-toc-pagenum {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+.docx-toc-level-1 { margin-left: 0; }
+.docx-toc-level-2 { margin-left: 1.5em; }
+.docx-toc-level-3 { margin-left: 3em; }
+.docx-toc-level-4 { margin-left: 4.5em; }
+.docx-toc-level-5 { margin-left: 6em; }
+
+/* Special formatting for paragraph numbers */
+.docx-num {
+  display: inline-block;
+  width: 2em;
+  text-align: right;
+  padding-right: 0.5em;
+  font-weight: bold;
+}
+
+.docx-num-alpha {
+  display: inline-block;
+  width: 2em;
+  text-align: right;
+  padding-right: 0.5em;
+  font-weight: bold;
+}
+`;
+
   } catch (error) {
     console.error('Error generating CSS:', error);
     
@@ -712,6 +874,10 @@ p { margin: 10pt 0; }
 .docx-image { max-width: 100%; height: auto; display: block; margin: 10px 0; }
 table { width: 100%; border-collapse: collapse; margin: 10px 0; }
 td, th { border: 1px solid #ddd; padding: 5pt; }
+ol.docx-numbered-list { counter-reset: item; list-style-type: none; padding-left: 0; }
+ol.docx-numbered-list li { counter-increment: item; position: relative; padding-left: 2em; margin-bottom: 0.5em; }
+ol.docx-numbered-list li::before { position: absolute; left: 0; content: counter(item) "."; font-weight: bold; }
+.docx-num { display: inline-block; width: 2em; text-align: right; padding-right: 0.5em; font-weight: bold; }
 `;
   }
 
