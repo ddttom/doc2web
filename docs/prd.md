@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.0  
+**Document Version:** 2.1  
 **Last Updated:** May 20, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -216,11 +216,31 @@ doc2web follows a modular architecture with these primary components:
 
 3. **Library Modules (lib/)**
    - Organized into logical function groups:
-     - **XML Utilities (lib/xml/)**: Functions for working with XML and XPath
-     - **Parsers (lib/parsers/)**: Style, TOC, numbering, theme, and document parsing
-     - **HTML Processing (lib/html/)**: HTML generation and element processors
-     - **CSS Generation (lib/css/)**: CSS generation and style mapping
-     - **Utilities (lib/utils/)**: Unit conversion and other helper functions
+     - **XML Utilities (lib/xml/)**
+       - `xpath-utils.js`: Provides utilities for working with XML and XPath
+       - Handles namespace resolution for DOCX XML structure
+       - Implements error handling for XPath queries
+
+     - **Parsers (lib/parsers/)**
+       - `style-parser.js`: Parses DOCX styles and extracts formatting information
+       - `theme-parser.js`: Extracts theme information (colors, fonts)
+       - `toc-parser.js`: Parses Table of Contents styles and structure
+       - `numbering-parser.js`: Extracts numbering definitions for lists
+       - `document-parser.js`: Analyzes document structure and settings
+
+     - **HTML Processing (lib/html/)**
+       - `html-generator.js`: Main module for generating HTML from DOCX
+       - `structure-processor.js`: Ensures proper HTML document structure
+       - `content-processors.js`: Processes headings, TOC, and lists
+       - `element-processors.js`: Processes tables, images, and language elements
+
+     - **CSS Generation (lib/css/)**
+       - `css-generator.js`: Generates CSS from extracted style information
+       - `style-mapper.js`: Maps DOCX styles to CSS classes
+
+     - **Utilities (lib/utils/)**
+       - `unit-converter.js`: Converts between different units (twips, points)
+       - `common-utils.js`: Common utility functions shared across modules
 
 4. **Style Processing**
    - **Style Parser (lib/parsers/style-parser.js)**
@@ -254,6 +274,12 @@ doc2web follows a modular architecture with these primary components:
    - Batch processing helpers (process-find.sh)
    - System compatibility checks
    - Error logging and reporting
+
+7. **Documentation**
+   - `README.md`: Project overview and quick start guide
+   - `docs/prd.md`: Product Requirements Document
+   - `docs/refactoring.md`: Detailed documentation of the refactoring process
+   - `docs/user-guide.md`: User guide for working with the refactored code
 
 ### 4.2 Dependencies
 
@@ -689,6 +715,8 @@ A test suite should include documents with the following characteristics:
 
 - [User Manual](user-manual.md) - Detailed instructions for using doc2web
 - [README.md](README.md) - Project overview and quick start guide
+- [Refactoring Documentation](refactoring.md) - Detailed documentation of the refactoring process
+- [User Guide](user-guide.md) - Guide for working with the refactored code
 - [API Documentation](api-docs.md) - Technical documentation for developers
 - [Testing Guidelines](testing.md) - Guidelines for testing doc2web
 

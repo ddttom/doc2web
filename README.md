@@ -30,22 +30,40 @@ doc2web/
 ├── doc2web-run.js
 ├── doc2web.js
 ├── docs/
-│   └── prd.md
+│   ├── prd.md                  # Product Requirements Document
+│   ├── refactoring.md          # Detailed refactoring documentation
+│   └── user-guide.md           # User guide for the refactored code
 ├── init-doc2web.sh
 ├── input/
-├── lib/                       # Refactored library code
-│   ├── index.js               # Main entry point
-│   ├── xml/                   # XML parsing utilities
-│   ├── parsers/               # DOCX parsing modules
-│   ├── html/                  # HTML processing modules
-│   ├── css/                   # CSS generation modules
-│   └── utils/                 # Utility functions
+├── lib/                        # Refactored library code
+│   ├── index.js                # Main entry point
+│   ├── xml/                    # XML parsing utilities
+│   │   └── xpath-utils.js      # XPath utilities for XML processing
+│   ├── parsers/                # DOCX parsing modules
+│   │   ├── style-parser.js     # Style parsing functions
+│   │   ├── theme-parser.js     # Theme parsing functions
+│   │   ├── toc-parser.js       # TOC parsing functions
+│   │   ├── numbering-parser.js # Numbering definition parsing
+│   │   └── document-parser.js  # Document structure parsing
+│   ├── html/                   # HTML processing modules
+│   │   ├── html-generator.js   # Main HTML generation
+│   │   ├── structure-processor.js # HTML structure handling
+│   │   ├── content-processors.js  # Content element processing
+│   │   └── element-processors.js  # HTML element processing
+│   ├── css/                    # CSS generation modules
+│   │   ├── css-generator.js    # CSS generation functions
+│   │   └── style-mapper.js     # Style mapping functions
+│   └── utils/                  # Utility functions
+│       ├── unit-converter.js   # Unit conversion utilities
+│       └── common-utils.js     # Common utility functions
 ├── markdownify.js
 ├── node_modules/
 ├── output/
 ├── package-lock.json
 ├── package.json
-└── process-find.sh
+├── process-find.sh
+├── style-extractor.js          # Backward compatibility wrapper
+└── docx-style-parser.js        # Backward compatibility wrapper
 ```
 
 ## Getting Started
@@ -132,22 +150,35 @@ output/
 The codebase has been refactored into a modular structure:
 
 - **XML Utilities** (`lib/xml/`): Functions for working with XML and XPath
+  - `xpath-utils.js`: Provides utilities for XPath queries with proper namespace handling
+
 - **Parsers** (`lib/parsers/`): 
-  - Style parsing
-  - TOC parsing
-  - Numbering definition parsing
-  - Theme parsing
-  - Document structure analysis
+  - `style-parser.js`: Parses DOCX styles and extracts formatting information
+  - `theme-parser.js`: Extracts theme information (colors, fonts)
+  - `toc-parser.js`: Parses Table of Contents styles and structure
+  - `numbering-parser.js`: Extracts numbering definitions for lists
+  - `document-parser.js`: Analyzes document structure and settings
+
 - **HTML Processing** (`lib/html/`):
-  - HTML generation
-  - Structure processing
-  - Content processing (headings, TOC, lists)
-  - Element processing (tables, images, language)
+  - `html-generator.js`: Main module for generating HTML from DOCX
+  - `structure-processor.js`: Ensures proper HTML document structure
+  - `content-processors.js`: Processes headings, TOC, and lists
+  - `element-processors.js`: Processes tables, images, and language elements
+
 - **CSS Generation** (`lib/css/`):
-  - CSS generation
-  - Style mapping
+  - `css-generator.js`: Generates CSS from extracted style information
+  - `style-mapper.js`: Maps DOCX styles to CSS classes
+
 - **Utilities** (`lib/utils/`):
-  - Unit conversion
+  - `unit-converter.js`: Converts between different units (twips, points)
+  - `common-utils.js`: Common utility functions shared across modules
+
+## Documentation
+
+- **README.md**: This file, providing an overview of the project
+- **docs/prd.md**: Product Requirements Document with detailed specifications
+- **docs/refactoring.md**: Detailed documentation of the refactoring process
+- **docs/user-guide.md**: User guide for working with the refactored code
 
 ## Recent Fixes
 
@@ -158,6 +189,8 @@ The codebase has been refactored into a modular structure:
   - Improved code organization by logical function groups
   - Enhanced documentation with comprehensive comments
   - Maintained backward compatibility with existing code
+  - Fixed circular dependencies and improved error handling
+  - Added detailed documentation for the refactored code
 
 ### v1.0.6 (2025-05-20)
 
