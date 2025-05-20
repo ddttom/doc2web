@@ -1,10 +1,13 @@
-// style-extractor.js
+// style-extractor.js - Enhanced version
 const mammoth = require("mammoth");
 const { JSDOM } = require("jsdom");
 const path = require("path");
 const {
   parseDocxStyles,
   generateCssFromStyleInfo,
+  selectNodes,
+  selectSingleNode,
+  convertTwipToPt
 } = require("./docx-style-parser");
 
 /**
@@ -13,13 +16,52 @@ const {
  * @param {string} cssFilename - Filename for the CSS file (without path)
  * @returns {Promise<{html: string, styles: string}>} - HTML with embedded styles
  */
+async function extractAndApplyStyles(docxPath, cssFilename = null) {
+  try {
+    // First, extract the raw styles from the document
+    const styleInfo = await parseDocxStyles(docxPath);
+
+    // Generate CSS from the extracted styles
+    const css = generateCssFromStyleInfo(styleInfo);
+
+    // Convert DOCX to HTML with style preservation
+    const htmlResult = await convertToStyledHtml(docxPath, styleInfo);
+
+    // Get the CSS filename
+    const cssFile =
+      cssFilename || path.basename(docxPath, path.extname(docxPath)) + ".css";
+
+    // Combine HTML and CSS
+    const styledHtml = applyStylesToHtml(
+      htmlResult.value,
+      css,
+      styleInfo,
+      cssFile
+    );
+
+    return {
+      html: styledHtml,
+      styles: css + generateAdditionalCss(styleInfo), // Use document-specific styles
+      messages: htmlResult.messages,
+    };
+  } catch (error) {
+    console.error("Error extracting styles:", error);
+    throw error;
+  }
+}
+
 /**
- * Generate additional CSS for TOC and list styling
+ * Generate additional CSS for TOC and list styling based on document analysis
+ * @param {Object} styleInfo - Extracted style information
  * @returns {string} - Additional CSS
  */
-function generateAdditionalCss() {
+function generateAdditionalCss(styleInfo) {
+  // Use the document's TOC style information to create appropriate CSS
+  const tocStyles = styleInfo.tocStyles || {};
+  const leaderStyle = tocStyles.leaderStyle || { character: '.', spacesBetween: 3 };
+  
   return `
-/* Improved TOC and list styling */
+/* Enhanced TOC and list styling based on document analysis */
 ol.docx-numbered-list {
   counter-reset: item;
   list-style-type: none;
@@ -39,11 +81,11 @@ ol.docx-numbered-list li {
 ol.docx-numbered-list li::before {
   position: absolute;
   left: 0;
-  content: attr(data-prefix) ".";
+  content: attr(data-prefix);
   font-weight: bold;
 }
 
-/* Alpha list styles - IMPROVED */
+/* Alpha list styles */
 ol.docx-alpha-list {
   list-style-type: none;
   padding-left: 1em;
@@ -65,7 +107,7 @@ ol.docx-alpha-list li::before {
   font-weight: bold;
 }
 
-/* TOC specific styles - IMPROVED */
+/* TOC specific styles optimized for the document */
 .docx-toc-list {
   margin: 0;
   padding: 0;
@@ -103,6 +145,7 @@ ol.docx-alpha-list li::before {
 /* Special formatting for TOC headings */
 .docx-toc-heading {
   font-weight: bold;
+  margin-bottom: 1em;
 }
 
 /* Make the TOC look more like the Word document */
@@ -122,9 +165,9 @@ ol.docx-alpha-list.docx-toc-list li {
   line-height: 1.8;
 }
 
-/* Improve the appearance of the dotted lines */
+/* Improve the appearance of the dotted lines - use actual document settings */
 .docx-toc-dots {
-  border-bottom: 1px dotted #666;
+  border-bottom: 1px ${leaderStyle.character === '.' ? 'dotted' : leaderStyle.character === '_' ? 'solid' : 'dashed'} #666;
   margin: 0 0.5em;
   position: relative;
   top: -0.3em;
@@ -140,41 +183,17 @@ ol.docx-alpha-list.docx-toc-list li {
 ol.docx-numbered-list li ol.docx-alpha-list {
   margin-top: 0.25em;
 }
-`;
+
+/* Special styling for "Rationale for Resolution" sections */
+.docx-rationale {
+  font-style: italic;
+  margin-top: 0.25em;
+  margin-bottom: 0.5em;
+  margin-left: 2em;
+  font-size: 0.95em;
+  color: #333;
 }
-
-async function extractAndApplyStyles(docxPath, cssFilename = null) {
-  try {
-    // First, extract the raw styles from the document
-    const styleInfo = await parseDocxStyles(docxPath);
-
-    // Generate CSS from the extracted styles
-    const css = generateCssFromStyleInfo(styleInfo);
-
-    // Convert DOCX to HTML with style preservation
-    const htmlResult = await convertToStyledHtml(docxPath, styleInfo);
-
-    // Get the CSS filename
-    const cssFile =
-      cssFilename || path.basename(docxPath, path.extname(docxPath)) + ".css";
-
-    // Combine HTML and CSS
-    const styledHtml = applyStylesToHtml(
-      htmlResult.value,
-      css,
-      styleInfo,
-      cssFile
-    );
-
-    return {
-      html: styledHtml,
-      styles: css + generateAdditionalCss(),
-      messages: htmlResult.messages,
-    };
-  } catch (error) {
-    console.error("Error extracting styles:", error);
-    throw error;
-  }
+`;
 }
 
 /**
@@ -247,6 +266,17 @@ function createStyleMap(styleInfo) {
     );
   });
 
+  // Map TOC styles if they exist
+  if (styleInfo.tocStyles && styleInfo.tocStyles.tocEntryStyles) {
+    styleInfo.tocStyles.tocEntryStyles.forEach((style) => {
+      if (style.id) {
+        styleMap.push(
+          `p[style-name='${style.name || style.id}'] => p.docx-toc-entry.docx-toc-level-${style.level || 1}`
+        );
+      }
+    });
+  }
+
   // Additional custom mappings for specific elements
   styleMap.push("p:fresh => p");
   styleMap.push("r[bold] => strong");
@@ -311,35 +341,35 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
 
     // Process table elements to match word styling better
     try {
-      processTables(document);
+      processTables(document, styleInfo);
     } catch (error) {
       console.error("Error processing tables:", error.message);
     }
 
     // Process images to maintain aspect ratio and positioning
     try {
-      processImages(document);
+      processImages(document, styleInfo);
     } catch (error) {
       console.error("Error processing images:", error.message);
     }
 
     // Handle language-specific elements
     try {
-      processLanguageElements(document);
+      processLanguageElements(document, styleInfo);
     } catch (error) {
       console.error("Error processing language elements:", error.message);
     }
 
-    // Process numbered paragraphs
+    // Process numbered paragraphs with proper nesting
     try {
-      processNestedNumberedParagraphs(document);
+      processNestedNumberedParagraphs(document, styleInfo);
     } catch (error) {
       console.error("Error processing numbered paragraphs:", error.message);
     }
 
     // Style and enhance TOC and index elements
     try {
-      detectAndStyleTocAndIndex(document);
+      detectAndStyleTocAndIndex(document, styleInfo);
     } catch (error) {
       console.error("Error processing TOC:", error.message);
     }
@@ -423,10 +453,11 @@ function addDocumentMetadata(document, styleInfo) {
 }
 
 /**
- * Process tables for better styling
+ * Process tables for better styling based on document analysis
  * @param {Document} document - DOM document
+ * @param {Object} styleInfo - Style information
  */
-function processTables(document) {
+function processTables(document, styleInfo) {
   const tables = document.querySelectorAll("table");
   tables.forEach((table) => {
     // Add default class if no class is present
@@ -445,14 +476,35 @@ function processTables(document) {
 
       table.appendChild(tbody);
     }
+    
+    // Apply any document-specific table styles
+    if (styleInfo.styles && styleInfo.styles.table) {
+      // Find matching style and apply additional properties
+      Object.entries(styleInfo.styles.table).forEach(([id, style]) => {
+        if (table.classList.contains(`docx-t-${id.toLowerCase()}`)) {
+          // Apply any specific styles from the document
+          if (style.borders) {
+            const borderWidth = style.borders.top?.size ? 
+                              convertTwipToPt(style.borders.top.size) + 'pt' : 
+                              '1px';
+            const borderColor = style.borders.top?.color ? 
+                              `#${style.borders.top.color}` : 
+                              '#000';
+            
+            table.style.border = `${borderWidth} solid ${borderColor}`;
+          }
+        }
+      });
+    }
   });
 }
 
 /**
- * Process images for better styling
+ * Process images for better styling based on document analysis
  * @param {Document} document - DOM document
+ * @param {Object} styleInfo - Style information
  */
-function processImages(document) {
+function processImages(document, styleInfo) {
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
     // Add default class if no class is present
@@ -471,22 +523,30 @@ function processImages(document) {
 }
 
 /**
- * Process language-specific elements
+ * Process language-specific elements based on document analysis
  * @param {Document} document - DOM document
+ * @param {Object} styleInfo - Style information
  */
-function processLanguageElements(document) {
+function processLanguageElements(document, styleInfo) {
   // Find elements with dir="rtl" and add class
   const rtlElements = document.querySelectorAll('[dir="rtl"]');
   rtlElements.forEach((el) => {
     el.classList.add("docx-rtl");
   });
+  
+  // Apply document-specific language settings if available
+  if (styleInfo.settings?.rtlGutter) {
+    document.body.dir = "rtl";
+    document.body.classList.add("docx-rtl");
+  }
 }
 
 /**
- * Process numbered paragraphs for better styling
+ * Process numbered paragraphs with proper nesting based on document analysis
  * @param {Document} document - DOM document
+ * @param {Object} styleInfo - Style information
  */
-function processNumberedParagraphs(document) {
+function processNestedNumberedParagraphs(document, styleInfo) {
   const paragraphs = document.querySelectorAll("p");
 
   // Patterns for identifying different types of paragraph numbering
@@ -494,548 +554,13 @@ function processNumberedParagraphs(document) {
   const alphaPattern = /^\s*([a-z])\.(.+)$/;
   const romanPattern = /^\s*([ivx]+)\.(.+)$/;
 
-  // Check for sequential paragraphs that might form a list
-  let currentListType = null;
-  let currentList = null;
-  let currentItem = null;
-
-  for (let i = 0; i < paragraphs.length; i++) {
-    const p = paragraphs[i];
-
-    // Skip if p is null or doesn't have a text content
-    if (!p || !p.textContent) continue;
-
-    const text = p.textContent;
-
-    // Check for different numbering patterns
-    let match = null;
-    let listType = null;
-
-    if (numberPattern.test(text)) {
-      match = text.match(numberPattern);
-      listType = "numbered";
-    } else if (alphaPattern.test(text)) {
-      match = text.match(alphaPattern);
-      listType = "alpha";
-    } else if (romanPattern.test(text)) {
-      match = text.match(romanPattern);
-      listType = "roman";
-    }
-
-    if (match) {
-      // Extract the number/letter and content
-      const prefix = match[1];
-      const content = match[2].trim();
-
-      // New: Check if this is a top-level or sublist item
-      const isMainItem = listType === "numbered";
-      const isTocItem =
-        text.includes("\t") || text.includes("   ") || /\d+$/.test(text);
-
-      // If this is a continuation of a list or a new list
-      if (listType !== currentListType || !currentList) {
-        // Create a new list
-        currentList = document.createElement("ol");
-        currentList.className = `docx-${listType}-list`;
-
-        // If we're in a TOC context, add that class
-        if (isTocItem) {
-          currentList.classList.add("docx-toc-list");
-        }
-
-        // Check if paragraph has a parent before inserting
-        if (p.parentNode) {
-          p.parentNode.insertBefore(currentList, p);
-          currentListType = listType;
-        } else {
-          console.log("Warning: Cannot insert list, paragraph has no parent");
-          currentList = null;
-          currentListType = null;
-          continue; // Skip this paragraph
-        }
-      }
-
-      // Create list item
-      currentItem = document.createElement("li");
-      currentItem.textContent = content;
-
-      // Add a data attribute to store the original number/letter
-      currentItem.setAttribute("data-prefix", prefix);
-
-      // NEW: Add appropriate class for TOC items or nested list items
-      if (isTocItem) {
-        // This is a TOC item
-        currentItem.classList.add("docx-toc-item");
-
-        // Try to extract page number if it exists (typically at the end)
-        const pageNumMatch = content.match(/(\d+)$/);
-        if (pageNumMatch) {
-          const textPart = content
-            .substring(0, content.lastIndexOf(pageNumMatch[1]))
-            .trim();
-          const pageNum = pageNumMatch[1];
-
-          // Clear the content and recreate with spans
-          currentItem.textContent = "";
-
-          const textSpan = document.createElement("span");
-          textSpan.classList.add("docx-toc-text");
-          textSpan.textContent = textPart;
-
-          const dotsSpan = document.createElement("span");
-          dotsSpan.classList.add("docx-toc-dots");
-
-          const pageSpan = document.createElement("span");
-          pageSpan.classList.add("docx-toc-pagenum");
-          pageSpan.textContent = pageNum;
-
-          currentItem.appendChild(textSpan);
-          currentItem.appendChild(dotsSpan);
-          currentItem.appendChild(pageSpan);
-        }
-      } else if (!isMainItem && currentListType === "alpha") {
-        // This is a sublist item
-        currentItem.classList.add("docx-sublist-item");
-      }
-
-      // Check if we have a valid list and if the paragraph has a parent
-      if (currentList && p.parentNode) {
-        // Replace the paragraph with the list item
-        currentList.appendChild(currentItem);
-        p.parentNode.removeChild(p);
-
-        // Adjust the counter for the loop since we've removed an element
-        i--;
-      } else {
-        // Can't properly handle this element, just apply inline styling instead
-        if (p) {
-          p.innerHTML = `<span class="docx-num">${prefix}.</span> ${content}`;
-        }
-      }
-    } else {
-      // Reset list tracking when encountering a non-numbered paragraph
-      currentListType = null;
-      currentList = null;
-      currentItem = null;
-
-      // Special case for paragraphs that have numbering but don't match the patterns above
-      // Often these are manually formatted numbers
-      if (p && (/^\s*\d+\.\s+/.test(text) || /^\s*[a-z]\.\s+/.test(text))) {
-        const parts = text.split(/^(\s*\S+\.\s+)/);
-        if (parts.length >= 3) {
-          const numPrefix = parts[1];
-          const content = parts.slice(2).join("");
-
-          // Wrap the number in a span for styling
-          p.innerHTML = `<span class="docx-num">${numPrefix.trim()}</span> ${content}`;
-        }
-      }
-    }
-  }
-}
-
-/**
- * Detect and style TOC and index elements rather than replacing them
- * @param {Document} document - DOM document
- */
-function detectAndStyleTocAndIndex(document) {
-  try {
-    // Common patterns for TOC elements
-    const tocPatterns = [
-      // Look for TOC field codes or TOC headings
-      { selector: "p.TOC, p.TOCHeading, div.TOC", type: "TOC" },
-      // Look for elements with TOC-specific classes
-      { selector: '[class*="toc"]', type: "TOC" },
-      // Look for elements with index-specific classes
-      { selector: '[class*="index"]', type: "INDEX" },
-      // Look for common TOC structures (lists following a TOC heading)
-      {
-        selector:
-          'p:contains("Table of Contents"), p:contains("Contents"), h1:contains("Contents"), h2:contains("Contents")',
-        type: "TOC",
-      },
-      // Look for common Index structures
-      {
-        selector:
-          'p:contains("Index"), h1:contains("Index"), h2:contains("Index")',
-        type: "INDEX",
-      },
-    ];
-
-    // Custom implementation of :contains selector since JSDOM doesn't support it natively
-    const findElementsContainingText = (selector, text) => {
-      try {
-        const elements = document.querySelectorAll(selector);
-        return Array.from(elements).filter(
-          (el) =>
-            el.textContent &&
-            el.textContent.toLowerCase().includes(text.toLowerCase())
-        );
-      } catch (error) {
-        console.error(
-          `Error finding elements with selector "${selector}":`,
-          error.message
-        );
-        return [];
-      }
-    };
-
-    // Process each pattern
-    tocPatterns.forEach((pattern) => {
-      try {
-        let elements = [];
-
-        // Handle the custom :contains selector
-        if (pattern.selector.includes(":contains(")) {
-          const [baseSelector, containsText] =
-            pattern.selector.split(":contains(");
-          const text = containsText.replace(/[")]/g, "");
-          elements = findElementsContainingText(baseSelector, text);
-        } else {
-          // Standard selector
-          elements = document.querySelectorAll(pattern.selector);
-        }
-
-        // Process found elements
-        elements.forEach((el) => {
-          // Check if this is likely a TOC or Index
-          if (isTocOrIndexElement(el, pattern.type)) {
-            if (pattern.type === "TOC") {
-              // Style TOC heading
-              el.classList.add("docx-toc-heading");
-            } else {
-              // Replace the Index element with a placeholder
-              replaceIndexElement(el);
-            }
-          }
-        });
-      } catch (error) {
-        console.error(
-          `Error processing pattern ${pattern.selector}:`,
-          error.message
-        );
-      }
-    });
-
-    // Additional heuristic detection for TOC and styling
-    detectAndStyleTocByStructure(document);
-  } catch (error) {
-    console.error("Error in detectAndStyleTocAndIndex:", error.message);
-  }
-}
-
-/**
- * Determine if an element is likely a TOC or Index element
- * @param {Element} element - DOM element
- * @param {string} type - 'TOC' or 'INDEX'
- * @returns {boolean} - True if element is likely a TOC or Index
- */
-function isTocOrIndexElement(element, type) {
-  if (!element || !element.textContent) return false;
-
-  // Check element text content
-  const text = element.textContent.toLowerCase();
-
-  if (type === "TOC") {
-    // Check for TOC indicators
-    if (text.includes("table of contents") || text.includes("contents")) {
-      return true;
-    }
-
-    // Check for TOC structure (list of items with page numbers)
-    const nextSibling = element.nextElementSibling;
-    if (
-      nextSibling &&
-      (nextSibling.nodeName === "UL" || nextSibling.nodeName === "OL")
-    ) {
-      return true;
-    }
-  } else if (type === "INDEX") {
-    // Check for Index indicators
-    if (text.includes("index")) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-/**
- * Replace an Index element with a placeholder
- * @param {Element} element - DOM element to replace
- */
-function replaceIndexElement(element) {
-  if (!element || !element.parentNode) return;
-
-  try {
-    // Create placeholder element
-    const placeholder = element.ownerDocument.createElement("p");
-    placeholder.classList.add("docx-placeholder");
-    placeholder.textContent = `** INDEX HERE **`;
-
-    // Replace the element with the placeholder
-    element.parentNode.replaceChild(placeholder, element);
-  } catch (error) {
-    console.error(`Error replacing INDEX element:`, error.message);
-  }
-}
-
-/**
- * Detect and style TOC by analyzing document structure - styles TOC content instead of replacing it
- * @param {Document} document - DOM document
- */
-function detectAndStyleTocByStructure(document) {
-  try {
-    // Look for sequences of paragraphs with tab characters and page numbers
-    // which is a common pattern in TOCs
-    const paragraphs = document.querySelectorAll("p");
-    let consecutiveTocLikeParagraphs = 0;
-    let tocStartElement = null;
-    let tocEndElement = null;
-    let tocParagraphs = [];
-
-    // First, try to find an explicit TOC heading
-    let tocHeading = null;
-    for (let i = 0; i < paragraphs.length; i++) {
-      const p = paragraphs[i];
-      if (!p || !p.textContent) continue;
-
-      const text = p.textContent.toLowerCase().trim();
-      if (
-        text === "table of contents" ||
-        text === "contents" ||
-        text.includes("table of contents:")
-      ) {
-        tocHeading = p;
-        break;
-      }
-    }
-
-    // IMPROVED: Define patterns for TOC entries with better support for mixed formats
-    const mainItemPattern = /^(\d+)\.\s+/; // For main TOC entries like "1. Section"
-    const subItemPattern = /^([a-z])\.\s+/; // For sub-entries like "a. Subsection"
-    const pageNumberPattern = /\d+\s*$/; // Page numbers at end of line
-    const tabOrSpacePattern = /\t|\s{3,}/; // Tabs or multiple spaces (separators)
-
-    // Process all paragraphs looking for TOC-like structures
-    for (let i = 0; i < paragraphs.length; i++) {
-      const p = paragraphs[i];
-      if (!p || !p.textContent) continue;
-
-      const text = p.textContent;
-
-      // NEW: Check for different TOC entry patterns
-      const isMainItem = mainItemPattern.test(text.trim());
-      const isSubItem = subItemPattern.test(text.trim());
-      const hasPageNumber = pageNumberPattern.test(text.trim());
-      const hasSeparator = tabOrSpacePattern.test(text);
-
-      // If this is near a TOC heading, be more lenient
-      const nearTocHeading =
-        tocHeading &&
-        Math.abs(i - Array.from(paragraphs).indexOf(tocHeading)) < 20;
-
-      // Check if this paragraph looks like a TOC entry
-      if (
-        ((isMainItem || isSubItem) && (hasPageNumber || hasSeparator)) ||
-        (nearTocHeading && (isMainItem || isSubItem || hasPageNumber))
-      ) {
-        consecutiveTocLikeParagraphs++;
-        tocParagraphs.push(p);
-
-        // Remember the first element in the sequence
-        if (consecutiveTocLikeParagraphs === 1) {
-          tocStartElement = p;
-        }
-
-        // Remember the last element
-        tocEndElement = p;
-
-        // If we've found several consecutive TOC-like paragraphs, it's likely a TOC
-        if (consecutiveTocLikeParagraphs >= 3) {
-          // We have enough evidence this is a TOC
-          if (tocStartElement) {
-            try {
-              // Style the TOC instead of replacing it
-              if (tocHeading) {
-                tocHeading.classList.add("docx-toc-heading");
-              }
-
-              // Create a container for the TOC
-              const tocContainer = document.createElement("div");
-              tocContainer.classList.add("docx-toc");
-
-              // Insert the container before the first TOC entry
-              if (tocStartElement.parentNode) {
-                tocStartElement.parentNode.insertBefore(
-                  tocContainer,
-                  tocStartElement
-                );
-
-                // Move all TOC paragraphs to the container and style them
-                tocParagraphs.forEach((p, idx) => {
-                  // Create structured TOC entry
-                  const entry = document.createElement("div");
-                  entry.classList.add("docx-toc-entry");
-
-                  // IMPROVED: Calculate the level based on numbering format
-                  const text = p.textContent;
-                  let level = 1;
-
-                  if (subItemPattern.test(text.trim())) {
-                    level = 2; // Alpha entries are level 2
-                  } else if (text.trim().match(/^\d+\.\d+/)) {
-                    level = 2; // Entries with format 1.1 are level 2
-                  } else if (text.trim().match(/^\d+\.\d+\.\d+/)) {
-                    level = 3; // Entries with format 1.1.1 are level 3
-                  }
-
-                  entry.classList.add(`docx-toc-level-${level}`);
-
-                  // Split text into content and page number
-                  const match = text.match(/(.*?)(\d+)\s*$/);
-                  if (match) {
-                    const content = match[1].trim();
-                    const pageNum = match[2].trim();
-
-                    // Create structure for TOC entry
-                    const textSpan = document.createElement("span");
-                    textSpan.classList.add("docx-toc-text");
-                    textSpan.textContent = content;
-
-                    const dotsSpan = document.createElement("span");
-                    dotsSpan.classList.add("docx-toc-dots");
-
-                    const pageSpan = document.createElement("span");
-                    pageSpan.classList.add("docx-toc-pagenum");
-                    pageSpan.textContent = pageNum;
-
-                    entry.appendChild(textSpan);
-                    entry.appendChild(dotsSpan);
-                    entry.appendChild(pageSpan);
-                  } else {
-                    // Fallback if we can't split
-                    entry.textContent = text;
-                  }
-
-                  tocContainer.appendChild(entry);
-
-                  // Remove the original paragraph
-                  if (p.parentNode) {
-                    p.parentNode.removeChild(p);
-                  }
-                });
-              }
-            } catch (error) {
-              console.error("Error styling TOC:", error.message);
-            }
-
-            // Reset counter and break the loop
-            consecutiveTocLikeParagraphs = 0;
-            break;
-          }
-        }
-      } else {
-        // If we have some TOC-like paragraphs but hit a non-TOC paragraph,
-        // check if we have enough to consider it a complete TOC
-        if (consecutiveTocLikeParagraphs >= 3) {
-          // We have enough evidence this is a TOC
-          if (tocStartElement && tocStartElement.parentNode) {
-            try {
-              // Create a TOC container
-              const tocContainer = document.createElement("div");
-              tocContainer.classList.add("docx-toc");
-
-              // Insert the container before the first TOC entry
-              tocStartElement.parentNode.insertBefore(
-                tocContainer,
-                tocStartElement
-              );
-
-              // Style and move all collected TOC paragraphs
-              tocParagraphs.forEach((p, idx) => {
-                // Create structured TOC entry
-                const entry = document.createElement("div");
-                entry.classList.add("docx-toc-entry");
-
-                // Determine the level based on content format
-                const text = p.textContent;
-                let level = 1;
-
-                if (subItemPattern.test(text.trim())) {
-                  level = 2; // Alpha entries are level 2
-                } else if (text.trim().match(/^\d+\.\d+/)) {
-                  level = 2; // Entries with format 1.1 are level 2
-                } else if (text.trim().match(/^\d+\.\d+\.\d+/)) {
-                  level = 3; // Entries with format 1.1.1 are level 3
-                }
-
-                entry.classList.add(`docx-toc-level-${level}`);
-
-                // Split text into content and page number
-                const match = text.match(/(.*?)(\d+)\s*$/);
-                if (match) {
-                  const content = match[1].trim();
-                  const pageNum = match[2].trim();
-
-                  // Create structure for TOC entry
-                  const textSpan = document.createElement("span");
-                  textSpan.classList.add("docx-toc-text");
-                  textSpan.textContent = content;
-
-                  const dotsSpan = document.createElement("span");
-                  dotsSpan.classList.add("docx-toc-dots");
-
-                  const pageSpan = document.createElement("span");
-                  pageSpan.classList.add("docx-toc-pagenum");
-                  pageSpan.textContent = pageNum;
-
-                  entry.appendChild(textSpan);
-                  entry.appendChild(dotsSpan);
-                  entry.appendChild(pageSpan);
-                } else {
-                  // Fallback if we can't split
-                  entry.textContent = text;
-                }
-
-                tocContainer.appendChild(entry);
-
-                // Remove the original paragraph
-                if (p.parentNode) {
-                  p.parentNode.removeChild(p);
-                }
-              });
-            } catch (error) {
-              console.error("Error styling TOC:", error.message);
-            }
-
-            // Reset counter and break the loop
-            consecutiveTocLikeParagraphs = 0;
-            break;
-          }
-        }
-
-        // Reset counter and tracking for non-TOC paragraphs
-        consecutiveTocLikeParagraphs = 0;
-        tocStartElement = null;
-        tocParagraphs = [];
-      }
-    }
-  } catch (error) {
-    console.error("Error in detectAndStyleTocByStructure:", error.message);
-  }
-}
-/**
- * Process numbered paragraphs with proper nesting for hierarchical lists
- * @param {Document} document - DOM document
- */
-function processNestedNumberedParagraphs(document) {
-  const paragraphs = document.querySelectorAll("p");
-
-  // Patterns for identifying different types of paragraph numbering
-  const numberPattern = /^\s*(\d+)\.(.+)$/;
-  const alphaPattern = /^\s*([a-z])\.(.+)$/;
-  const romanPattern = /^\s*([ivx]+)\.(.+)$/;
+  // Use document structure analysis to find special sections
+  const specialSections = styleInfo.documentStructure?.specialSections || [];
+  const rationaleSections = specialSections.filter(section => 
+    section.type === 'rationale');
+
+  // Track processed items to avoid duplicates
+  const processedTexts = new Set();
 
   // Track lists and their hierarchy
   let mainList = null;
@@ -1043,9 +568,6 @@ function processNestedNumberedParagraphs(document) {
   let currentSubList = null;
   let lastListType = null;
   let lastMainNumber = 0;
-  
-  // Track processed items to avoid duplicates
-  const processedTexts = new Set();
 
   // Process paragraphs sequentially
   for (let i = 0; i < paragraphs.length; i++) {
@@ -1063,6 +585,13 @@ function processNestedNumberedParagraphs(document) {
         p.parentNode.removeChild(p);
         i--; // Adjust counter since we removed an element
       }
+      continue;
+    }
+    
+    // Check for "Rationale for Resolution" special case
+    if (text.includes('Rationale for Resolution')) {
+      p.classList.add('docx-rationale');
+      processedTexts.add(text);
       continue;
     }
     
@@ -1102,7 +631,6 @@ function processNestedNumberedParagraphs(document) {
           
           if (isTocItem) {
             mainList.classList.add("docx-toc-list");
-            mainList.classList.add("docx-toc-heading");
           }
           
           // Insert the list before the paragraph
@@ -1309,8 +837,9 @@ function processNestedNumberedParagraphs(document) {
       
       // If this is a paragraph that separates list sections but doesn't break the overall list
       // (like a "Rationale for Resolution" paragraph between list items)
-      if (p.textContent.trim().startsWith("Rationale for") && mainList) {
-        // Don't reset list tracking, just keep the paragraph as is
+      if (text.trim().startsWith("Rationale for") && mainList) {
+        // Don't reset list tracking, apply special styling
+        p.classList.add("docx-rationale");
       }
       // Otherwise, reset list tracking for non-list paragraphs
       else {
@@ -1319,13 +848,180 @@ function processNestedNumberedParagraphs(document) {
           lastListType = null;
           
           // Only reset current items if this isn't a special case paragraph
-          if (!p.textContent.trim().startsWith("Rationale for")) {
+          if (!text.trim().startsWith("Rationale for")) {
             currentMainItem = null;
             currentSubList = null;
           }
         }
       }
     }
+  }
+}
+
+/**
+ * Detect and style TOC and index elements based on document analysis
+ * @param {Document} document - DOM document
+ * @param {Object} styleInfo - Style information
+ */
+function detectAndStyleTocAndIndex(document, styleInfo) {
+  try {
+    // Use TOC information from document analysis
+    const tocInfo = styleInfo.tocStyles || {};
+    const hasToc = tocInfo.hasTableOfContents || styleInfo.documentStructure?.hasToc;
+    
+    if (hasToc) {
+      // Look for TOC headings first
+      const headings = Array.from(document.querySelectorAll("h1, h2, h3, p")).filter(
+        el => el.textContent.includes("Table of Contents") || 
+             el.textContent.includes("Contents") ||
+             (el.className && el.className.includes("TOC"))
+      );
+      
+      if (headings.length > 0) {
+        // Style the first matching heading as TOC heading
+        const tocHeading = headings[0];
+        tocHeading.classList.add("docx-toc-heading");
+        
+        // Apply any specific TOC heading styles from the document
+        if (tocInfo.tocHeadingStyle) {
+          if (tocInfo.tocHeadingStyle.fontSize) {
+            tocHeading.style.fontSize = tocInfo.tocHeadingStyle.fontSize;
+          }
+          if (tocInfo.tocHeadingStyle.fontFamily) {
+            tocHeading.style.fontFamily = tocInfo.tocHeadingStyle.fontFamily;
+          }
+        }
+      }
+      
+      // Now look for paragraphs with tab characters and page numbers that follow a TOC heading
+      if (headings.length > 0) {
+        const tocHeading = headings[0];
+        let nextElement = tocHeading.nextElementSibling;
+        
+        // Skip until we find a paragraph or list
+        while (nextElement && 
+              nextElement.nodeName !== 'P' && 
+              nextElement.nodeName !== 'OL' &&
+              nextElement.nodeName !== 'UL') {
+          nextElement = nextElement.nextElementSibling;
+        }
+        
+        // If we found a list, we've already processed it as a TOC list
+        if (nextElement && (nextElement.nodeName === 'OL' || nextElement.nodeName === 'UL')) {
+          // If it doesn't already have the TOC list class, add it
+          if (!nextElement.classList.contains('docx-toc-list')) {
+            nextElement.classList.add('docx-toc-list');
+          }
+        }
+        // If we found a paragraph, check if it's a potential TOC entry
+        else if (nextElement && nextElement.nodeName === 'P') {
+          const text = nextElement.textContent;
+          
+          // Check if it might be a TOC entry (has tabs, spaces, or ends with a number)
+          if (text.includes("\t") || text.includes("   ") || /\d+\s*$/.test(text)) {
+            // Create a container for TOC entries
+            const tocContainer = document.createElement('div');
+            tocContainer.classList.add('docx-toc');
+            
+            // Insert the container before the first TOC entry
+            nextElement.parentNode.insertBefore(tocContainer, nextElement);
+            
+            // Process potential TOC entries
+            let currentElement = nextElement;
+            let entryCount = 0;
+            
+            while (currentElement && entryCount < 50) { // Limit to avoid infinite loop
+              const text = currentElement.textContent;
+              
+              // Check if this still looks like a TOC entry
+              if (text.includes("\t") || text.includes("   ") || /\d+\s*$/.test(text)) {
+                // Create a TOC entry element
+                const entry = document.createElement('div');
+                entry.classList.add('docx-toc-entry');
+                
+                // Determine the level based on indentation or numbering
+                let level = 1;
+                if (text.match(/^\s*[a-z]\./)) {
+                  level = 2; // Alpha entries are level 2
+                } else if (text.trim().match(/^\d+\.\d+/)) {
+                  level = 2; // Entries with format 1.1 are level 2
+                }
+                
+                entry.classList.add(`docx-toc-level-${level}`);
+                
+                // Extract text and page number
+                const pageMatch = text.match(/(.*?)(\d+)\s*$/);
+                if (pageMatch) {
+                  const content = pageMatch[1].trim();
+                  const pageNum = pageMatch[2].trim();
+                  
+                  // Create formatted entry
+                  const textSpan = document.createElement('span');
+                  textSpan.classList.add('docx-toc-text');
+                  textSpan.textContent = content;
+                  
+                  const dotsSpan = document.createElement('span');
+                  dotsSpan.classList.add('docx-toc-dots');
+                  
+                  const pageSpan = document.createElement('span');
+                  pageSpan.classList.add('docx-toc-pagenum');
+                  pageSpan.textContent = pageNum;
+                  
+                  entry.appendChild(textSpan);
+                  entry.appendChild(dotsSpan);
+                  entry.appendChild(pageSpan);
+                } else {
+                  // Just use the text if we can't extract a page number
+                  entry.textContent = text;
+                }
+                
+                // Add the entry to the TOC container
+                tocContainer.appendChild(entry);
+                
+                // Save the next element before removing the current one
+                const nextToProcess = currentElement.nextElementSibling;
+                
+                // Remove the original paragraph
+                currentElement.parentNode.removeChild(currentElement);
+                
+                // Move to the next element
+                currentElement = nextToProcess;
+                entryCount++;
+              } else {
+                // Break if we've found a non-TOC element
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    // Process Index elements
+    // Look for Index headings
+    const indexHeadings = Array.from(document.querySelectorAll("h1, h2, h3, p")).filter(
+      el => el.textContent.includes("Index")
+    );
+    
+    if (indexHeadings.length > 0) {
+      // Style the first matching heading as Index heading
+      const indexHeading = indexHeadings[0];
+      indexHeading.classList.add("docx-index-heading");
+      
+      // Create a placeholder for the index if needed
+      if (indexHeading.nextElementSibling && 
+          indexHeading.nextElementSibling.nodeName === 'P' &&
+          indexHeading.nextElementSibling.textContent.trim() === '') {
+        const placeholder = document.createElement('p');
+        placeholder.classList.add('docx-placeholder');
+        placeholder.textContent = '** INDEX HERE **';
+        
+        indexHeading.parentNode.insertBefore(placeholder, indexHeading.nextElementSibling);
+      }
+    }
+    
+  } catch (error) {
+    console.error("Error in detectAndStyleTocAndIndex:", error.message);
   }
 }
 

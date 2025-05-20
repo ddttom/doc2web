@@ -1,4 +1,4 @@
-// docx-style-parser.js
+// docx-style-parser.js - Enhanced to better extract DOCX styles
 const JSZip = require('jszip');
 const fs = require('fs');
 const { DOMParser } = require('jsdom').JSDOM;
@@ -74,6 +74,7 @@ async function parseDocxStyles(docxPath) {
     const documentXml = await zip.file('word/document.xml')?.async('string');
     const themeXml = await zip.file('word/theme/theme1.xml')?.async('string');
     const settingsXml = await zip.file('word/settings.xml')?.async('string');
+    const numbering = await zip.file('word/numbering.xml')?.async('string');
     
     if (!styleXml || !documentXml) {
       throw new Error('Invalid DOCX file: missing core XML files');
@@ -84,6 +85,7 @@ async function parseDocxStyles(docxPath) {
     const documentDoc = new dom().parseFromString(documentXml);
     const themeDoc = themeXml ? new dom().parseFromString(themeXml) : null;
     const settingsDoc = settingsXml ? new dom().parseFromString(settingsXml) : null;
+    const numberingDoc = numbering ? new dom().parseFromString(numbering) : null;
     
     // Parse styles from XML
     const styles = parseStyles(styleDoc);
@@ -97,18 +99,367 @@ async function parseDocxStyles(docxPath) {
     // Parse document settings
     const settings = parseSettings(settingsDoc);
     
+    // Parse TOC styles (newly added)
+    const tocStyles = parseTocStyles(documentDoc, styleDoc);
+    
+    // Parse numbering definitions (newly added)
+    const numberingDefs = parseNumberingDefinitions(numberingDoc);
+    
+    // Extract document structure (newly added)
+    const documentStructure = analyzeDocumentStructure(documentDoc);
+    
     // Return combined style information
     return {
       styles,
       theme,
       documentDefaults,
-      settings
+      settings,
+      tocStyles,
+      numberingDefs,
+      documentStructure
     };
   } catch (error) {
     console.error('Error parsing DOCX styles:', error);
     // Return default style info if parsing fails
     return getDefaultStyleInfo();
   }
+}
+
+/**
+ * NEW: Parse Table of Contents specific styles
+ * @param {Document} documentDoc - Document XML
+ * @param {Document} styleDoc - Style XML
+ * @returns {Object} - TOC specific style information
+ */
+function parseTocStyles(documentDoc, styleDoc) {
+  const tocStyles = {
+    hasTableOfContents: false,
+    tocHeadingStyle: {},
+    tocEntryStyles: [],
+    leaderStyle: {
+      character: '.',
+      spacesBetween: 3
+    }
+  };
+  
+  try {
+    // Check for TOC field
+    const tocFieldNodes = selectNodes("//w:fldChar[@w:fldCharType='begin']/following-sibling::w:instrText[contains(., 'TOC')]", documentDoc);
+    tocStyles.hasTableOfContents = tocFieldNodes.length > 0;
+    
+    if (tocStyles.hasTableOfContents) {
+      // Extract TOC field properties
+      for (const tocNode of tocFieldNodes) {
+        const instrText = tocNode.textContent || '';
+        
+        // Extract leader character if specified
+        const leaderMatch = instrText.match(/\\[a-z]\s+([\.\_\-])/);
+        if (leaderMatch) {
+          tocStyles.leaderStyle.character = leaderMatch[1];
+        }
+        
+        // Extract heading levels if specified
+        const levelMatch = instrText.match(/\\o\s+"([1-9])"-"([1-9])"/);
+        if (levelMatch) {
+          tocStyles.startLevel = parseInt(levelMatch[1], 10);
+          tocStyles.endLevel = parseInt(levelMatch[2], 10);
+        }
+      }
+    }
+    
+    // Look for TOC styles in the style definitions
+    const tocStyleNodes = selectNodes("//w:style[contains(@w:styleId, 'TOC')]", styleDoc);
+    
+    tocStyleNodes.forEach((node, index) => {
+      const styleId = node.getAttribute('w:styleId');
+      const nameNode = selectSingleNode("w:name", node);
+      const name = nameNode ? nameNode.getAttribute('w:val') : styleId;
+      
+      // Parse specific style properties
+      const pPrNode = selectSingleNode("w:pPr", node);
+      const rPrNode = selectSingleNode("w:rPr", node);
+      
+      const style = {
+        id: styleId,
+        name,
+        indentation: {},
+        fontSize: null,
+        fontFamily: null
+      };
+      
+      // Extract paragraph properties
+      if (pPrNode) {
+        // Get indentation
+        const indNode = selectSingleNode("w:ind", pPrNode);
+        if (indNode) {
+          const left = indNode.getAttribute('w:left');
+          const hanging = indNode.getAttribute('w:hanging');
+          const firstLine = indNode.getAttribute('w:firstLine');
+          
+          if (left) style.indentation.left = convertTwipToPt(left);
+          if (hanging) style.indentation.hanging = convertTwipToPt(hanging);
+          if (firstLine) style.indentation.firstLine = convertTwipToPt(firstLine);
+        }
+        
+        // Get tab stops
+        const tabsNode = selectSingleNode("w:tabs", pPrNode);
+        if (tabsNode) {
+          const tabNodes = selectNodes("w:tab", tabsNode);
+          style.tabs = [];
+          
+          tabNodes.forEach(tabNode => {
+            const pos = tabNode.getAttribute('w:pos');
+            const val = tabNode.getAttribute('w:val');
+            const leader = tabNode.getAttribute('w:leader');
+            
+            if (pos && val) {
+              style.tabs.push({
+                position: convertTwipToPt(pos),
+                type: val,
+                leader: leader || 'none'
+              });
+              
+              // If we find a right-aligned tab with leader, use it for TOC dots
+              if (val === 'right' && leader === 'dot') {
+                tocStyles.leaderStyle.character = '.';
+                tocStyles.leaderStyle.position = convertTwipToPt(pos);
+              }
+            }
+          });
+        }
+      }
+      
+      // Extract text properties
+      if (rPrNode) {
+        // Font size
+        const szNode = selectSingleNode("w:sz", rPrNode);
+        if (szNode) {
+          const size = parseInt(szNode.getAttribute('w:val'), 10) || 22; // Default 11pt
+          style.fontSize = (size / 2) + 'pt';
+        }
+        
+        // Font family
+        const fontNode = selectSingleNode("w:rFonts", rPrNode);
+        if (fontNode) {
+          style.fontFamily = fontNode.getAttribute('w:ascii') || 
+                           fontNode.getAttribute('w:hAnsi') || 
+                           'Calibri';
+        }
+      }
+      
+      // Determine if this is a TOC heading or entry style
+      if (name.includes('Heading') || styleId === 'TOCHeading') {
+        tocStyles.tocHeadingStyle = style;
+      } else {
+        // Extract level info from the style ID if possible
+        const levelMatch = styleId.match(/TOC(\d+)/);
+        if (levelMatch) {
+          style.level = parseInt(levelMatch[1], 10);
+        } else {
+          // Default to sequential level based on order
+          style.level = index + 1;
+        }
+        
+        tocStyles.tocEntryStyles.push(style);
+      }
+    });
+    
+    // Sort TOC entry styles by level
+    tocStyles.tocEntryStyles.sort((a, b) => a.level - b.level);
+    
+  } catch (error) {
+    console.error('Error parsing TOC styles:', error);
+  }
+  
+  return tocStyles;
+}
+
+/**
+ * NEW: Parse numbering definitions from numbering.xml
+ * @param {Document} numberingDoc - Numbering XML document
+ * @returns {Object} - Numbering definitions
+ */
+function parseNumberingDefinitions(numberingDoc) {
+  const numberingDefs = {
+    abstractNums: {},
+    nums: {}
+  };
+  
+  if (!numberingDoc) {
+    return numberingDefs;
+  }
+  
+  try {
+    // Parse abstract numbering definitions
+    const abstractNumNodes = selectNodes("//w:abstractNum", numberingDoc);
+    
+    abstractNumNodes.forEach(node => {
+      const id = node.getAttribute('w:abstractNumId');
+      if (!id) return;
+      
+      const abstractNum = {
+        id,
+        levels: {}
+      };
+      
+      // Parse level definitions
+      const levelNodes = selectNodes("w:lvl", node);
+      levelNodes.forEach(lvlNode => {
+        const ilvl = lvlNode.getAttribute('w:ilvl');
+        if (ilvl === null) return;
+        
+        const level = {
+          level: parseInt(ilvl, 10),
+          format: 'decimal', // Default
+          text: '%1.',      // Default
+          alignment: 'left', // Default
+          indentation: {}
+        };
+        
+        // Get numbering format
+        const numFmtNode = selectSingleNode("w:numFmt", lvlNode);
+        if (numFmtNode) {
+          level.format = numFmtNode.getAttribute('w:val') || 'decimal';
+        }
+        
+        // Get level text
+        const lvlTextNode = selectSingleNode("w:lvlText", lvlNode);
+        if (lvlTextNode) {
+          level.text = lvlTextNode.getAttribute('w:val') || '%1.';
+        }
+        
+        // Get alignment
+        const alignmentNode = selectSingleNode("w:lvlJc", lvlNode);
+        if (alignmentNode) {
+          level.alignment = alignmentNode.getAttribute('w:val') || 'left';
+        }
+        
+        // Get indentation
+        const indentNode = selectSingleNode("w:pPr/w:ind", lvlNode);
+        if (indentNode) {
+          const left = indentNode.getAttribute('w:left');
+          const hanging = indentNode.getAttribute('w:hanging');
+          
+          if (left) level.indentation.left = convertTwipToPt(left);
+          if (hanging) level.indentation.hanging = convertTwipToPt(hanging);
+        }
+        
+        abstractNum.levels[ilvl] = level;
+      });
+      
+      numberingDefs.abstractNums[id] = abstractNum;
+    });
+    
+    // Parse numbering instances
+    const numNodes = selectNodes("//w:num", numberingDoc);
+    
+    numNodes.forEach(node => {
+      const id = node.getAttribute('w:numId');
+      if (!id) return;
+      
+      const abstractNumIdNode = selectSingleNode("w:abstractNumId", node);
+      if (!abstractNumIdNode) return;
+      
+      const abstractNumId = abstractNumIdNode.getAttribute('w:val');
+      if (!abstractNumId) return;
+      
+      numberingDefs.nums[id] = {
+        id,
+        abstractNumId
+      };
+    });
+    
+  } catch (error) {
+    console.error('Error parsing numbering definitions:', error);
+  }
+  
+  return numberingDefs;
+}
+
+/**
+ * NEW: Analyze document structure to extract useful information for styling
+ * @param {Document} documentDoc - Document XML
+ * @returns {Object} - Document structure information
+ */
+function analyzeDocumentStructure(documentDoc) {
+  const structure = {
+    hasToc: false,
+    tocLocation: null,
+    paragraphTypes: {},
+    specialSections: []
+  };
+  
+  try {
+    // Check for TOC field
+    const tocFieldNodes = selectNodes("//w:fldChar[@w:fldCharType='begin']/following-sibling::w:instrText[contains(., 'TOC')]", documentDoc);
+    structure.hasToc = tocFieldNodes.length > 0;
+    
+    // Analyze paragraphs
+    const paragraphNodes = selectNodes("//w:p", documentDoc);
+    
+    paragraphNodes.forEach((p, index) => {
+      // Check for style information
+      const pStyle = selectSingleNode("w:pPr/w:pStyle", p);
+      const styleId = pStyle ? pStyle.getAttribute('w:val') : null;
+      
+      // Check for numbering information
+      const numPr = selectSingleNode("w:pPr/w:numPr", p);
+      const numId = numPr ? selectSingleNode("w:numId", numPr)?.getAttribute('w:val') : null;
+      const ilvl = numPr ? selectSingleNode("w:ilvl", numPr)?.getAttribute('w:val') : null;
+      
+      // Get paragraph text
+      const textNodes = selectNodes(".//w:t", p);
+      let text = '';
+      textNodes.forEach(t => {
+        text += t.textContent || '';
+      });
+      
+      // Identify special paragraph types
+      if (styleId) {
+        if (!structure.paragraphTypes[styleId]) {
+          structure.paragraphTypes[styleId] = 0;
+        }
+        structure.paragraphTypes[styleId]++;
+      }
+      
+      // Check for TOC entries
+      if (text.includes('Table of Contents') || 
+          text.includes('Contents') ||
+          (styleId && styleId.includes('TOC'))) {
+        structure.hasToc = true;
+        structure.tocLocation = index;
+      }
+      
+      // Check for special sections like "Rationale for Resolution"
+      if (text.includes('Rationale for Resolution')) {
+        structure.specialSections.push({
+          type: 'rationale',
+          index: index,
+          text: text.trim()
+        });
+      }
+      
+      // Track numbering info for hierarchical lists
+      if (numId && ilvl !== null) {
+        // Add information about this list item
+        if (!structure.lists) {
+          structure.lists = [];
+        }
+        
+        structure.lists.push({
+          index: index,
+          numId: numId,
+          level: parseInt(ilvl, 10),
+          text: text.trim()
+        });
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error analyzing document structure:', error);
+  }
+  
+  return structure;
 }
 
 /**
@@ -141,6 +492,25 @@ function getDefaultStyleInfo() {
       characterSpacing: 'normal',
       doNotHyphenateCaps: false,
       rtlGutter: false
+    },
+    tocStyles: {
+      hasTableOfContents: false,
+      tocHeadingStyle: {},
+      tocEntryStyles: [],
+      leaderStyle: {
+        character: '.',
+        spacesBetween: 3
+      }
+    },
+    numberingDefs: {
+      abstractNums: {},
+      nums: {}
+    },
+    documentStructure: {
+      hasToc: false,
+      tocLocation: null,
+      paragraphTypes: {},
+      specialSections: []
     }
   };
 }
@@ -338,6 +708,27 @@ function parseParagraphProperties(pPrNode) {
       };
     }
     
+    // Tab stops - NEW
+    const tabsNode = selectSingleNode("w:tabs", pPrNode);
+    if (tabsNode) {
+      const tabNodes = selectNodes("w:tab", tabsNode);
+      props.tabs = [];
+      
+      tabNodes.forEach(tabNode => {
+        const pos = tabNode.getAttribute('w:pos');
+        const val = tabNode.getAttribute('w:val');
+        const leader = tabNode.getAttribute('w:leader');
+        
+        if (pos && val) {
+          props.tabs.push({
+            position: pos,
+            type: val,
+            leader: leader || 'none'
+          });
+        }
+      });
+    }
+    
     // Spacing
     const spacingNode = selectSingleNode("w:spacing", pPrNode);
     if (spacingNode) {
@@ -363,6 +754,20 @@ function parseParagraphProperties(pPrNode) {
         color: shadingNode.getAttribute('w:color'),
         fill: shadingNode.getAttribute('w:fill')
       };
+    }
+    
+    // Numbering properties - NEW
+    const numPrNode = selectSingleNode("w:numPr", pPrNode);
+    if (numPrNode) {
+      const numId = selectSingleNode("w:numId", numPrNode);
+      const ilvl = selectSingleNode("w:ilvl", numPrNode);
+      
+      if (numId && ilvl) {
+        props.numbering = {
+          id: numId.getAttribute('w:val'),
+          level: ilvl.getAttribute('w:val')
+        };
+      }
     }
   } catch (error) {
     console.error('Error parsing paragraph properties:', error);
@@ -675,6 +1080,163 @@ body {
 `;
     });
 
+    // NEW: Add TOC specific styles based on extracted info
+    if (styleInfo.tocStyles && styleInfo.tocStyles.hasTableOfContents) {
+      const tocHeaderStyle = styleInfo.tocStyles.tocHeadingStyle;
+      const tocEntryStyles = styleInfo.tocStyles.tocEntryStyles;
+      const leaderStyle = styleInfo.tocStyles.leaderStyle;
+      
+      // TOC container
+      css += `
+/* Table of Contents Styles */
+.docx-toc {
+  margin: 20px 0;
+}
+
+.docx-toc-heading {
+  ${tocHeaderStyle.fontFamily ? `font-family: "${tocHeaderStyle.fontFamily}", sans-serif;` : ''}
+  ${tocHeaderStyle.fontSize ? `font-size: ${tocHeaderStyle.fontSize};` : 'font-size: 14pt;'}
+  font-weight: bold;
+  margin-bottom: 12pt;
+}
+`;
+
+      // TOC entries by level
+      tocEntryStyles.forEach(style => {
+        const level = style.level || 1;
+        const leftIndent = style.indentation?.left ? 
+                         convertTwipToPt(style.indentation.left) : 
+                         (level - 1) * 20;
+        
+        css += `
+.docx-toc-entry.docx-toc-level-${level} {
+  ${style.fontFamily ? `font-family: "${style.fontFamily}", sans-serif;` : ''}
+  ${style.fontSize ? `font-size: ${style.fontSize};` : ''}
+  margin-left: ${leftIndent}pt;
+  margin-bottom: 4pt;
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  position: relative;
+  overflow: hidden;
+}
+`;
+      });
+      
+      // TOC structure elements
+      css += `
+.docx-toc-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docx-toc-dots {
+  flex-grow: 1;
+  height: 1.2em;
+  margin: 0 4pt;
+  background-image: ${leaderStyle.character === '.' ? 
+                   'linear-gradient(to right, black 5%, rgba(255, 255, 255, 0) 0%)' : 
+                   leaderStyle.character === '_' ? 
+                   'linear-gradient(to right, black 50%, rgba(255, 255, 255, 0) 0%)' : 
+                   'linear-gradient(to right, black 40%, rgba(255, 255, 255, 0) 0%)'};
+  background-position: bottom;
+  background-size: ${leaderStyle.character === '.' ? '8px 1px' : '16px 1px'};
+  background-repeat: repeat-x;
+}
+
+.docx-toc-pagenum {
+  white-space: nowrap;
+  text-align: right;
+}
+`;
+    }
+
+    // NEW: Add numbering styles based on extracted info
+    if (styleInfo.numberingDefs && 
+        Object.keys(styleInfo.numberingDefs.abstractNums).length > 0) {
+      
+      css += `
+/* List and Numbering Styles */
+.docx-numbered-list {
+  counter-reset: item;
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.docx-numbered-list li {
+  counter-increment: item;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.25em;
+}
+
+.docx-numbered-list li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix);
+  font-weight: bold;
+}
+
+.docx-alpha-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.docx-alpha-list li {
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.25em;
+}
+
+.docx-alpha-list li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix);
+  font-weight: bold;
+}
+
+/* Special handling for "Rationale for Resolution" items */
+.docx-rationale {
+  font-style: italic;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  margin-left: 2em;
+  color: #333;
+}
+`;
+
+      // Generate specific styles for each numbering format
+      const abstractNums = styleInfo.numberingDefs.abstractNums;
+      Object.entries(abstractNums).forEach(([id, abstractNum]) => {
+        Object.entries(abstractNum.levels).forEach(([level, levelDef]) => {
+          const className = `docx-list-${id}-${level}`;
+          const leftIndent = levelDef.indentation?.left ? 
+                           convertTwipToPt(levelDef.indentation.left) : 
+                           parseInt(level, 10) * 20;
+          
+          css += `
+.${className} {
+  padding-left: ${leftIndent}pt;
+  text-indent: ${levelDef.indentation?.hanging ? `-${convertTwipToPt(levelDef.indentation.hanging)}pt` : '0'};
+}
+
+.${className}::before {
+  content: "${levelDef.text.replace(/%(\d+)/g, '$$$1')}";
+  display: inline-block;
+  width: ${levelDef.indentation?.hanging ? convertTwipToPt(levelDef.indentation.hanging) + 'pt' : '1.5em'};
+  margin-left: -${levelDef.indentation?.hanging ? convertTwipToPt(levelDef.indentation.hanging) + 'pt' : '1.5em'};
+  text-align: ${levelDef.alignment || 'left'};
+}
+`;
+        });
+      });
+    }
+
     // Add utility styles
     css += `
 /* Utility styles */
@@ -693,167 +1255,6 @@ body {
   background-color: #f0f0f0; 
   border: 1px dashed #999; 
   border-radius: 5px; 
-}
-`;
-
-    // Add numbered list styles
-    css += `
-/* Numbered list styles */
-ol.docx-numbered-list {
-  counter-reset: item;
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ol.docx-numbered-list li {
-  counter-increment: item;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-ol.docx-numbered-list li::before {
-  position: absolute;
-  left: 0;
-  content: counter(item) ".";
-  font-weight: bold;
-}
-
-/* Multilevel list styles */
-ol.docx-multilevel-list {
-  counter-reset: level1;
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ol.docx-multilevel-list > li {
-  counter-increment: level1;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-ol.docx-multilevel-list > li::before {
-  position: absolute;
-  left: 0;
-  content: counter(level1) ".";
-  font-weight: bold;
-}
-
-ol.docx-multilevel-list > li > ol {
-  counter-reset: level2;
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ol.docx-multilevel-list > li > ol > li {
-  counter-increment: level2;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-ol.docx-multilevel-list > li > ol > li::before {
-  position: absolute;
-  left: 0;
-  content: counter(level1) "." counter(level2);
-  font-weight: bold;
-}
-
-/* Alpha-numeric list style (a., b., c.) */
-ol.docx-alpha-list {
-  counter-reset: alpha;
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ol.docx-alpha-list > li {
-  counter-increment: alpha;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-ol.docx-alpha-list > li::before {
-  position: absolute;
-  left: 0;
-  content: counter(alpha, lower-alpha) ".";
-  font-weight: bold;
-}
-
-/* Roman numeral list style (i., ii., iii.) */
-ol.docx-roman-list {
-  counter-reset: roman;
-  list-style-type: none;
-  padding-left: 0;
-}
-
-ol.docx-roman-list > li {
-  counter-increment: roman;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.5em;
-}
-
-ol.docx-roman-list > li::before {
-  position: absolute;
-  left: 0;
-  content: counter(roman, lower-roman) ".";
-  font-weight: bold;
-}
-
-/* TOC specific styles */
-.docx-toc {
-  margin: 2em 0;
-  line-height: 1.5;
-}
-
-.docx-toc-entry {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 0.5em;
-  width: 100%;
-}
-
-.docx-toc-text {
-  flex-grow: 1;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.docx-toc-dots {
-  flex-shrink: 0;
-  margin: 0 0.5em;
-  border-bottom: 1px dotted #000;
-  flex-grow: 1;
-}
-
-.docx-toc-pagenum {
-  flex-shrink: 0;
-  text-align: right;
-}
-
-.docx-toc-level-1 { margin-left: 0; }
-.docx-toc-level-2 { margin-left: 1.5em; }
-.docx-toc-level-3 { margin-left: 3em; }
-.docx-toc-level-4 { margin-left: 4.5em; }
-.docx-toc-level-5 { margin-left: 6em; }
-
-/* Special formatting for paragraph numbers */
-.docx-num {
-  display: inline-block;
-  width: 2em;
-  text-align: right;
-  padding-right: 0.5em;
-  font-weight: bold;
-}
-
-.docx-num-alpha {
-  display: inline-block;
-  width: 2em;
-  text-align: right;
-  padding-right: 0.5em;
-  font-weight: bold;
 }
 `;
 
@@ -969,5 +1370,9 @@ function convertTwipToPt(twip) {
 
 module.exports = {
   parseDocxStyles,
-  generateCssFromStyleInfo
+  generateCssFromStyleInfo,
+  createXPathSelector,
+  selectNodes,
+  selectSingleNode,
+  convertTwipToPt
 };
