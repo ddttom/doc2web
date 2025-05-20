@@ -67,6 +67,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Process documents with mixed language content
 - Support right-to-left text and international characters
 - Automatically detect and properly decorate table of contents and index elements
+- Maintain hierarchical list structures with proper nesting and numbering
 
 #### 3.1.2 Style Preservation
 
@@ -75,6 +76,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Preserve text formatting (bold, italic, underline, etc.)
 - Maintain document structure (headings, lists, tables)
 - Preserve document layout and spacing
+- Ensure proper nesting of multi-level lists with correct numbering
 
 #### 3.1.3 Processing Capabilities
 
@@ -113,6 +115,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - HTML output should follow web best practices with external CSS files
 - Images should be properly extracted and referenced
 - Unicode and international character support
+- Hierarchical lists should maintain proper nesting and numbering
 
 ## 4. Technical Specifications
 
@@ -133,6 +136,7 @@ doc2web follows a modular architecture with these primary components:
 3. **Style Extractor (style-extractor.js)**
    - Extracts styling information from DOCX
    - Applies styles to HTML output
+   - Processes document structure including hierarchical lists
 
 4. **DOCX Parser (docx-style-parser.js)**
    - Parses DOCX XML structure
@@ -162,6 +166,7 @@ doc2web follows a modular architecture with these primary components:
 - HTML output includes external CSS files with proper styling
 - HTML documents have a 20px margin for improved readability
 - Image files properly extracted and referenced
+- Hierarchical lists properly nested with correct numbering
 
 ## 5. Functional Requirements
 
@@ -202,6 +207,7 @@ doc2web follows a modular architecture with these primary components:
 | FR-21 | Generate markdown that passes standard linting rules | High |
 | FR-22 | Provide proper margins and spacing in HTML output for readability | High |
 | FR-23 | Automatically detect and properly decorate table of contents and index elements | Medium |
+| FR-24 | Maintain hierarchical list structures with proper nesting and numbering | High |
 
 ## 6. Non-Functional Requirements
 
@@ -239,6 +245,7 @@ doc2web follows a modular architecture with these primary components:
 - 90% or higher visual fidelity in HTML output
 - Support for documents with at least 20 complex elements (tables, images, etc.)
 - Successful processing of documents in at least 10 different languages
+- Correct preservation of hierarchical list structures in 100% of cases
 
 ### 7.2 User Success Criteria
 

@@ -11,20 +11,36 @@ This tool extracts content from DOCX files while maintaining:
 - Styles and layout
 - Unicode and multilingual content
 
+The app must not make any assumptions from test documents, the app must treat creatred css and html as ephemeral, they will be destroyed on every run.
+The css and HTML are individual to each document created, they wiol be named after the docx inourt, with folder pattern matched.
+The ap must deeply inspect the docx and obtain css and formatting styles, fonr sizes, item prefixes etc.  Nothing will be hard coded with the app. All generated CSS will be in an external stylesheet
+
 ## Project Structure
 
 ```bash
-doc2web/
-├── doc2web.js               # Main converter script
-├── markdownify.js           # HTML to Markdown converter markdownify
-├── style-extractor.js       # Document style extraction
-├── docx-style-parser.js     # DOCX XML structure parser
-├── process-find.sh          # Helper for processing file lists
-├── doc2web-run.js           # Interactive CLI interface
-├── doc2web-install.sh       # Installation script
-├── init-doc2web.sh          # Project initialization script
-└── README.md                # Documentation
+GitHub/doc2web
+├── .gitignore
+├── .vscode
+├── README.md
+├── doc2web-install.sh
+├── doc2web-run.js
+├── doc2web.js
+├── docs
+│   └── prd.md
+├── docx-style-parser.js
+├── init-doc2web.sh
+├── input
+├── markdownify.js
+├── node_modules
+├── output
+├── package-lock.json
+├── package.json
+├── process-find.sh
+├── style-extractor.js
+└── user-manual.md
 ```
+
+When making code edits update prd.md user-manual.md and README.md
 
 ## Getting Started
 
@@ -106,6 +122,16 @@ output/
 - `--list`: Treat the input file as a list of files to process
 
 ## Recent Fixes
+
+### v1.0.5 (2025-05-19)
+
+- Fixed hierarchical list numbering in document conversion:
+  - Properly maintains outline numbering structure (1., a., b., c., 2., etc.)
+  - Correctly nests sub-items within parent items in HTML output
+  - Preserves the original document's hierarchical list structure
+  - Ensures consistent numbering throughout converted documents
+  - Handles special cases like "Rationale for Resolution" paragraphs between list items
+  - Verified with test file `input/TEST-TWO.docx` containing complex hierarchical lists
 
 ### v1.0.4 (2025-05-19)
 

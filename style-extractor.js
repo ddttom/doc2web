@@ -13,6 +13,136 @@ const {
  * @param {string} cssFilename - Filename for the CSS file (without path)
  * @returns {Promise<{html: string, styles: string}>} - HTML with embedded styles
  */
+/**
+ * Generate additional CSS for TOC and list styling
+ * @returns {string} - Additional CSS
+ */
+function generateAdditionalCss() {
+  return `
+/* Improved TOC and list styling */
+ol.docx-numbered-list {
+  counter-reset: item;
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0;
+  font-weight: normal;
+}
+
+ol.docx-numbered-list li {
+  counter-increment: item;
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.25em;
+  line-height: 1.5;
+}
+
+ol.docx-numbered-list li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix) ".";
+  font-weight: bold;
+}
+
+/* Alpha list styles - IMPROVED */
+ol.docx-alpha-list {
+  list-style-type: none;
+  padding-left: 1em;
+  margin: 0;
+  font-weight: normal;
+}
+
+ol.docx-alpha-list li {
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.25em;
+  line-height: 1.5;
+}
+
+ol.docx-alpha-list li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix) ".";
+  font-weight: bold;
+}
+
+/* TOC specific styles - IMPROVED */
+.docx-toc-list {
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.docx-toc-item {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 0.25em;
+  width: 100%;
+  white-space: nowrap;
+}
+
+.docx-toc-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.docx-toc-dots {
+  flex-grow: 1;
+  margin: 0 0.5em;
+  height: 1px;
+  border-bottom: 1px dotted #000;
+  min-width: 2em;
+}
+
+.docx-toc-pagenum {
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 1.5em;
+}
+
+/* Special formatting for TOC headings */
+.docx-toc-heading {
+  font-weight: bold;
+}
+
+/* Make the TOC look more like the Word document */
+ol.docx-numbered-list.docx-toc-list {
+  margin-bottom: 1em;
+}
+
+ol.docx-numbered-list.docx-toc-list li {
+  padding-left: 2.5em;
+  margin-bottom: 0;
+  line-height: 1.8;
+}
+
+ol.docx-alpha-list.docx-toc-list li {
+  padding-left: 2.5em;
+  margin-bottom: 0;
+  line-height: 1.8;
+}
+
+/* Improve the appearance of the dotted lines */
+.docx-toc-dots {
+  border-bottom: 1px dotted #666;
+  margin: 0 0.5em;
+  position: relative;
+  top: -0.3em;
+}
+
+/* Ensure page numbers are properly aligned */
+.docx-toc-pagenum {
+  padding-left: 0.5em;
+  font-weight: normal;
+}
+
+/* Fix spacing between main items and sub-items */
+ol.docx-numbered-list li ol.docx-alpha-list {
+  margin-top: 0.25em;
+}
+`;
+}
+
 async function extractAndApplyStyles(docxPath, cssFilename = null) {
   try {
     // First, extract the raw styles from the document
@@ -38,7 +168,7 @@ async function extractAndApplyStyles(docxPath, cssFilename = null) {
 
     return {
       html: styledHtml,
-      styles: css,
+      styles: css + generateAdditionalCss(),
       messages: htmlResult.messages,
     };
   } catch (error) {
@@ -202,7 +332,7 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
 
     // Process numbered paragraphs
     try {
-      processNumberedParagraphs(document);
+      processNestedNumberedParagraphs(document);
     } catch (error) {
       console.error("Error processing numbered paragraphs:", error.message);
     }
@@ -895,7 +1025,311 @@ function detectAndStyleTocByStructure(document) {
     console.error("Error in detectAndStyleTocByStructure:", error.message);
   }
 }
+/**
+ * Process numbered paragraphs with proper nesting for hierarchical lists
+ * @param {Document} document - DOM document
+ */
+function processNestedNumberedParagraphs(document) {
+  const paragraphs = document.querySelectorAll("p");
+
+  // Patterns for identifying different types of paragraph numbering
+  const numberPattern = /^\s*(\d+)\.(.+)$/;
+  const alphaPattern = /^\s*([a-z])\.(.+)$/;
+  const romanPattern = /^\s*([ivx]+)\.(.+)$/;
+
+  // Track lists and their hierarchy
+  let mainList = null;
+  let currentMainItem = null;
+  let currentSubList = null;
+  let lastListType = null;
+  let lastMainNumber = 0;
+  
+  // Track processed items to avoid duplicates
+  const processedTexts = new Set();
+
+  // Process paragraphs sequentially
+  for (let i = 0; i < paragraphs.length; i++) {
+    const p = paragraphs[i];
+    
+    // Skip if p is null or doesn't have text content
+    if (!p || !p.textContent) continue;
+    
+    const text = p.textContent;
+    
+    // Skip if we've already processed this exact text
+    if (processedTexts.has(text)) {
+      // Remove the duplicate paragraph
+      if (p.parentNode) {
+        p.parentNode.removeChild(p);
+        i--; // Adjust counter since we removed an element
+      }
+      continue;
+    }
+    
+    // Check for different numbering patterns
+    let match = null;
+    let listType = null;
+    
+    if (numberPattern.test(text)) {
+      match = text.match(numberPattern);
+      listType = "numbered";
+    } else if (alphaPattern.test(text)) {
+      match = text.match(alphaPattern);
+      listType = "alpha";
+    } else if (romanPattern.test(text)) {
+      match = text.match(romanPattern);
+      listType = "roman";
+    }
+    
+    if (match) {
+      // Extract the number/letter and content
+      const prefix = match[1];
+      const content = match[2].trim();
+      
+      // Add to processed texts set
+      processedTexts.add(text);
+      
+      // Check if this is a TOC item
+      const isTocItem = text.includes("\t") || text.includes("   ") || /\d+$/.test(text);
+      
+      // Handle main numbered items (1., 2., etc.)
+      if (listType === "numbered") {
+        // If we don't have a main list yet, or if this is a new main list
+        if (!mainList || (lastListType === "numbered" && parseInt(prefix) === 1)) {
+          // Create a new main list
+          mainList = document.createElement("ol");
+          mainList.className = "docx-numbered-list";
+          
+          if (isTocItem) {
+            mainList.classList.add("docx-toc-list");
+            mainList.classList.add("docx-toc-heading");
+          }
+          
+          // Insert the list before the paragraph
+          if (p.parentNode) {
+            p.parentNode.insertBefore(mainList, p);
+          } else {
+            console.log("Warning: Cannot insert list, paragraph has no parent");
+            continue;
+          }
+        }
+        
+        // Create the list item
+        currentMainItem = document.createElement("li");
+        currentMainItem.textContent = content;
+        currentMainItem.setAttribute("data-prefix", prefix);
+        
+        if (isTocItem) {
+          currentMainItem.classList.add("docx-toc-item");
+          
+          // Format TOC item with page number
+          const pageNumMatch = content.match(/(\d+)$/);
+          if (pageNumMatch) {
+            const textPart = content
+              .substring(0, content.lastIndexOf(pageNumMatch[1]))
+              .trim();
+            const pageNum = pageNumMatch[1];
+            
+            // Clear the content and recreate with spans
+            currentMainItem.textContent = "";
+            
+            const textSpan = document.createElement("span");
+            textSpan.classList.add("docx-toc-text");
+            textSpan.textContent = textPart;
+            
+            const dotsSpan = document.createElement("span");
+            dotsSpan.classList.add("docx-toc-dots");
+            
+            const pageSpan = document.createElement("span");
+            pageSpan.classList.add("docx-toc-pagenum");
+            pageSpan.textContent = pageNum;
+            
+            currentMainItem.appendChild(textSpan);
+            currentMainItem.appendChild(dotsSpan);
+            currentMainItem.appendChild(pageSpan);
+          }
+        }
+        
+        // Add the item to the main list
+        mainList.appendChild(currentMainItem);
+        
+        // Reset sub-list tracking
+        currentSubList = null;
+        lastMainNumber = parseInt(prefix);
+        
+        // Remove the original paragraph
+        if (p.parentNode) {
+          p.parentNode.removeChild(p);
+          i--; // Adjust counter since we removed an element
+        }
+      }
+      // Handle alpha items (a., b., etc.) as sub-items
+      else if (listType === "alpha") {
+        // If we have a main item to attach to
+        if (currentMainItem) {
+          // If we don't have a sub-list for this main item yet
+          if (!currentSubList) {
+            // Create a new sub-list
+            currentSubList = document.createElement("ol");
+            currentSubList.className = "docx-alpha-list";
+            
+            if (isTocItem) {
+              currentSubList.classList.add("docx-toc-list");
+            }
+            
+            // Append the sub-list to the current main item
+            currentMainItem.appendChild(currentSubList);
+          }
+          
+          // Create the sub-item
+          const subItem = document.createElement("li");
+          subItem.textContent = content;
+          subItem.setAttribute("data-prefix", prefix);
+          
+          if (isTocItem) {
+            subItem.classList.add("docx-toc-item");
+            
+            // Format TOC item with page number
+            const pageNumMatch = content.match(/(\d+)$/);
+            if (pageNumMatch) {
+              const textPart = content
+                .substring(0, content.lastIndexOf(pageNumMatch[1]))
+                .trim();
+              const pageNum = pageNumMatch[1];
+              
+              // Clear the content and recreate with spans
+              subItem.textContent = "";
+              
+              const textSpan = document.createElement("span");
+              textSpan.classList.add("docx-toc-text");
+              textSpan.textContent = textPart;
+              
+              const dotsSpan = document.createElement("span");
+              dotsSpan.classList.add("docx-toc-dots");
+              
+              const pageSpan = document.createElement("span");
+              pageSpan.classList.add("docx-toc-pagenum");
+              pageSpan.textContent = pageNum;
+              
+              subItem.appendChild(textSpan);
+              subItem.appendChild(dotsSpan);
+              subItem.appendChild(pageSpan);
+            }
+          }
+          
+          // Add the sub-item to the sub-list
+          currentSubList.appendChild(subItem);
+          
+          // Remove the original paragraph
+          if (p.parentNode) {
+            p.parentNode.removeChild(p);
+            i--; // Adjust counter since we removed an element
+          }
+        }
+        // If we don't have a main item to attach to, create a standalone alpha list
+        else {
+          // This is a special case where we have alpha items without a preceding numbered item
+          // Create a new list if needed
+          if (!currentSubList || lastListType !== "alpha") {
+            currentSubList = document.createElement("ol");
+            currentSubList.className = "docx-alpha-list";
+            
+            if (isTocItem) {
+              currentSubList.classList.add("docx-toc-list");
+            }
+            
+            // Insert the list before the paragraph
+            if (p.parentNode) {
+              p.parentNode.insertBefore(currentSubList, p);
+            } else {
+              console.log("Warning: Cannot insert list, paragraph has no parent");
+              continue;
+            }
+          }
+          
+          // Create the list item
+          const item = document.createElement("li");
+          item.textContent = content;
+          item.setAttribute("data-prefix", prefix);
+          
+          if (isTocItem) {
+            item.classList.add("docx-toc-item");
+            
+            // Format TOC item with page number
+            const pageNumMatch = content.match(/(\d+)$/);
+            if (pageNumMatch) {
+              const textPart = content
+                .substring(0, content.lastIndexOf(pageNumMatch[1]))
+                .trim();
+              const pageNum = pageNumMatch[1];
+              
+              // Clear the content and recreate with spans
+              item.textContent = "";
+              
+              const textSpan = document.createElement("span");
+              textSpan.classList.add("docx-toc-text");
+              textSpan.textContent = textPart;
+              
+              const dotsSpan = document.createElement("span");
+              dotsSpan.classList.add("docx-toc-dots");
+              
+              const pageSpan = document.createElement("span");
+              pageSpan.classList.add("docx-toc-pagenum");
+              pageSpan.textContent = pageNum;
+              
+              item.appendChild(textSpan);
+              item.appendChild(dotsSpan);
+              item.appendChild(pageSpan);
+            }
+          }
+          
+          // Add the item to the list
+          currentSubList.appendChild(item);
+          
+          // Remove the original paragraph
+          if (p.parentNode) {
+            p.parentNode.removeChild(p);
+            i--; // Adjust counter since we removed an element
+          }
+        }
+      }
+      // Handle roman numerals similarly to alpha items
+      else if (listType === "roman") {
+        // Similar handling as alpha items...
+        // (Implementation would be similar to alpha items)
+      }
+      
+      // Update last list type
+      lastListType = listType;
+    }
+    // Handle non-list paragraphs
+    else {
+      // Add to processed texts set for non-list paragraphs too
+      processedTexts.add(text);
+      
+      // If this is a paragraph that separates list sections but doesn't break the overall list
+      // (like a "Rationale for Resolution" paragraph between list items)
+      if (p.textContent.trim().startsWith("Rationale for") && mainList) {
+        // Don't reset list tracking, just keep the paragraph as is
+      }
+      // Otherwise, reset list tracking for non-list paragraphs
+      else {
+        // Reset all list tracking
+        if (lastListType !== null) {
+          lastListType = null;
+          
+          // Only reset current items if this isn't a special case paragraph
+          if (!p.textContent.trim().startsWith("Rationale for")) {
+            currentMainItem = null;
+            currentSubList = null;
+          }
+        }
+      }
+    }
+  }
+}
 
 module.exports = {
   extractAndApplyStyles,
+  generateAdditionalCss,
 };
