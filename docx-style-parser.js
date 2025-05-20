@@ -99,13 +99,13 @@ async function parseDocxStyles(docxPath) {
     // Parse document settings
     const settings = parseSettings(settingsDoc);
     
-    // Parse TOC styles (improved)
+    // Parse TOC styles
     const tocStyles = parseTocStyles(documentDoc, styleDoc);
     
-    // Parse numbering definitions (improved)
+    // Parse numbering definitions
     const numberingDefs = parseNumberingDefinitions(numberingDoc);
     
-    // Extract document structure (improved)
+    // Extract document structure
     const documentStructure = analyzeDocumentStructure(documentDoc, numberingDoc);
     
     // Return combined style information
@@ -126,7 +126,7 @@ async function parseDocxStyles(docxPath) {
 }
 
 /**
- * IMPROVED: Enhanced TOC parsing to better capture leader lines and formatting
+ * Enhanced TOC parsing to better capture leader lines and formatting
  * @param {Document} documentDoc - Document XML
  * @param {Document} styleDoc - Style XML
  * @returns {Object} - TOC specific style information
@@ -168,8 +168,8 @@ function parseTocStyles(documentDoc, styleDoc) {
       }
     }
     
-    // Look for TOC styles in the style definitions - improved to catch more TOC styles
-    const tocStyleNodes = selectNodes("//w:style[contains(@w:styleId, 'TOC') or contains(w:name/@w:val, 'TOC') or contains(w:name/@w:val, 'Contents')]", styleDoc);
+    // Look for TOC styles in the style definitions
+    const tocStyleNodes = selectNodes("//w:style[contains(@w:styleId, 'TOC') or contains(w:name/@w:val, 'TOC') or contains(w:name/@w:val, 'Contents') or contains(@w:styleId, 'toc')]", styleDoc);
     
     tocStyleNodes.forEach((node, index) => {
       const styleId = node.getAttribute('w:styleId');
@@ -186,7 +186,7 @@ function parseTocStyles(documentDoc, styleDoc) {
         indentation: {},
         fontSize: null,
         fontFamily: null,
-        tabs: [] // Enhanced to store tab information
+        tabs: []
       };
       
       // Extract paragraph properties
@@ -203,7 +203,7 @@ function parseTocStyles(documentDoc, styleDoc) {
           if (firstLine) style.indentation.firstLine = convertTwipToPt(firstLine);
         }
         
-        // Get tab stops - IMPROVED to handle more tab types
+        // Get tab stops
         const tabsNode = selectSingleNode("w:tabs", pPrNode);
         if (tabsNode) {
           const tabNodes = selectNodes("w:tab", tabsNode);
@@ -218,12 +218,13 @@ function parseTocStyles(documentDoc, styleDoc) {
               style.tabs.push({
                 position: tabPosition,
                 type: val,
-                leader: leader || 'none'
+                leader: leader || 'none',
+                leaderChar: getLeaderChar(leader)
               });
               
               // If we find a right-aligned tab with leader, use it for TOC dots
-              if (val === 'right' && (leader === 'dot' || leader === '1')) {
-                tocStyles.leaderStyle.character = '.';
+              if (val === 'right' && leader) {
+                tocStyles.leaderStyle.character = getLeaderChar(leader);
                 tocStyles.leaderStyle.position = tabPosition;
               }
             }
@@ -254,7 +255,7 @@ function parseTocStyles(documentDoc, styleDoc) {
         tocStyles.tocHeadingStyle = style;
       } else {
         // Extract level info from the style ID if possible
-        const levelMatch = styleId.match(/TOC(\d+)/);
+        const levelMatch = styleId.match(/TOC(\d+)/i);
         if (levelMatch) {
           style.level = parseInt(levelMatch[1], 10);
         } else {
@@ -269,7 +270,7 @@ function parseTocStyles(documentDoc, styleDoc) {
     // Sort TOC entry styles by level
     tocStyles.tocEntryStyles.sort((a, b) => a.level - b.level);
     
-    // IMPROVED: Scan document for actual TOC entries to get better tab/dot information
+    // Scan document for actual TOC entries to get better tab/dot information
     const paragraphNodes = selectNodes("//w:p", documentDoc);
     let inTocSection = false;
     
@@ -280,9 +281,9 @@ function parseTocStyles(documentDoc, styleDoc) {
       const pStyle = selectSingleNode("w:pPr/w:pStyle", p);
       const styleId = pStyle ? pStyle.getAttribute('w:val') : '';
       
-      // Start of TOC detection
-      if (styleId === 'TOCHeading' || styleId.startsWith('TOC') || 
-          (selectSingleNode(".//w:t[contains(text(), 'Table of Contents')]", p) !== null)) {
+      // Start of TOC detection - look for TOC heading styles or content that indicates TOC
+      if (styleId?.toLowerCase().includes('toc') || 
+          (selectSingleNode(".//w:t[contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'table of contents') or contains(translate(text(), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ', 'abcdefghijklmnopqrstuvwxyz'), 'contents')]", p) !== null)) {
         inTocSection = true;
         continue;
       }
@@ -295,6 +296,7 @@ function parseTocStyles(documentDoc, styleDoc) {
         textNodes.forEach(t => text += t.textContent || '');
         
         // Check if this paragraph has page number pattern (text....number)
+        // Look for text followed by whitespace and/or dots, then numbers at the end
         const pageNumMatch = text.match(/^(.*?)[\.\s]*(\d+)$/);
         
         if (pageNumMatch) {
@@ -308,9 +310,7 @@ function parseTocStyles(documentDoc, styleDoc) {
               const pos = rightTab.getAttribute('w:pos');
               
               if (leader) {
-                tocStyles.leaderStyle.character = leader === '1' ? '.' : 
-                                              leader === '2' ? '-' : 
-                                              leader === '3' ? '_' : '.';
+                tocStyles.leaderStyle.character = getLeaderChar(leader);
               }
               
               if (pos) {
@@ -319,10 +319,19 @@ function parseTocStyles(documentDoc, styleDoc) {
             }
           }
         } else if (text.trim() === '' || styleId === 'Normal') {
-          // Empty line might indicate end of TOC
-          inTocSection = false;
+          // Empty line or normal paragraph might indicate end of TOC
+          // But only if we're past at least a few TOC entries
+          if (i > 5) {
+            inTocSection = false;
+          }
         }
       }
+    }
+    
+    // If leader style wasn't found but we have TOC entries, set a default
+    if (tocStyles.leaderStyle.position === 0 && tocStyles.tocEntryStyles.length > 0) {
+      tocStyles.leaderStyle.position = 6 * 72; // Default 6 inches
+      tocStyles.leaderStyle.character = '.';
     }
     
   } catch (error) {
@@ -333,7 +342,36 @@ function parseTocStyles(documentDoc, styleDoc) {
 }
 
 /**
- * IMPROVED: Enhanced numbering definition parsing to capture more details
+ * Get leader character based on leader type
+ * @param {string} leader - Leader type
+ * @returns {string} - Leader character
+ */
+function getLeaderChar(leader) {
+  if (!leader) return '.';
+  
+  switch (leader) {
+    case 'dot':
+    case '1':
+      return '.';
+    case 'hyphen':
+    case '2':
+      return '-';
+    case 'underscore':
+    case '3':
+      return '_';
+    case 'heavy':
+    case '4':
+      return '=';
+    case 'middleDot':
+    case '5':
+      return '·';
+    default:
+      return '.';
+  }
+}
+
+/**
+ * Enhanced numbering definition parsing to capture more details
  * @param {Document} numberingDoc - Numbering XML document
  * @returns {Object} - Numbering definitions
  */
@@ -373,9 +411,9 @@ function parseNumberingDefinitions(numberingDoc) {
           text: '%1.',      // Default
           alignment: 'left', // Default
           indentation: {},
-          isLegal: false,  // Added property
-          textFormat: '',   // Added property for display
-          restart: null,    // Added property
+          isLegal: false,
+          textFormat: '',
+          restart: null,
           start: 1          // Default start value
         };
         
@@ -390,41 +428,30 @@ function parseNumberingDefinitions(numberingDoc) {
         if (lvlTextNode) {
           level.text = lvlTextNode.getAttribute('w:val') || '%1.';
           
-          // Analyze text format for display
-          if (level.text) {
-            // Store raw format for later use
-            level.textFormat = level.text;
-            
-            // Replace placeholders with computed values for CSS content property
-            let cssText = level.text
-              .replace(/%(\d+)/g, 'counter(item$1)')
-              .replace(/^\s+|\s+$/g, '');
-            
-            // Add specific handling for common formats
-            if (level.format === 'decimal') {
-              // No transformation needed for decimal
-            } else if (level.format === 'lowerLetter') {
-              // a, b, c format
-              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, lower-alpha)');
-            } else if (level.format === 'upperLetter') {
-              // A, B, C format
-              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, upper-alpha)');
-            } else if (level.format === 'lowerRoman') {
-              // i, ii, iii format
-              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, lower-roman)');
-            } else if (level.format === 'upperRoman') {
-              // I, II, III format
-              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, upper-roman)');
-            }
-            
-            level.cssText = cssText;
+          // Store raw format for later use
+          level.textFormat = level.text;
+          
+          // Replace placeholders with computed values for CSS content property
+          let cssText = level.text
+            .replace(/%(\d+)/g, (match, levelNum) => {
+              // Convert to appropriate counter format
+              return `counter(list-level-${levelNum})`;
+            })
+            .replace(/^\s+|\s+$/g, '');
+          
+          // Add specific handling for common formats
+          const cssFormat = getCSSCounterFormat(level.format);
+          if (cssFormat !== 'decimal') {
+            cssText = cssText.replace(/counter\(list-level-(\d+)\)/g, `counter(list-level-$1, ${cssFormat})`);
           }
+          
+          level.cssText = cssText;
         }
         
         // Get if legal style numbering
         const isLegalNode = selectSingleNode("w:isLgl", lvlNode);
         if (isLegalNode) {
-          level.isLegal = isLegalNode.getAttribute('w:val') === '1';
+          level.isLegal = isLegalNode.getAttribute('w:val') === '1' || isLegalNode.getAttribute('w:val') === 'true';
         }
         
         // Get alignment
@@ -433,7 +460,7 @@ function parseNumberingDefinitions(numberingDoc) {
           level.alignment = alignmentNode.getAttribute('w:val') || 'left';
         }
         
-        // Get indentation - IMPROVED with more detail
+        // Get indentation
         const indentNode = selectSingleNode("w:pPr/w:ind", lvlNode);
         if (indentNode) {
           const left = indentNode.getAttribute('w:left');
@@ -455,6 +482,18 @@ function parseNumberingDefinitions(numberingDoc) {
         const startNode = selectSingleNode("w:start", lvlNode);
         if (startNode) {
           level.start = parseInt(startNode.getAttribute('w:val'), 10) || 1;
+        }
+        
+        // Extract paragraph properties
+        const pPrNode = selectSingleNode("w:pPr", lvlNode);
+        if (pPrNode) {
+          level.paragraphProps = parseParagraphProperties(pPrNode);
+        }
+        
+        // Extract run properties (font, size, etc.)
+        const rPrNode = selectSingleNode("w:rPr", lvlNode);
+        if (rPrNode) {
+          level.runProps = parseRunningProperties(rPrNode);
         }
         
         abstractNum.levels[ilvl] = level;
@@ -507,6 +546,12 @@ function parseNumberingDefinitions(numberingDoc) {
           if (lvlTextNode) {
             overrides[ilvl].text = lvlTextNode.getAttribute('w:val');
           }
+          
+          // Get paragraph property overrides
+          const pPrNode = selectSingleNode("w:pPr", lvlNode);
+          if (pPrNode) {
+            overrides[ilvl].paragraphProps = parseParagraphProperties(pPrNode);
+          }
         }
       });
       
@@ -528,7 +573,29 @@ function parseNumberingDefinitions(numberingDoc) {
 }
 
 /**
- * IMPROVED: Enhanced document structure analysis to capture more details
+ * Get CSS counter format from Word format name
+ * @param {string} format - Word numbering format
+ * @returns {string} - CSS counter format
+ */
+function getCSSCounterFormat(format) {
+  const formatMap = {
+    'decimal': 'decimal',
+    'lowerLetter': 'lower-alpha',
+    'upperLetter': 'upper-alpha',
+    'lowerRoman': 'lower-roman',
+    'upperRoman': 'upper-roman',
+    'bullet': 'disc',
+    'chicago': 'decimal',
+    'cardinalText': 'decimal',
+    'ordinalText': 'decimal',
+    'ordinal': 'decimal',
+  };
+  
+  return formatMap[format] || 'decimal';
+}
+
+/**
+ * Enhanced document structure analysis to capture more details
  * @param {Document} documentDoc - Document XML
  * @param {Document} numberingDoc - Numbering XML document for reference
  * @returns {Object} - Document structure information
@@ -540,8 +607,7 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
     paragraphTypes: {},
     specialSections: [],
     lists: [],
-    hasRationale: false,
-    specialParagraphPatterns: [] // Store regex patterns for special paragraph types
+    specialParagraphPatterns: []
   };
   
   try {
@@ -555,14 +621,8 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
     let currentListId = null;
     let currentListLevel = -1;
     
-    // Find patterns for special paragraphs by analyzing the document
-    const textPatterns = {};
-    const specialPhrases = [
-      'Rationale for Resolution',
-      'Whereas,',
-      'Resolved',
-      'RESOLVED'
-    ];
+    // Create maps to track paragraph patterns
+    const paragraphPatterns = new Map();
     
     paragraphNodes.forEach((p, index) => {
       // Check for style information
@@ -582,35 +642,64 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
       });
       
       // Check for TOC entries
-      if (text.includes('Table of Contents') || 
-          text.includes('Contents') ||
+      if (text.toLowerCase().includes('table of contents') || 
+          text.toLowerCase().includes('contents') ||
           (styleId && styleId.toLowerCase().includes('toc'))) {
         structure.hasToc = true;
         structure.tocLocation = index;
       }
       
-      // Identify patterns for special paragraphs
-      specialPhrases.forEach(phrase => {
-        if (text.includes(phrase)) {
-          if (!textPatterns[phrase]) {
-            textPatterns[phrase] = { count: 0, indexes: [] };
+      // Analyze paragraph structure and patterns
+      if (text.trim()) {
+        // Get first line for pattern analysis
+        const firstLine = text.split('\n')[0].trim();
+        
+        // Look for common structure patterns without hardcoding specific terms
+        // Pattern 1: Word followed by "for" followed by more text
+        if (/^\w+\s+for\s+.+$/i.test(firstLine)) {
+          const pattern = "word_for_word";
+          if (!paragraphPatterns.has(pattern)) {
+            paragraphPatterns.set(pattern, { count: 0, examples: [] });
           }
-          textPatterns[phrase].count++;
-          textPatterns[phrase].indexes.push(index);
           
-          // Check for "Rationale" specifically
-          if (phrase === 'Rationale for Resolution') {
-            structure.hasRationale = true;
-            
-            // Add to special sections list
-            structure.specialSections.push({
-              type: 'rationale',
-              index: index,
-              text: text.trim()
-            });
+          const info = paragraphPatterns.get(pattern);
+          info.count++;
+          
+          if (info.examples.length < 3) {
+            info.examples.push(firstLine);
           }
         }
-      });
+        
+        // Pattern 2: Word followed by comma
+        if (/^\w+,\s*.*$/i.test(firstLine)) {
+          const pattern = "word_comma";
+          if (!paragraphPatterns.has(pattern)) {
+            paragraphPatterns.set(pattern, { count: 0, examples: [] });
+          }
+          
+          const info = paragraphPatterns.get(pattern);
+          info.count++;
+          
+          if (info.examples.length < 3) {
+            info.examples.push(firstLine);
+          }
+        }
+        
+        // Pattern 3: Word followed by parenthesized text
+        if (/^\w+\s+\([^)]+\)\s*.*$/i.test(firstLine)) {
+          const pattern = "word_parenthesis";
+          if (!paragraphPatterns.has(pattern)) {
+            paragraphPatterns.set(pattern, { count: 0, examples: [] });
+          }
+          
+          const info = paragraphPatterns.get(pattern);
+          info.count++;
+          
+          if (info.examples.length < 3) {
+            info.examples.push(firstLine);
+          }
+        }
+      }
       
       // Track style usage
       if (styleId) {
@@ -625,7 +714,7 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
         }
       }
       
-      // Track numbering info for hierarchical lists - IMPROVED to track list structure
+      // Track numbering info for hierarchical lists
       if (numId && ilvl !== null) {
         const level = parseInt(ilvl, 10);
         
@@ -665,13 +754,15 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
         
         currentList.items.push(listItem);
         currentList.levels[level].items.push(listItem);
-      } else {
-        // Not a list item - check if it interrupts a list
-        if (currentList && text.trim()) {
-          // Check if this looks like a special paragraph within a list
-          let isSpecial = false;
-          for (const phrase of specialPhrases) {
-            if (text.includes(phrase)) {
+      } else if (currentList && text.trim()) {
+        // Check if this is a non-numbered paragraph in a list - could be special
+        let isSpecial = false;
+        for (const [pattern, info] of paragraphPatterns.entries()) {
+          if (info.count >= 2) {
+            // This pattern appears multiple times, check if this paragraph matches
+            if ((pattern === "word_for_word" && /^\w+\s+for\s+.+$/i.test(text)) ||
+                (pattern === "word_comma" && /^\w+,\s*.*$/i.test(text)) ||
+                (pattern === "word_parenthesis" && /^\w+\s+\([^)]+\)\s*.*$/i.test(text))) {
               isSpecial = true;
               
               // Add to current list as a special item
@@ -680,43 +771,31 @@ function analyzeDocumentStructure(documentDoc, numberingDoc) {
                 level: currentListLevel, // Keep same level as previous item
                 text: text.trim(),
                 isSpecial: true,
-                specialType: phrase.split(' ')[0].toLowerCase() // e.g., "rationale", "whereas", "resolved"
+                specialType: pattern
               });
               break;
             }
           }
-          
-          // If not special, and not empty, this might end the list
-          if (!isSpecial && !text.match(/^\s*$/)) {
-            currentList = null;
-            currentListId = null;
-            currentListLevel = -1;
-          }
+        }
+        
+        // If not special, and not empty, this might end the list
+        if (!isSpecial) {
+          currentList = null;
+          currentListId = null;
+          currentListLevel = -1;
         }
       }
     });
     
-    // Analyze patterns and register common special paragraph patterns
-    for (const [phrase, data] of Object.entries(textPatterns)) {
-      if (data.count >= 2) {
-        // This appears to be a recurring pattern
-        let pattern;
-        
-        if (phrase === 'Rationale for Resolution') {
-          pattern = /^Rationale for Resolution/i;
-        } else if (phrase === 'Whereas,') {
-          pattern = /^Whereas,/i;
-        } else if (phrase === 'Resolved' || phrase === 'RESOLVED') {
-          pattern = /^Resolved \([\d\.]+\)/i;
-        }
-        
-        if (pattern) {
-          structure.specialParagraphPatterns.push({
-            type: phrase.split(' ')[0].toLowerCase(),
-            pattern: pattern.toString(),
-            count: data.count
-          });
-        }
+    // Add detected paragraph patterns to structure
+    for (const [pattern, info] of paragraphPatterns.entries()) {
+      if (info.count >= 2) {
+        // This pattern appears multiple times, so it's likely a structural element
+        structure.specialParagraphPatterns.push({
+          type: pattern,
+          count: info.count,
+          examples: info.examples
+        });
       }
     }
     
@@ -779,7 +858,6 @@ function getDefaultStyleInfo() {
       paragraphTypes: {},
       specialSections: [],
       lists: [],
-      hasRationale: false,
       specialParagraphPatterns: []
     }
   };
@@ -978,7 +1056,7 @@ function parseParagraphProperties(pPrNode) {
       };
     }
     
-    // Tab stops - IMPROVED to capture more details
+    // Tab stops
     const tabsNode = selectSingleNode("w:tabs", pPrNode);
     if (tabsNode) {
       const tabNodes = selectNodes("w:tab", tabsNode);
@@ -1028,7 +1106,7 @@ function parseParagraphProperties(pPrNode) {
       };
     }
     
-    // Numbering properties - IMPROVED
+    // Numbering properties
     const numPrNode = selectSingleNode("w:numPr", pPrNode);
     if (numPrNode) {
       const numId = selectSingleNode("w:numId", numPrNode);
@@ -1046,35 +1124,6 @@ function parseParagraphProperties(pPrNode) {
   }
   
   return props;
-}
-
-/**
- * Get leader character based on leader type
- * @param {string} leader - Leader type
- * @returns {string} - Leader character
- */
-function getLeaderChar(leader) {
-  if (!leader) return '';
-  
-  switch (leader) {
-    case 'dot':
-    case '1':
-      return '.';
-    case 'hyphen':
-    case '2':
-      return '-';
-    case 'underscore':
-    case '3':
-      return '_';
-    case 'heavy':
-    case '4':
-      return '=';
-    case 'middleDot':
-    case '5':
-      return '·';
-    default:
-      return '';
-  }
 }
 
 /**
@@ -1305,7 +1354,7 @@ function parseSettings(settingsDoc) {
 }
 
 /**
- * IMPROVED: Generate CSS from extracted style information with better TOC and list handling
+ * Generate CSS from extracted style information with better TOC and list handling
  * @param {Object} styleInfo - Style information
  * @returns {string} - CSS stylesheet
  */
@@ -1317,7 +1366,7 @@ function generateCssFromStyleInfo(styleInfo) {
     css += `
 /* Document defaults */
 body {
-  font-family: "${styleInfo.theme.fonts.minor}", sans-serif;
+  font-family: "${styleInfo.theme.fonts.minor || 'Calibri'}", sans-serif;
   font-size: ${styleInfo.documentDefaults.character.fontSize || '11pt'};
   line-height: 1.15;
   margin: 20px;
@@ -1342,6 +1391,7 @@ body {
   ${style.indentation?.left ? `margin-left: ${convertTwipToPt(style.indentation.left)}pt;` : ''}
   ${style.indentation?.right ? `margin-right: ${convertTwipToPt(style.indentation.right)}pt;` : ''}
   ${style.indentation?.firstLine ? `text-indent: ${convertTwipToPt(style.indentation.firstLine)}pt;` : ''}
+  ${style.indentation?.hanging ? `text-indent: -${convertTwipToPt(style.indentation.hanging)}pt;` : ''}
 }
 `;
     });
@@ -1381,7 +1431,7 @@ body {
 `;
     });
 
-    // IMPROVED: Enhanced TOC styles based on extracted information
+    // Enhanced TOC styles based on extracted information
     if (styleInfo.tocStyles) {
       const tocHeaderStyle = styleInfo.tocStyles.tocHeadingStyle;
       const tocEntryStyles = styleInfo.tocStyles.tocEntryStyles;
@@ -1391,8 +1441,9 @@ body {
       css += `
 /* Table of Contents Styles */
 .docx-toc {
-  margin: 20px 0;
+  margin: 1em 0 2em 0;
   width: 100%;
+  padding: 0;
 }
 
 .docx-toc-heading {
@@ -1400,46 +1451,66 @@ body {
   ${tocHeaderStyle.fontSize ? `font-size: ${tocHeaderStyle.fontSize};` : 'font-size: 14pt;'}
   font-weight: bold;
   margin-bottom: 12pt;
-  text-align: center;
+  text-align: ${tocHeaderStyle.alignment || 'center'};
 }
 `;
 
-      // TOC entries with leader lines
+      // TOC entries with leader lines - Enhanced to match Word's formatting
       css += `
+/* Enhanced TOC entry styles */
 .docx-toc-entry {
   display: flex;
   flex-wrap: nowrap;
   align-items: baseline;
+  position: relative;
   width: 100%;
   margin-bottom: 4pt;
-  position: relative;
+  line-height: 1.2;
   overflow: hidden;
-  text-align: left;
+  white-space: nowrap;
 }
 
 .docx-toc-text {
+  flex-grow: 0;
+  flex-shrink: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex-grow: 0;
-  flex-shrink: 1;
+  padding-right: 3px;
 }
 
 .docx-toc-dots {
   flex-grow: 1;
-  margin: 0 4pt;
-  height: 1em;
   position: relative;
-  display: inline-block;
-  border-bottom: 1px dotted #999;
-  min-width: 2em;
+  margin: 0 2px;
+  height: 1em;
+  min-width: 20px;
+  border-bottom: none;
+}
+
+/* Create leader dots using CSS background */
+.docx-toc-dots::after {
+  content: "";
+  position: absolute;
+  bottom: 0.3em;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-image: ${leaderStyle.character === '.' ? 
+    'radial-gradient(circle, #000 1px, transparent 0)' : 
+    leaderStyle.character === '-' ? 
+    'linear-gradient(to right, #000 2px, transparent 2px)' : 
+    'linear-gradient(to right, #000 3px, transparent 0)'};
+  background-position: bottom;
+  background-size: ${leaderStyle.character === '.' ? '4px 1px' : '6px 1px'};
+  background-repeat: repeat-x;
 }
 
 .docx-toc-pagenum {
   flex-shrink: 0;
   text-align: right;
-  white-space: nowrap;
-  min-width: 2em;
+  padding-left: 4px;
+  font-weight: normal;
 }
 `;
 
@@ -1451,44 +1522,50 @@ body {
                          (level - 1) * 20;
         
         css += `
+/* TOC Level ${level} */
 .docx-toc-level-${level} {
   ${style.fontFamily ? `font-family: "${style.fontFamily}", sans-serif;` : ''}
   ${style.fontSize ? `font-size: ${style.fontSize};` : ''}
+  ${level === 1 ? 'font-weight: bold;' : ''}
+  ${level === 3 ? 'font-style: italic;' : ''}
   margin-left: ${leftIndent}pt;
 }
 `;
       });
     }
 
-    // IMPROVED: Enhanced list styling based on extracted numbering definitions
+    // Enhanced list styling based on extracted numbering definitions
     if (styleInfo.numberingDefs && Object.keys(styleInfo.numberingDefs.abstractNums).length > 0) {
       // Basic list containers
       css += `
-/* List and Numbering Styles */
+/* Enhanced List and Numbering Styles */
 ol.docx-numbered-list,
-ol.docx-alpha-list {
+ol.docx-alpha-list,
+ul.docx-bulleted-list {
   list-style-type: none;
   padding-left: 0;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
+  counter-reset: list-level-1;
 }
 
 ol.docx-numbered-list > li,
-ol.docx-alpha-list > li {
+ol.docx-alpha-list > li,
+ul.docx-bulleted-list > li {
   position: relative;
-  padding-left: 2.5em;
-  margin-bottom: 0.5em;
-  min-height: 1.5em;
+  margin-bottom: 0.4em;
+  min-height: 1.2em;
 }
 
-ol.docx-numbered-list > li::before,
-ol.docx-alpha-list > li::before {
-  position: absolute;
-  left: 0;
-  content: attr(data-prefix);
-  font-weight: bold;
-  display: inline-block;
-  min-width: 2em;
+/* Counter resets for nested lists */
+ol.docx-numbered-list ol,
+ol.docx-alpha-list ol {
+  counter-reset: list-level-2;
+}
+
+ol.docx-numbered-list ol ol,
+ol.docx-alpha-list ol ol {
+  counter-reset: list-level-3;
 }
 `;
 
@@ -1509,59 +1586,96 @@ ol.docx-alpha-list > li::before {
                               convertTwipToPt(levelDef.indentation.hanging) : 
                               24; // Default 24pt
           
+          // Create CSS counter reset and list item styles
           css += `
+/* Numbering style for abstract num ${id}, level ${level} */
 li.${className} {
-  padding-left: ${leftIndent}pt;
-  text-indent: -${hangingIndent}pt;
+  margin-left: ${leftIndent}pt;
+  padding-left: 0;
+  counter-increment: list-level-${levelNum + 1};
 }
 
 li.${className}::before {
-  min-width: ${hangingIndent}pt;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: ${hangingIndent}pt;
   text-align: ${levelDef.alignment || 'left'};
+  margin-left: ${leftIndent - hangingIndent}pt;
+  ${levelDef.runProps?.bold ? 'font-weight: bold;' : ''}
+  ${levelDef.runProps?.italic ? 'font-style: italic;' : ''}
+  ${levelDef.runProps?.fontSize ? `font-size: ${levelDef.runProps.fontSize};` : ''}
+  ${levelDef.runProps?.color ? `color: ${levelDef.runProps.color};` : ''}
+  content: "${getCSSCounterContent(levelDef)}";
 }
 `;
         });
       });
       
-      // Special handling for different list formats
+      // Add specific list type styles for common formats
       css += `
-/* Specific list type formatting */
+/* Special list formatting for different formats */
 .docx-decimal-list > li::before {
-  content: attr(data-prefix) ".";
+  content: counter(list-level-1) ".";
+}
+
+.docx-decimal-list > li > ol > li::before {
+  content: counter(list-level-1) "." counter(list-level-2) ".";
 }
 
 .docx-alpha-list > li::before {
-  content: attr(data-prefix) ".";
+  content: counter(list-level-1, lower-alpha) ".";
+}
+
+.docx-alpha-list > li > ol > li::before {
+  content: counter(list-level-1, lower-alpha) "." counter(list-level-2) ".";
 }
 
 .docx-roman-list > li::before {
-  content: attr(data-prefix) ".";
+  content: counter(list-level-1, lower-roman) ".";
+}
+
+.docx-bulleted-list > li::before {
+  content: "•";
 }
 
 /* Special paragraph types within lists */
-.docx-list-item-special {
-  font-style: italic;
+.docx-list-special-paragraph {
   margin-left: 2.5em;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
 }
 
-.docx-rationale {
+/* Generic special paragraph styles - based on structural patterns */
+.docx-special-pattern {
   font-style: italic;
-  color: #555;
+  color: #444;
   margin-left: 2.5em;
   margin-top: 0.5em;
   margin-bottom: 0.7em;
-  border-left: 2px solid #ddd;
+  border-left: 2px solid #eee;
   padding-left: 0.7em;
 }
 
-.docx-whereas {
-  font-weight: normal;
+/* Style for paragraphs matching the "word_for_word" pattern */
+.docx-word_for_word {
+  font-style: italic;
+  color: #444;
+  margin-left: 2.5em;
+  margin-top: 0.4em;
+  margin-bottom: 0.6em;
 }
 
-.docx-resolved {
+/* Style for paragraphs matching the "word_comma" pattern */
+.docx-word_comma {
+  font-weight: normal;
+  margin-bottom: 0.5em;
+}
+
+/* Style for paragraphs matching the "word_parenthesis" pattern */
+.docx-word_parenthesis {
   font-weight: bold;
+  margin-bottom: 0.7em;
 }
 `;
     }
@@ -1571,8 +1685,8 @@ li.${className}::before {
 /* Utility styles */
 .docx-underline { text-decoration: underline; }
 .docx-strike { text-decoration: line-through; }
-.docx-tab { display: inline-block; width: ${convertTwipToPt(styleInfo.settings.defaultTabStop)}pt; }
-.docx-rtl { direction: rtl; }
+.docx-tab { display: inline-block; width: ${convertTwipToPt(styleInfo.settings?.defaultTabStop || '720')}pt; }
+.docx-rtl { direction: rtl; unicode-bidi: embed; }
 .docx-image { max-width: 100%; height: auto; display: block; margin: 10px 0; }
 .docx-table-default { width: 100%; border-collapse: collapse; margin: 10px 0; }
 .docx-table-default td, .docx-table-default th { border: 1px solid #ddd; padding: 5pt; }
@@ -1588,7 +1702,7 @@ li.${className}::before {
 
 /* Special paragraph styles */
 .docx-heading1, .docx-heading2, .docx-heading3, .docx-heading4, .docx-heading5, .docx-heading6 {
-  font-family: "${styleInfo.theme.fonts.major}", sans-serif;
+  font-family: "${styleInfo.theme.fonts?.major || 'Calibri Light'}", sans-serif;
   color: #2F5496;
   margin-top: 1.2em;
   margin-bottom: 0.6em;
@@ -1600,6 +1714,13 @@ li.${className}::before {
 .docx-heading4 { font-size: 12pt; }
 .docx-heading5 { font-size: 11pt; font-style: italic; }
 .docx-heading6 { font-size: 11pt; }
+
+/* Heading numbering */
+.heading-number {
+  display: inline-block;
+  margin-right: 5px;
+  font-weight: bold;
+}
 
 /* Document footer */
 .docx-footer {
@@ -1613,6 +1734,26 @@ li.${className}::before {
 .table-responsive {
   overflow-x: auto;
   margin: 1em 0;
+}
+
+/* Print styles */
+@media print {
+  body {
+    margin: 1cm;
+  }
+  
+  .docx-toc-dots::after {
+    background-image: ${styleInfo.tocStyles?.leaderStyle?.character === '.' ? 
+      'radial-gradient(circle, #000 0.7px, transparent 0)' : 
+      styleInfo.tocStyles?.leaderStyle?.character === '-' ? 
+      'linear-gradient(to right, #000 2px, transparent 1px)' : 
+      'linear-gradient(to right, #000 3px, transparent 0)'};
+    background-size: ${styleInfo.tocStyles?.leaderStyle?.character === '.' ? '3px 1px' : '5px 1px'};
+  }
+  
+  .table-responsive {
+    overflow-x: visible;
+  }
 }
 `;
 
@@ -1641,6 +1782,8 @@ td, th { border: 1px solid #ddd; padding: 5pt; }
   align-items: baseline;
   width: 100%;
   margin-bottom: 4pt;
+  white-space: nowrap;
+  overflow: hidden;
 }
 .docx-toc-text {
   white-space: nowrap;
@@ -1651,7 +1794,19 @@ td, th { border: 1px solid #ddd; padding: 5pt; }
   flex-grow: 1;
   margin: 0 4pt;
   height: 1em;
-  border-bottom: 1px dotted #999;
+  position: relative;
+}
+.docx-toc-dots::after {
+  content: "";
+  position: absolute;
+  bottom: 0.3em;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-image: radial-gradient(circle, #000 1px, transparent 0);
+  background-position: bottom;
+  background-size: 4px 1px;
+  background-repeat: repeat-x;
 }
 .docx-toc-pagenum {
   flex-shrink: 0;
@@ -1659,19 +1814,46 @@ td, th { border: 1px solid #ddd; padding: 5pt; }
 }
 
 /* Basic list styles */
-ol.docx-numbered-list { counter-reset: item; list-style-type: none; padding-left: 0; }
-ol.docx-numbered-list li { counter-increment: item; position: relative; padding-left: 2em; margin-bottom: 0.5em; }
-ol.docx-numbered-list li::before { position: absolute; left: 0; content: attr(data-prefix); font-weight: bold; }
+ol.docx-numbered-list { list-style-type: none; padding-left: 0; }
+ol.docx-numbered-list > li { position: relative; padding-left: 2.5em; margin-bottom: 0.5em; }
+ol.docx-numbered-list > li::before { position: absolute; left: 0; content: attr(data-prefix) "."; font-weight: bold; }
 ol.docx-alpha-list { list-style-type: none; padding-left: 0; }
-ol.docx-alpha-list li { position: relative; padding-left: 2em; margin-bottom: 0.5em; }
-ol.docx-alpha-list li::before { position: absolute; left: 0; content: attr(data-prefix) "."; font-weight: bold; }
-
-/* Special styles */
-.docx-rationale { font-style: italic; margin-left: 2em; }
+ol.docx-alpha-list > li { position: relative; padding-left: 2.5em; margin-bottom: 0.5em; }
+ol.docx-alpha-list > li::before { position: absolute; left: 0; content: attr(data-prefix) "."; font-weight: normal; }
 `;
   }
 
   return css;
+}
+
+/**
+ * Get CSS counter content for numbering
+ * @param {Object} levelDef - Level definition
+ * @returns {string} - CSS content value
+ */
+function getCSSCounterContent(levelDef) {
+  if (!levelDef || !levelDef.text) {
+    return 'counter(list-level-1) "."';
+  }
+  
+  // Convert the Word number format to CSS counter
+  const text = levelDef.text;
+  
+  // Replace %1, %2, etc. with counter expressions
+  const replaced = text.replace(/%(\d+)/g, (match, level) => {
+    const levelNum = parseInt(level, 10);
+    let format = 'decimal';
+    
+    // Use the appropriate format for this level
+    if (levelNum === parseInt(levelDef.level, 10) + 1) {
+      format = getCSSCounterFormat(levelDef.format);
+    }
+    
+    return '" counter(list-level-' + levelNum + ', ' + format + ') "';
+  });
+  
+  // Add any additional text
+  return replaced.replace(/^"/, '').replace(/"$/, '');
 }
 
 /**
