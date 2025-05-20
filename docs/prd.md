@@ -13,6 +13,7 @@
 | 1.0 | May 16, 2025 | Initial Team | Original document |
 | 1.5 | May 19, 2025 | Technical Team | Enhanced TOC and list handling requirements |
 | 2.0 | May 20, 2025 | Technical Team | Added document introspection rules, removed content pattern matching |
+| 2.1 | May 20, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
 
 ## Table of Contents
 
@@ -213,22 +214,34 @@ doc2web follows a modular architecture with these primary components:
    - Ensures generated markdown is compliant with linting standards
    - Fixes common markdown formatting issues automatically
 
-3. **Style Extractor (style-extractor.js)**
-   - Extracts styling information from DOCX
-   - Applies styles to HTML output
-   - Processes document structure including hierarchical lists
-   - Detects and styles TOC and index elements
-   - Handles special document sections with appropriate formatting
-   - **Must analyze document structure without assumptions about content**
+3. **Library Modules (lib/)**
+   - Organized into logical function groups:
+     - **XML Utilities (lib/xml/)**: Functions for working with XML and XPath
+     - **Parsers (lib/parsers/)**: Style, TOC, numbering, theme, and document parsing
+     - **HTML Processing (lib/html/)**: HTML generation and element processors
+     - **CSS Generation (lib/css/)**: CSS generation and style mapping
+     - **Utilities (lib/utils/)**: Unit conversion and other helper functions
 
-4. **DOCX Parser (docx-style-parser.js)**
-   - Parses DOCX XML structure
-   - Extracts detailed style information
-   - Analyzes document structure for special elements
-   - Extracts TOC styles and numbering definitions
-   - Generates clean, readable CSS with proper margins and spacing
-   - Implements robust error handling for XML parsing
-   - **Must determine document structure based on XML, not content pattern matching**
+4. **Style Processing**
+   - **Style Parser (lib/parsers/style-parser.js)**
+     - Parses DOCX XML structure
+     - Extracts detailed style information
+     - **Must determine document structure based on XML, not content pattern matching**
+
+   - **Style Extractor (lib/html/html-generator.js)**
+     - Extracts styling information from DOCX
+     - Applies styles to HTML output
+     - Processes document structure including hierarchical lists
+     - **Must analyze document structure without assumptions about content**
+
+   - **CSS Generator (lib/css/css-generator.js)**
+     - Generates clean, readable CSS with proper margins and spacing
+     - Creates styles based on document's structure, not content
+
+   - **Content Processors (lib/html/content-processors.js)**
+     - Processes headings, TOC, and lists
+     - Detects and styles TOC and index elements
+     - Handles special document sections with appropriate formatting
 
 5. **User Interface (doc2web-run.js)**
    - Provides interactive command-line interface

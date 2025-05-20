@@ -19,30 +19,34 @@ The app must deeply inspect the docx and obtain css and formatting styles, font 
 
 ## Project Structure
 
-```bash
-GitHub/doc2web
+The codebase has been refactored for better organization and maintainability:
+
+```
+doc2web/
 ├── .gitignore
 ├── .vscode
 ├── README.md
 ├── doc2web-install.sh
 ├── doc2web-run.js
 ├── doc2web.js
-├── docs
+├── docs/
 │   └── prd.md
-├── docx-style-parser.js
 ├── init-doc2web.sh
-├── input
+├── input/
+├── lib/                       # Refactored library code
+│   ├── index.js               # Main entry point
+│   ├── xml/                   # XML parsing utilities
+│   ├── parsers/               # DOCX parsing modules
+│   ├── html/                  # HTML processing modules
+│   ├── css/                   # CSS generation modules
+│   └── utils/                 # Utility functions
 ├── markdownify.js
-├── node_modules
-├── output
+├── node_modules/
+├── output/
 ├── package-lock.json
 ├── package.json
-├── process-find.sh
-├── style-extractor.js
-└── user-manual.md
+└── process-find.sh
 ```
-
-When making code edits update prd.md user-manual.md and README.md
 
 ## Getting Started
 
@@ -123,7 +127,37 @@ output/
 - `--html-only`: Generate only HTML output, skip markdown
 - `--list`: Treat the input file as a list of files to process
 
+## Code Organization
+
+The codebase has been refactored into a modular structure:
+
+- **XML Utilities** (`lib/xml/`): Functions for working with XML and XPath
+- **Parsers** (`lib/parsers/`): 
+  - Style parsing
+  - TOC parsing
+  - Numbering definition parsing
+  - Theme parsing
+  - Document structure analysis
+- **HTML Processing** (`lib/html/`):
+  - HTML generation
+  - Structure processing
+  - Content processing (headings, TOC, lists)
+  - Element processing (tables, images, language)
+- **CSS Generation** (`lib/css/`):
+  - CSS generation
+  - Style mapping
+- **Utilities** (`lib/utils/`):
+  - Unit conversion
+
 ## Recent Fixes
+
+### v1.0.7 (2025-05-20)
+
+- Refactored codebase for better organization and maintainability:
+  - Split large files into smaller, focused modules
+  - Improved code organization by logical function groups
+  - Enhanced documentation with comprehensive comments
+  - Maintained backward compatibility with existing code
 
 ### v1.0.6 (2025-05-20)
 
