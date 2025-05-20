@@ -70,6 +70,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Automatically detect and properly decorate table of contents and index elements
 - Maintain hierarchical list structures with proper nesting and numbering
 - Analyze document structure to identify special sections and formatting patterns
+- Preserve TOC structure with proper leader lines, right-aligned page numbers, and correct indentation
+- Recognize and maintain complex list structures including special paragraph types within lists
 
 #### 3.1.2 Style Preservation
 
@@ -81,6 +83,10 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Ensure proper nesting of multi-level lists with correct numbering
 - Accurately render TOC styles including leader lines and page numbers
 - Extract and apply numbering definitions for complex hierarchical lists
+- Render proper leader line dots connecting TOC entries to page numbers
+- Maintain right alignment of page numbers in TOC elements
+- Apply correct indentation for different TOC and list levels
+- Preserve document structure through advanced DOM manipulation
 
 #### 3.1.3 Processing Capabilities
 
@@ -121,6 +127,9 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Unicode and international character support
 - Hierarchical lists should maintain proper nesting and numbering
 - TOC elements should be properly styled with appropriate leader lines and formatting
+- Leader lines in TOC should connect entries to page numbers with proper dots
+- Page numbers in TOC should be right-aligned for better readability
+- Different TOC levels should have correct indentation reflecting the document structure
 
 ## 4. Technical Specifications
 
@@ -144,6 +153,9 @@ doc2web follows a modular architecture with these primary components:
    - Processes document structure including hierarchical lists
    - Detects and styles TOC and index elements
    - Handles special document sections with appropriate formatting
+   - Preserves TOC structure through advanced DOM manipulation
+   - Maintains proper list hierarchy with correct indentation and numbering
+   - Handles special cases like "Rationale for Resolution" paragraphs within lists
 
 4. **DOCX Parser (docx-style-parser.js)**
    - Parses DOCX XML structure
@@ -152,6 +164,10 @@ doc2web follows a modular architecture with these primary components:
    - Extracts TOC styles and numbering definitions
    - Generates clean, readable CSS with proper margins and spacing
    - Implements robust error handling for XML parsing
+   - Captures comprehensive details from document styles
+   - Improves detection of document structure patterns
+   - Provides more accurate conversion of DOCX styles to CSS
+   - Extracts leader line styles and page number alignment for TOC elements
 
 5. **User Interface (doc2web-run.js)**
    - Provides interactive command-line interface
@@ -179,6 +195,9 @@ doc2web follows a modular architecture with these primary components:
 - Hierarchical lists properly nested with correct numbering
 - TOC elements styled with appropriate leader lines and formatting
 - Special document sections identified and styled appropriately
+- Leader lines in TOC rendered with dots connecting entries to page numbers
+- Page numbers in TOC right-aligned for better readability
+- Different TOC levels properly indented to reflect document structure
 
 ## 5. Functional Requirements
 
@@ -265,6 +284,10 @@ doc2web follows a modular architecture with these primary components:
 - Correct preservation of hierarchical list structures in 100% of cases
 - Accurate rendering of TOC elements with proper styling in 95% of cases
 - Robust error handling with clear error messages for all common failure scenarios
+- Proper rendering of leader lines with dots connecting TOC entries to page numbers
+- Correct right-alignment of page numbers in TOC elements
+- Accurate indentation for different TOC and list levels
+- Successful preservation of document structure through DOM manipulation
 
 ### 7.2 User Success Criteria
 
@@ -273,6 +296,7 @@ doc2web follows a modular architecture with these primary components:
 - Reliable output quality across diverse document types
 - Positive user feedback on output quality and tool usability
 - Minimal reported issues with TOC and hierarchical list handling
+- High satisfaction with TOC and list formatting in converted documents
 
 ## 8. Appendix
 
@@ -288,6 +312,8 @@ doc2web follows a modular architecture with these primary components:
 | Node.js | JavaScript runtime environment for executing JavaScript code server-side |
 | TOC | Table of Contents, a navigation element in documents |
 | Hierarchical List | A multi-level list structure with parent-child relationships |
+| Leader Line | Formatting element (typically dots or dashes) connecting TOC entries to page numbers |
+| DOM | Document Object Model, a programming interface for HTML and XML documents |
 
 ### 8.2 Related Documentation
 

@@ -135,6 +135,27 @@ output/
   - Improved CSS generation for TOC and list styling
   - Added better detection and styling of special document sections
 
+- Enhanced TOC (Table of Contents) Processing:
+  - Proper leader line rendering with dots connecting entries to page numbers
+  - Right-aligned page numbers for better readability
+  - Correct indentation for different TOC levels
+  - Preservation of TOC structure through advanced DOM manipulation
+  - Better visual fidelity to the original document's TOC appearance
+
+- Improved List Handling:
+  - Hierarchical list numbering (1., a., b., etc.) maintained with proper nesting
+  - Proper indentation for different list levels
+  - Special handling for "Rationale for Resolution" paragraphs within lists
+  - Better recognition of list structures through content pattern analysis
+  - Consistent numbering throughout converted documents
+
+- More Robust Style Extraction:
+  - Enhanced DOCX style parser that captures more details from the document
+  - Better handling of special paragraph types
+  - Improved detection of document structure patterns
+  - More accurate conversion of DOCX styles to CSS
+  - Deeper inspection of document formatting attributes
+
 ### v1.0.5 (2025-05-19)
 
 - Fixed hierarchical list numbering in document conversion:

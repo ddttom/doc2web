@@ -28,8 +28,9 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Supports Unicode and multilingual content
 - Processes single files, directories, or file lists
 - Preserves original directory structures in output
-- Accurately extracts and renders Table of Contents (TOC) elements
-- Maintains hierarchical list structures with proper nesting and numbering
+- Accurately extracts and renders Table of Contents (TOC) elements with proper leader lines and page number alignment
+- Maintains hierarchical list structures with proper nesting, indentation, and numbering
+- Provides special handling for complex document structures and formatting patterns
 
 ## Installation
 
@@ -194,6 +195,8 @@ For each processed DOCX file, doc2web generates:
 - Implements DOCX styling in web-friendly format
 - Linked from the HTML file
 - Includes specific styles for TOC and hierarchical lists
+- Contains detailed styling for leader lines and page number alignment
+- Preserves indentation and formatting for different list levels
 
 ### Images Folder
 
@@ -236,9 +239,11 @@ doc2web intelligently detects and handles navigation elements:
 - Properly decorates these elements with appropriate styling in the output
 - In HTML output: Elements are styled with the appropriate CSS classes
 - In Markdown output: Elements are formatted with proper structure
-- Preserves TOC leader lines (dots, dashes, or underscores)
-- Maintains proper alignment of page numbers
+- Preserves TOC leader lines (dots, dashes, or underscores) connecting entries to page numbers
+- Maintains proper right alignment of page numbers for better readability
 - Applies appropriate indentation for different TOC levels
+- Preserves TOC structure through advanced DOM manipulation
+- Ensures visual fidelity to the original document's TOC appearance
 
 This feature prevents unnecessary duplication of navigation elements in web formats while maintaining their visual structure, improving readability and organization.
 
@@ -252,6 +257,9 @@ doc2web provides advanced handling of hierarchical lists:
 - Handles special cases like "Rationale for Resolution" paragraphs between list items
 - Ensures consistent numbering throughout the document
 - Applies appropriate styling for different list levels
+- Recognizes list structures through content pattern analysis
+- Preserves the hierarchical relationship between list items
+- Maintains proper indentation for different list levels
 
 The enhanced list handling ensures that complex document structures are accurately preserved in both HTML and Markdown output.
 
@@ -372,6 +380,8 @@ If you notice problems with Table of Contents formatting or hierarchical list st
 1. Ensure you're using the latest version (v1.0.6 or later)
 2. Check that the original document has a properly formatted TOC
 3. For complex lists, make sure the document uses Word's built-in list formatting rather than manual numbering
+4. Verify that the document's TOC was generated using Word's automatic TOC feature
+5. Check that leader lines and page numbers are properly formatted in the original document
 
 ### Error Messages
 
@@ -403,10 +413,10 @@ A: Not yet, all outputs go to the `./output` directory.
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
 
 **Q: How does doc2web handle Table of Contents and Index sections?**  
-A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. The tool preserves TOC leader lines, page numbers, and proper indentation for different levels.
+A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. The tool preserves TOC leader lines with dots connecting entries to page numbers, maintains right-aligned page numbers, and applies proper indentation for different TOC levels through advanced DOM manipulation.
 
 **Q: How does doc2web handle hierarchical lists?**  
-A: The tool maintains proper nesting of multi-level lists, preserves numbering formats, correctly indents sub-items, and handles special cases like "Rationale for Resolution" paragraphs between list items.
+A: The tool maintains proper nesting of multi-level lists, preserves numbering formats (1., a., b., etc.), correctly indents sub-items based on their level, and handles special cases like "Rationale for Resolution" paragraphs between list items. It recognizes list structures through content pattern analysis and ensures consistent numbering throughout the document.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.
@@ -423,7 +433,7 @@ A: Yes, it should work with any standard DOCX files, including those created by 
 A: Not yet, but you can use it directly from the source code.
 
 **Q: How does doc2web extract style information from DOCX files?**  
-A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures.
+A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures. The enhanced DOCX style parser captures more details from the document, provides better handling of special paragraph types, improves detection of document structure patterns, and ensures more accurate conversion of DOCX styles to CSS.
 
 ---
 
