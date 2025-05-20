@@ -10,10 +10,12 @@ This tool extracts content from DOCX files while maintaining:
 - Images and tables
 - Styles and layout
 - Unicode and multilingual content
+- Table of Contents (TOC) with proper styling
+- Hierarchical list numbering and structure
 
-The app must not make any assumptions from test documents, the app must treat creatred css and html as ephemeral, they will be destroyed on every run.
-The css and HTML are individual to each document created, they wiol be named after the docx inourt, with folder pattern matched.
-The ap must deeply inspect the docx and obtain css and formatting styles, fonr sizes, item prefixes etc.  Nothing will be hard coded with the app. All generated CSS will be in an external stylesheet
+The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
+The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
+The app must deeply inspect the docx and obtain css and formatting styles, font sizes, item prefixes etc. Nothing will be hard coded with the app. All generated CSS will be in an external stylesheet.
 
 ## Project Structure
 
@@ -123,6 +125,16 @@ output/
 
 ## Recent Fixes
 
+### v1.0.6 (2025-05-20)
+
+- Enhanced DOCX style extraction and processing:
+  - Improved parsing of Table of Contents (TOC) styles with better leader line handling
+  - Added robust numbering definition extraction for complex hierarchical lists
+  - Implemented comprehensive document structure analysis
+  - Enhanced error handling for XML parsing and style extraction
+  - Improved CSS generation for TOC and list styling
+  - Added better detection and styling of special document sections
+
 ### v1.0.5 (2025-05-19)
 
 - Fixed hierarchical list numbering in document conversion:
@@ -183,11 +195,16 @@ If you encounter errors like `Cannot resolve QName w` or `Cannot resolve QName a
 
 If you see errors related to border values or styles, ensure you're using the latest version which includes fixes for handling undefined or missing border properties.
 
+### TOC and List Structure Issues
+
+If you notice problems with Table of Contents formatting or hierarchical list structures, make sure you're using v1.0.6 or later, which includes significant improvements to TOC style extraction and list numbering handling.
+
 ### General Issues
 
 1. Make sure your DOCX file is not corrupted or password-protected
 2. Check that you have all required dependencies installed
 3. For large files, consider processing them individually rather than in batch mode
+4. For complex documents with many styles, ensure you have sufficient memory allocated
 
 ## Contributing
 

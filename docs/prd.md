@@ -13,6 +13,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Support international and multilingual content
 - Provide an intuitive interface for both individual and batch processing
 - Create organized output that mirrors the original directory structure
+- Accurately extract and render complex document elements like TOC and hierarchical lists
 
 ## 2. Target Users
 
@@ -68,6 +69,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Support right-to-left text and international characters
 - Automatically detect and properly decorate table of contents and index elements
 - Maintain hierarchical list structures with proper nesting and numbering
+- Analyze document structure to identify special sections and formatting patterns
 
 #### 3.1.2 Style Preservation
 
@@ -77,6 +79,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Maintain document structure (headings, lists, tables)
 - Preserve document layout and spacing
 - Ensure proper nesting of multi-level lists with correct numbering
+- Accurately render TOC styles including leader lines and page numbers
+- Extract and apply numbering definitions for complex hierarchical lists
 
 #### 3.1.3 Processing Capabilities
 
@@ -103,9 +107,9 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 
 #### 3.2.2 Performance
 
-- Process documents up to 100MB in size
-- Handle batch processing of multiple documents efficiently
-- Process at least 10 documents per minute on standard hardware
+- Process standard documents (< 10MB) in under 5 seconds
+- Support batch processing of at least 100 files
+- Handle documents up to 100MB in size
 
 #### 3.2.3 Output Quality
 
@@ -116,6 +120,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Images should be properly extracted and referenced
 - Unicode and international character support
 - Hierarchical lists should maintain proper nesting and numbering
+- TOC elements should be properly styled with appropriate leader lines and formatting
 
 ## 4. Technical Specifications
 
@@ -137,11 +142,16 @@ doc2web follows a modular architecture with these primary components:
    - Extracts styling information from DOCX
    - Applies styles to HTML output
    - Processes document structure including hierarchical lists
+   - Detects and styles TOC and index elements
+   - Handles special document sections with appropriate formatting
 
 4. **DOCX Parser (docx-style-parser.js)**
    - Parses DOCX XML structure
    - Extracts detailed style information
+   - Analyzes document structure for special elements
+   - Extracts TOC styles and numbering definitions
    - Generates clean, readable CSS with proper margins and spacing
+   - Implements robust error handling for XML parsing
 
 5. **User Interface (doc2web-run.js)**
    - Provides interactive command-line interface
@@ -167,6 +177,8 @@ doc2web follows a modular architecture with these primary components:
 - HTML documents have a 20px margin for improved readability
 - Image files properly extracted and referenced
 - Hierarchical lists properly nested with correct numbering
+- TOC elements styled with appropriate leader lines and formatting
+- Special document sections identified and styled appropriately
 
 ## 5. Functional Requirements
 
@@ -182,32 +194,36 @@ doc2web follows a modular architecture with these primary components:
 | FR-06 | Support files with international characters | High |
 | FR-07 | Process right-to-left text correctly | Medium |
 | FR-08 | Handle mixed language content | Medium |
+| FR-09 | Extract and apply TOC styles | High |
+| FR-10 | Process hierarchical numbering definitions | High |
+| FR-11 | Analyze document structure for special elements | Medium |
 
 ### 5.2 User Interface
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-09 | Provide command-line interface for direct usage | High |
-| FR-10 | Offer interactive menu-driven interface | Medium |
-| FR-11 | Support file search integration | Medium |
-| FR-12 | Allow HTML-only mode (skipping Markdown generation) | Low |
-| FR-13 | Provide clear feedback during processing | Medium |
-| FR-14 | Include help documentation and examples | Medium |
+| FR-12 | Provide command-line interface for direct usage | High |
+| FR-13 | Offer interactive menu-driven interface | Medium |
+| FR-14 | Support file search integration | Medium |
+| FR-15 | Allow HTML-only mode (skipping Markdown generation) | Low |
+| FR-16 | Provide clear feedback during processing | Medium |
+| FR-17 | Include help documentation and examples | Medium |
 
 ### 5.3 Output Quality
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-15 | Preserve heading structure (H1-H6) | High |
-| FR-16 | Maintain list formatting (ordered and unordered) | High |
-| FR-17 | Preserve table structure and formatting | High |
-| FR-18 | Support text formatting (bold, italic, underline) | High |
-| FR-19 | Handle document layout (spacing, indentation) | Medium |
-| FR-20 | Properly extract and reference images | High |
-| FR-21 | Generate markdown that passes standard linting rules | High |
-| FR-22 | Provide proper margins and spacing in HTML output for readability | High |
-| FR-23 | Automatically detect and properly decorate table of contents and index elements | Medium |
-| FR-24 | Maintain hierarchical list structures with proper nesting and numbering | High |
+| FR-18 | Preserve heading structure (H1-H6) | High |
+| FR-19 | Maintain list formatting (ordered and unordered) | High |
+| FR-20 | Preserve table structure and formatting | High |
+| FR-21 | Support text formatting (bold, italic, underline) | High |
+| FR-22 | Handle document layout (spacing, indentation) | Medium |
+| FR-23 | Properly extract and reference images | High |
+| FR-24 | Generate markdown that passes standard linting rules | High |
+| FR-25 | Provide proper margins and spacing in HTML output for readability | High |
+| FR-26 | Automatically detect and properly decorate table of contents and index elements | High |
+| FR-27 | Maintain hierarchical list structures with proper nesting and numbering | High |
+| FR-28 | Properly style TOC elements with leader lines and page numbers | High |
 
 ## 6. Non-Functional Requirements
 
@@ -227,15 +243,16 @@ doc2web follows a modular architecture with these primary components:
 | NFR-05 | Provide error feedback without terminating batch jobs | Medium |
 | NFR-06 | Include comprehensive error logging | Medium |
 | NFR-07 | Support recovery from interrupted processing | Low |
+| NFR-08 | Implement robust error handling for XML parsing | High |
 
 ### 6.3 Usability
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| NFR-08 | Require minimal configuration for standard usage | High |
-| NFR-09 | Provide clear error messages | High |
-| NFR-10 | Include comprehensive documentation | Medium |
-| NFR-11 | Offer examples for common use cases | Medium |
+| NFR-09 | Require minimal configuration for standard usage | High |
+| NFR-10 | Provide clear error messages | High |
+| NFR-11 | Include comprehensive documentation | Medium |
+| NFR-12 | Offer examples for common use cases | Medium |
 
 ## 7. Success Metrics
 
@@ -246,6 +263,8 @@ doc2web follows a modular architecture with these primary components:
 - Support for documents with at least 20 complex elements (tables, images, etc.)
 - Successful processing of documents in at least 10 different languages
 - Correct preservation of hierarchical list structures in 100% of cases
+- Accurate rendering of TOC elements with proper styling in 95% of cases
+- Robust error handling with clear error messages for all common failure scenarios
 
 ### 7.2 User Success Criteria
 
@@ -253,6 +272,7 @@ doc2web follows a modular architecture with these primary components:
 - Ability to process document libraries with thousands of files
 - Reliable output quality across diverse document types
 - Positive user feedback on output quality and tool usability
+- Minimal reported issues with TOC and hierarchical list handling
 
 ## 8. Appendix
 
@@ -266,6 +286,8 @@ doc2web follows a modular architecture with these primary components:
 | CSS | Cascading Style Sheets, used to describe the presentation of HTML documents |
 | XML | Extensible Markup Language, used for storing and transporting data |
 | Node.js | JavaScript runtime environment for executing JavaScript code server-side |
+| TOC | Table of Contents, a navigation element in documents |
+| Hierarchical List | A multi-level list structure with parent-child relationships |
 
 ### 8.2 Related Documentation
 

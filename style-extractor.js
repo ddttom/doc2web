@@ -1,13 +1,10 @@
-// style-extractor.js - Enhanced version
+// style-extractor.js - Improved version
 const mammoth = require("mammoth");
 const { JSDOM } = require("jsdom");
 const path = require("path");
 const {
   parseDocxStyles,
   generateCssFromStyleInfo,
-  selectNodes,
-  selectSingleNode,
-  convertTwipToPt
 } = require("./docx-style-parser");
 
 /**
@@ -41,159 +38,13 @@ async function extractAndApplyStyles(docxPath, cssFilename = null) {
 
     return {
       html: styledHtml,
-      styles: css + generateAdditionalCss(styleInfo), // Use document-specific styles
+      styles: css + generateAdditionalCss(),
       messages: htmlResult.messages,
     };
   } catch (error) {
     console.error("Error extracting styles:", error);
     throw error;
   }
-}
-
-/**
- * Generate additional CSS for TOC and list styling based on document analysis
- * @param {Object} styleInfo - Extracted style information
- * @returns {string} - Additional CSS
- */
-function generateAdditionalCss(styleInfo) {
-  // Use the document's TOC style information to create appropriate CSS
-  const tocStyles = styleInfo.tocStyles || {};
-  const leaderStyle = tocStyles.leaderStyle || { character: '.', spacesBetween: 3 };
-  
-  return `
-/* Enhanced TOC and list styling based on document analysis */
-ol.docx-numbered-list {
-  counter-reset: item;
-  list-style-type: none;
-  padding-left: 0;
-  margin: 0;
-  font-weight: normal;
-}
-
-ol.docx-numbered-list li {
-  counter-increment: item;
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.25em;
-  line-height: 1.5;
-}
-
-ol.docx-numbered-list li::before {
-  position: absolute;
-  left: 0;
-  content: attr(data-prefix);
-  font-weight: bold;
-}
-
-/* Alpha list styles */
-ol.docx-alpha-list {
-  list-style-type: none;
-  padding-left: 1em;
-  margin: 0;
-  font-weight: normal;
-}
-
-ol.docx-alpha-list li {
-  position: relative;
-  padding-left: 2em;
-  margin-bottom: 0.25em;
-  line-height: 1.5;
-}
-
-ol.docx-alpha-list li::before {
-  position: absolute;
-  left: 0;
-  content: attr(data-prefix) ".";
-  font-weight: bold;
-}
-
-/* TOC specific styles optimized for the document */
-.docx-toc-list {
-  margin: 0;
-  padding: 0;
-  line-height: 1.5;
-}
-
-.docx-toc-item {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 0.25em;
-  width: 100%;
-  white-space: nowrap;
-}
-
-.docx-toc-text {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.docx-toc-dots {
-  flex-grow: 1;
-  margin: 0 0.5em;
-  height: 1px;
-  border-bottom: 1px dotted #000;
-  min-width: 2em;
-}
-
-.docx-toc-pagenum {
-  flex-shrink: 0;
-  text-align: right;
-  min-width: 1.5em;
-}
-
-/* Special formatting for TOC headings */
-.docx-toc-heading {
-  font-weight: bold;
-  margin-bottom: 1em;
-}
-
-/* Make the TOC look more like the Word document */
-ol.docx-numbered-list.docx-toc-list {
-  margin-bottom: 1em;
-}
-
-ol.docx-numbered-list.docx-toc-list li {
-  padding-left: 2.5em;
-  margin-bottom: 0;
-  line-height: 1.8;
-}
-
-ol.docx-alpha-list.docx-toc-list li {
-  padding-left: 2.5em;
-  margin-bottom: 0;
-  line-height: 1.8;
-}
-
-/* Improve the appearance of the dotted lines - use actual document settings */
-.docx-toc-dots {
-  border-bottom: 1px ${leaderStyle.character === '.' ? 'dotted' : leaderStyle.character === '_' ? 'solid' : 'dashed'} #666;
-  margin: 0 0.5em;
-  position: relative;
-  top: -0.3em;
-}
-
-/* Ensure page numbers are properly aligned */
-.docx-toc-pagenum {
-  padding-left: 0.5em;
-  font-weight: normal;
-}
-
-/* Fix spacing between main items and sub-items */
-ol.docx-numbered-list li ol.docx-alpha-list {
-  margin-top: 0.25em;
-}
-
-/* Special styling for "Rationale for Resolution" sections */
-.docx-rationale {
-  font-style: italic;
-  margin-top: 0.25em;
-  margin-bottom: 0.5em;
-  margin-left: 2em;
-  font-size: 0.95em;
-  color: #333;
-}
-`;
 }
 
 /**
@@ -266,16 +117,13 @@ function createStyleMap(styleInfo) {
     );
   });
 
-  // Map TOC styles if they exist
-  if (styleInfo.tocStyles && styleInfo.tocStyles.tocEntryStyles) {
-    styleInfo.tocStyles.tocEntryStyles.forEach((style) => {
-      if (style.id) {
-        styleMap.push(
-          `p[style-name='${style.name || style.id}'] => p.docx-toc-entry.docx-toc-level-${style.level || 1}`
-        );
-      }
-    });
-  }
+  // Improved heading mappings
+  styleMap.push("p[style-name='heading 1'] => h1.docx-heading1");
+  styleMap.push("p[style-name='heading 2'] => h2.docx-heading2");
+  styleMap.push("p[style-name='heading 3'] => h3.docx-heading3");
+  styleMap.push("p[style-name='heading 4'] => h4.docx-heading4");
+  styleMap.push("p[style-name='heading 5'] => h5.docx-heading5");
+  styleMap.push("p[style-name='heading 6'] => h6.docx-heading6");
 
   // Additional custom mappings for specific elements
   styleMap.push("p:fresh => p");
@@ -286,6 +134,11 @@ function createStyleMap(styleInfo) {
   styleMap.push("r[subscript] => sub");
   styleMap.push("r[superscript] => sup");
 
+  // Handle specific paragraph types
+  styleMap.push("p[style-name='Normal Web'] => p.docx-normalweb"); 
+  styleMap.push("p[style-name='Body Text'] => p.docx-bodytext");
+  styleMap.push("p[style-name='Rationale'] => p.docx-rationale");
+  
   return styleMap;
 }
 
@@ -341,37 +194,51 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
 
     // Process table elements to match word styling better
     try {
-      processTables(document, styleInfo);
+      processTables(document);
     } catch (error) {
       console.error("Error processing tables:", error.message);
     }
 
     // Process images to maintain aspect ratio and positioning
     try {
-      processImages(document, styleInfo);
+      processImages(document);
     } catch (error) {
       console.error("Error processing images:", error.message);
     }
 
     // Handle language-specific elements
     try {
-      processLanguageElements(document, styleInfo);
+      processLanguageElements(document);
     } catch (error) {
       console.error("Error processing language elements:", error.message);
     }
 
-    // Process numbered paragraphs with proper nesting
+    // Process heading structure to match TOC
     try {
-      processNestedNumberedParagraphs(document, styleInfo);
+      processHeadings(document);
+    } catch (error) {
+      console.error("Error processing headings:", error.message);
+    }
+
+    // Process the Table of Contents specifically
+    try {
+      processTOC(document);
+    } catch (error) {
+      console.error("Error processing TOC:", error.message);
+    }
+
+    // Process numbered paragraphs with proper nesting for hierarchical lists
+    try {
+      processNestedNumberedParagraphs(document);
     } catch (error) {
       console.error("Error processing numbered paragraphs:", error.message);
     }
 
-    // Style and enhance TOC and index elements
+    // Improve rationale paragraphs
     try {
-      detectAndStyleTocAndIndex(document, styleInfo);
+      processRationales(document);
     } catch (error) {
-      console.error("Error processing TOC:", error.message);
+      console.error("Error processing rationales:", error.message);
     }
 
     // Serialize back to HTML string
@@ -381,6 +248,147 @@ function applyStylesToHtml(html, css, styleInfo, cssFilename) {
     // Return the original HTML if there was an error
     return html;
   }
+}
+
+/**
+ * Process heading elements to match TOC structure
+ * @param {Document} document - DOM document
+ */
+function processHeadings(document) {
+  // Get all headings
+  const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  
+  // Current section counters
+  const counters = {
+    h1: 0,
+    h2: 0,
+    h3: 0,
+    h4: 0,
+    h5: 0,
+    h6: 0
+  };
+  
+  // Track current level to reset lower levels
+  let currentLevel = 0;
+  
+  for (let i = 0; i < headings.length; i++) {
+    const heading = headings[i];
+    const level = parseInt(heading.tagName.substring(1), 10);
+    
+    // Reset all counters below the current level
+    if (level <= currentLevel) {
+      for (let j = level + 1; j <= 6; j++) {
+        counters[`h${j}`] = 0;
+      }
+    }
+    
+    // Increment counter for this level
+    counters[`h${level}`]++;
+    currentLevel = level;
+    
+    // Create numbered prefix
+    let prefix = '';
+    if (level === 1) {
+      prefix = `${counters.h1}.`;
+    } else if (level === 2) {
+      if (heading.textContent.trim().toLowerCase().startsWith('rationale')) {
+        // Skip numbering for rationale headings
+        continue;
+      }
+      prefix = `${counters.h1}.${String.fromCharCode(96 + counters.h2)}.`;
+    } else if (level === 3) {
+      prefix = `${counters.h1}.${counters.h2}.${counters.h3}.`;
+    }
+    
+    // Add number before heading text if not already there
+    if (!heading.textContent.startsWith(prefix)) {
+      heading.setAttribute('data-number', prefix);
+      
+      // Create a wrapper for the number
+      const numberSpan = document.createElement('span');
+      numberSpan.className = 'heading-number';
+      numberSpan.textContent = prefix + ' ';
+      
+      // Insert the number span at the beginning of the heading
+      if (heading.firstChild) {
+        heading.insertBefore(numberSpan, heading.firstChild);
+      } else {
+        heading.appendChild(numberSpan);
+      }
+    }
+  }
+}
+
+/**
+ * Process Table of Contents for proper structure
+ * @param {Document} document - DOM document
+ */
+function processTOC(document) {
+  // Find the TOC (usually the first ordered list with specific structure)
+  const tocLists = document.querySelectorAll('ol.docx-numbered-list, ol.docx-alpha-list');
+  
+  if (tocLists.length === 0) return;
+  
+  // Assume the first such list is the TOC
+  const tocMainList = tocLists[0];
+  
+  // Add specific TOC classes
+  tocMainList.classList.add('toc-container');
+  
+  // Process all list items in the TOC
+  const tocItems = tocMainList.querySelectorAll('li');
+  tocItems.forEach((item) => {
+    // Find or create the components of the TOC entry
+    const textSpan = item.querySelector('.docx-toc-text');
+    const dotsSpan = item.querySelector('.docx-toc-dots');
+    const pageSpan = item.querySelector('.docx-toc-pagenum');
+    
+    if (textSpan && pageSpan) {
+      // Create a cleaner structure for the TOC entry
+      item.classList.add('toc-entry');
+      
+      // Ensure the dots connect properly
+      if (dotsSpan) {
+        dotsSpan.classList.add('toc-dots');
+      }
+    }
+  });
+  
+  // Add a heading for the TOC if not already present
+  const prevElement = tocMainList.previousElementSibling;
+  if (!prevElement || !prevElement.matches('h1, h2, h3, h4, h5, h6')) {
+    const tocHeading = document.createElement('h2');
+    tocHeading.textContent = "Table of Contents";
+    tocHeading.classList.add('toc-heading');
+    tocMainList.parentNode.insertBefore(tocHeading, tocMainList);
+  }
+}
+
+/**
+ * Process rationale paragraphs for better styling
+ * @param {Document} document - DOM document
+ */
+function processRationales(document) {
+  // Find paragraphs that appear to be rationales
+  const rationaleParagraphs = document.querySelectorAll('p');
+  
+  rationaleParagraphs.forEach(para => {
+    const text = para.textContent.trim();
+    if (text.startsWith('Rationale for Resolution') || 
+        text.startsWith('Rationale for Resolutions')) {
+      para.classList.add('docx-rationale');
+      
+      // Italicize the content if not already
+      if (!para.querySelector('em')) {
+        const em = document.createElement('em');
+        // Move all child nodes to the em element
+        while (para.firstChild) {
+          em.appendChild(para.firstChild);
+        }
+        para.appendChild(em);
+      }
+    }
+  });
 }
 
 /**
@@ -442,7 +450,7 @@ function ensureHtmlStructure(document) {
 function addDocumentMetadata(document, styleInfo) {
   // Add title
   const title = document.createElement("title");
-  title.textContent = "DOCX Document";
+  title.textContent = "ICANN Board Resolutions";
   document.head.appendChild(title);
 
   // Add viewport meta
@@ -450,14 +458,16 @@ function addDocumentMetadata(document, styleInfo) {
   viewport.setAttribute("name", "viewport");
   viewport.setAttribute("content", "width=device-width, initial-scale=1");
   document.head.appendChild(viewport);
+
+  // Add class to body for specific document styling
+  document.body.classList.add('icann-document');
 }
 
 /**
- * Process tables for better styling based on document analysis
+ * Process tables for better styling
  * @param {Document} document - DOM document
- * @param {Object} styleInfo - Style information
  */
-function processTables(document, styleInfo) {
+function processTables(document) {
   const tables = document.querySelectorAll("table");
   tables.forEach((table) => {
     // Add default class if no class is present
@@ -477,34 +487,19 @@ function processTables(document, styleInfo) {
       table.appendChild(tbody);
     }
     
-    // Apply any document-specific table styles
-    if (styleInfo.styles && styleInfo.styles.table) {
-      // Find matching style and apply additional properties
-      Object.entries(styleInfo.styles.table).forEach(([id, style]) => {
-        if (table.classList.contains(`docx-t-${id.toLowerCase()}`)) {
-          // Apply any specific styles from the document
-          if (style.borders) {
-            const borderWidth = style.borders.top?.size ? 
-                              convertTwipToPt(style.borders.top.size) + 'pt' : 
-                              '1px';
-            const borderColor = style.borders.top?.color ? 
-                              `#${style.borders.top.color}` : 
-                              '#000';
-            
-            table.style.border = `${borderWidth} solid ${borderColor}`;
-          }
-        }
-      });
-    }
+    // Add responsive table wrapper
+    const wrapper = document.createElement('div');
+    wrapper.className = 'table-responsive';
+    table.parentNode.insertBefore(wrapper, table);
+    wrapper.appendChild(table);
   });
 }
 
 /**
- * Process images for better styling based on document analysis
+ * Process images for better styling
  * @param {Document} document - DOM document
- * @param {Object} styleInfo - Style information
  */
-function processImages(document, styleInfo) {
+function processImages(document) {
   const images = document.querySelectorAll("img");
   images.forEach((img) => {
     // Add default class if no class is present
@@ -519,510 +514,428 @@ function processImages(document, styleInfo) {
     if (!img.hasAttribute("alt")) {
       img.setAttribute("alt", "Document image");
     }
+    
+    // Add figure wrapper for better semantics
+    const figure = document.createElement('figure');
+    img.parentNode.insertBefore(figure, img);
+    figure.appendChild(img);
+    
+    // If there's text immediately after, it might be a caption
+    if (img.nextSibling && img.nextSibling.nodeType === 3) {
+      const caption = document.createElement('figcaption');
+      caption.textContent = img.nextSibling.textContent.trim();
+      figure.appendChild(caption);
+      img.nextSibling.remove();
+    }
   });
 }
 
 /**
- * Process language-specific elements based on document analysis
+ * Process language-specific elements
  * @param {Document} document - DOM document
- * @param {Object} styleInfo - Style information
  */
-function processLanguageElements(document, styleInfo) {
+function processLanguageElements(document) {
   // Find elements with dir="rtl" and add class
   const rtlElements = document.querySelectorAll('[dir="rtl"]');
   rtlElements.forEach((el) => {
     el.classList.add("docx-rtl");
   });
   
-  // Apply document-specific language settings if available
-  if (styleInfo.settings?.rtlGutter) {
-    document.body.dir = "rtl";
-    document.body.classList.add("docx-rtl");
+  // Look for non-Latin scripts and add appropriate language attributes
+  const allTextNodes = [];
+  
+  function collectTextNodes(node) {
+    if (node.nodeType === 3) { // TEXT_NODE
+      allTextNodes.push(node);
+    } else {
+      for (let i = 0; i < node.childNodes.length; i++) {
+        collectTextNodes(node.childNodes[i]);
+      }
+    }
   }
+  
+  collectTextNodes(document.body);
+  
+  // Check for scripts and add language attributes
+  const cyrillicRegex = /[\u0400-\u04FF]/;
+  const chineseRegex = /[\u4E00-\u9FFF]/;
+  const arabicRegex = /[\u0600-\u06FF]/;
+  
+  allTextNodes.forEach(textNode => {
+    const text = textNode.nodeValue;
+    const parent = textNode.parentNode;
+    
+    if (cyrillicRegex.test(text) && !parent.hasAttribute('lang')) {
+      parent.setAttribute('lang', 'ru');
+    } else if (chineseRegex.test(text) && !parent.hasAttribute('lang')) {
+      parent.setAttribute('lang', 'zh');
+    } else if (arabicRegex.test(text) && !parent.hasAttribute('lang')) {
+      parent.setAttribute('lang', 'ar');
+      if (!parent.hasAttribute('dir')) {
+        parent.setAttribute('dir', 'rtl');
+      }
+    }
+  });
 }
 
 /**
- * Process numbered paragraphs with proper nesting based on document analysis
+ * Process numbered paragraphs with proper nesting for hierarchical lists
  * @param {Document} document - DOM document
- * @param {Object} styleInfo - Style information
  */
-function processNestedNumberedParagraphs(document, styleInfo) {
-  const paragraphs = document.querySelectorAll("p");
-
-  // Patterns for identifying different types of paragraph numbering
-  const numberPattern = /^\s*(\d+)\.(.+)$/;
-  const alphaPattern = /^\s*([a-z])\.(.+)$/;
-  const romanPattern = /^\s*([ivx]+)\.(.+)$/;
-
-  // Use document structure analysis to find special sections
-  const specialSections = styleInfo.documentStructure?.specialSections || [];
-  const rationaleSections = specialSections.filter(section => 
-    section.type === 'rationale');
-
-  // Track processed items to avoid duplicates
-  const processedTexts = new Set();
-
-  // Track lists and their hierarchy
-  let mainList = null;
+function processNestedNumberedParagraphs(document) {
+  // First, look for any existing lists (ordered lists) that may be TOC or other structured content
+  const existingLists = document.querySelectorAll('ol.docx-numbered-list, ol.docx-alpha-list');
+  
+  // Process paragraphs that look like they should be part of a numbered list
+  const paragraphs = document.querySelectorAll('p');
+  
+  // Regex patterns for different types of numbering
+  const mainNumberPattern = /^\s*(\d+)\.\s+(.+)$/;
+  const alphaPattern = /^\s*([a-z])\.\s+(.+)$/;
+  const subNumberPattern = /^\s*(\d+\.\d+)\.\s+(.+)$/;
+  
+  // Current list structures
+  let currentMainList = null;
   let currentMainItem = null;
   let currentSubList = null;
-  let lastListType = null;
   let lastMainNumber = 0;
-
-  // Process paragraphs sequentially
+  
+  // Process paragraphs
   for (let i = 0; i < paragraphs.length; i++) {
     const p = paragraphs[i];
+    const text = p.textContent.trim();
     
-    // Skip if p is null or doesn't have text content
-    if (!p || !p.textContent) continue;
+    // Skip if this paragraph is already part of a list
+    if (p.closest('ol, ul')) continue;
     
-    const text = p.textContent;
-    
-    // Skip if we've already processed this exact text
-    if (processedTexts.has(text)) {
-      // Remove the duplicate paragraph
-      if (p.parentNode) {
-        p.parentNode.removeChild(p);
-        i--; // Adjust counter since we removed an element
+    // Skip any rationale paragraphs
+    if (text.startsWith('Rationale for')) continue;
+
+    // Check for main numbered items (1., 2., etc.)
+    let mainMatch = text.match(mainNumberPattern);
+    if (mainMatch) {
+      const number = parseInt(mainMatch[1], 10);
+      const content = mainMatch[2];
+      
+      // If this is a new list or a restart
+      if (!currentMainList || number === 1) {
+        currentMainList = document.createElement('ol');
+        currentMainList.className = 'docx-numbered-list';
+        p.parentNode.insertBefore(currentMainList, p);
       }
+      
+      // Create the list item
+      currentMainItem = document.createElement('li');
+      currentMainItem.textContent = content;
+      currentMainItem.setAttribute('data-prefix', number);
+      
+      // Add the item to the list
+      currentMainList.appendChild(currentMainItem);
+      
+      // Remember this number
+      lastMainNumber = number;
+      
+      // Reset sublist tracking
+      currentSubList = null;
+      
+      // Remove the original paragraph
+      p.parentNode.removeChild(p);
+      i--; // Adjust counter
+      
       continue;
     }
     
-    // Check for "Rationale for Resolution" special case
-    if (text.includes('Rationale for Resolution')) {
-      p.classList.add('docx-rationale');
-      processedTexts.add(text);
+    // Check for alpha subitems (a., b., etc.)
+    let alphaMatch = text.match(alphaPattern);
+    if (alphaMatch && currentMainItem) {
+      const letter = alphaMatch[1];
+      const content = alphaMatch[2];
+      
+      // If we don't have a sublist for this main item yet
+      if (!currentSubList) {
+        currentSubList = document.createElement('ol');
+        currentSubList.className = 'docx-alpha-list';
+        currentMainItem.appendChild(currentSubList);
+      }
+      
+      // Create the sub-item
+      const subItem = document.createElement('li');
+      subItem.textContent = content;
+      subItem.setAttribute('data-prefix', letter);
+      
+      // Add the sub-item to the sublist
+      currentSubList.appendChild(subItem);
+      
+      // Remove the original paragraph
+      p.parentNode.removeChild(p);
+      i--; // Adjust counter
+      
       continue;
-    }
-    
-    // Check for different numbering patterns
-    let match = null;
-    let listType = null;
-    
-    if (numberPattern.test(text)) {
-      match = text.match(numberPattern);
-      listType = "numbered";
-    } else if (alphaPattern.test(text)) {
-      match = text.match(alphaPattern);
-      listType = "alpha";
-    } else if (romanPattern.test(text)) {
-      match = text.match(romanPattern);
-      listType = "roman";
-    }
-    
-    if (match) {
-      // Extract the number/letter and content
-      const prefix = match[1];
-      const content = match[2].trim();
-      
-      // Add to processed texts set
-      processedTexts.add(text);
-      
-      // Check if this is a TOC item
-      const isTocItem = text.includes("\t") || text.includes("   ") || /\d+$/.test(text);
-      
-      // Handle main numbered items (1., 2., etc.)
-      if (listType === "numbered") {
-        // If we don't have a main list yet, or if this is a new main list
-        if (!mainList || (lastListType === "numbered" && parseInt(prefix) === 1)) {
-          // Create a new main list
-          mainList = document.createElement("ol");
-          mainList.className = "docx-numbered-list";
-          
-          if (isTocItem) {
-            mainList.classList.add("docx-toc-list");
-          }
-          
-          // Insert the list before the paragraph
-          if (p.parentNode) {
-            p.parentNode.insertBefore(mainList, p);
-          } else {
-            console.log("Warning: Cannot insert list, paragraph has no parent");
-            continue;
-          }
-        }
-        
-        // Create the list item
-        currentMainItem = document.createElement("li");
-        currentMainItem.textContent = content;
-        currentMainItem.setAttribute("data-prefix", prefix);
-        
-        if (isTocItem) {
-          currentMainItem.classList.add("docx-toc-item");
-          
-          // Format TOC item with page number
-          const pageNumMatch = content.match(/(\d+)$/);
-          if (pageNumMatch) {
-            const textPart = content
-              .substring(0, content.lastIndexOf(pageNumMatch[1]))
-              .trim();
-            const pageNum = pageNumMatch[1];
-            
-            // Clear the content and recreate with spans
-            currentMainItem.textContent = "";
-            
-            const textSpan = document.createElement("span");
-            textSpan.classList.add("docx-toc-text");
-            textSpan.textContent = textPart;
-            
-            const dotsSpan = document.createElement("span");
-            dotsSpan.classList.add("docx-toc-dots");
-            
-            const pageSpan = document.createElement("span");
-            pageSpan.classList.add("docx-toc-pagenum");
-            pageSpan.textContent = pageNum;
-            
-            currentMainItem.appendChild(textSpan);
-            currentMainItem.appendChild(dotsSpan);
-            currentMainItem.appendChild(pageSpan);
-          }
-        }
-        
-        // Add the item to the main list
-        mainList.appendChild(currentMainItem);
-        
-        // Reset sub-list tracking
-        currentSubList = null;
-        lastMainNumber = parseInt(prefix);
-        
-        // Remove the original paragraph
-        if (p.parentNode) {
-          p.parentNode.removeChild(p);
-          i--; // Adjust counter since we removed an element
-        }
-      }
-      // Handle alpha items (a., b., etc.) as sub-items
-      else if (listType === "alpha") {
-        // If we have a main item to attach to
-        if (currentMainItem) {
-          // If we don't have a sub-list for this main item yet
-          if (!currentSubList) {
-            // Create a new sub-list
-            currentSubList = document.createElement("ol");
-            currentSubList.className = "docx-alpha-list";
-            
-            if (isTocItem) {
-              currentSubList.classList.add("docx-toc-list");
-            }
-            
-            // Append the sub-list to the current main item
-            currentMainItem.appendChild(currentSubList);
-          }
-          
-          // Create the sub-item
-          const subItem = document.createElement("li");
-          subItem.textContent = content;
-          subItem.setAttribute("data-prefix", prefix);
-          
-          if (isTocItem) {
-            subItem.classList.add("docx-toc-item");
-            
-            // Format TOC item with page number
-            const pageNumMatch = content.match(/(\d+)$/);
-            if (pageNumMatch) {
-              const textPart = content
-                .substring(0, content.lastIndexOf(pageNumMatch[1]))
-                .trim();
-              const pageNum = pageNumMatch[1];
-              
-              // Clear the content and recreate with spans
-              subItem.textContent = "";
-              
-              const textSpan = document.createElement("span");
-              textSpan.classList.add("docx-toc-text");
-              textSpan.textContent = textPart;
-              
-              const dotsSpan = document.createElement("span");
-              dotsSpan.classList.add("docx-toc-dots");
-              
-              const pageSpan = document.createElement("span");
-              pageSpan.classList.add("docx-toc-pagenum");
-              pageSpan.textContent = pageNum;
-              
-              subItem.appendChild(textSpan);
-              subItem.appendChild(dotsSpan);
-              subItem.appendChild(pageSpan);
-            }
-          }
-          
-          // Add the sub-item to the sub-list
-          currentSubList.appendChild(subItem);
-          
-          // Remove the original paragraph
-          if (p.parentNode) {
-            p.parentNode.removeChild(p);
-            i--; // Adjust counter since we removed an element
-          }
-        }
-        // If we don't have a main item to attach to, create a standalone alpha list
-        else {
-          // This is a special case where we have alpha items without a preceding numbered item
-          // Create a new list if needed
-          if (!currentSubList || lastListType !== "alpha") {
-            currentSubList = document.createElement("ol");
-            currentSubList.className = "docx-alpha-list";
-            
-            if (isTocItem) {
-              currentSubList.classList.add("docx-toc-list");
-            }
-            
-            // Insert the list before the paragraph
-            if (p.parentNode) {
-              p.parentNode.insertBefore(currentSubList, p);
-            } else {
-              console.log("Warning: Cannot insert list, paragraph has no parent");
-              continue;
-            }
-          }
-          
-          // Create the list item
-          const item = document.createElement("li");
-          item.textContent = content;
-          item.setAttribute("data-prefix", prefix);
-          
-          if (isTocItem) {
-            item.classList.add("docx-toc-item");
-            
-            // Format TOC item with page number
-            const pageNumMatch = content.match(/(\d+)$/);
-            if (pageNumMatch) {
-              const textPart = content
-                .substring(0, content.lastIndexOf(pageNumMatch[1]))
-                .trim();
-              const pageNum = pageNumMatch[1];
-              
-              // Clear the content and recreate with spans
-              item.textContent = "";
-              
-              const textSpan = document.createElement("span");
-              textSpan.classList.add("docx-toc-text");
-              textSpan.textContent = textPart;
-              
-              const dotsSpan = document.createElement("span");
-              dotsSpan.classList.add("docx-toc-dots");
-              
-              const pageSpan = document.createElement("span");
-              pageSpan.classList.add("docx-toc-pagenum");
-              pageSpan.textContent = pageNum;
-              
-              item.appendChild(textSpan);
-              item.appendChild(dotsSpan);
-              item.appendChild(pageSpan);
-            }
-          }
-          
-          // Add the item to the list
-          currentSubList.appendChild(item);
-          
-          // Remove the original paragraph
-          if (p.parentNode) {
-            p.parentNode.removeChild(p);
-            i--; // Adjust counter since we removed an element
-          }
-        }
-      }
-      // Handle roman numerals similarly to alpha items
-      else if (listType === "roman") {
-        // Similar handling as alpha items...
-        // (Implementation would be similar to alpha items)
-      }
-      
-      // Update last list type
-      lastListType = listType;
-    }
-    // Handle non-list paragraphs
-    else {
-      // Add to processed texts set for non-list paragraphs too
-      processedTexts.add(text);
-      
-      // If this is a paragraph that separates list sections but doesn't break the overall list
-      // (like a "Rationale for Resolution" paragraph between list items)
-      if (text.trim().startsWith("Rationale for") && mainList) {
-        // Don't reset list tracking, apply special styling
-        p.classList.add("docx-rationale");
-      }
-      // Otherwise, reset list tracking for non-list paragraphs
-      else {
-        // Reset all list tracking
-        if (lastListType !== null) {
-          lastListType = null;
-          
-          // Only reset current items if this isn't a special case paragraph
-          if (!text.trim().startsWith("Rationale for")) {
-            currentMainItem = null;
-            currentSubList = null;
-          }
-        }
-      }
     }
   }
 }
 
 /**
- * Detect and style TOC and index elements based on document analysis
- * @param {Document} document - DOM document
- * @param {Object} styleInfo - Style information
+ * Generate additional CSS for TOC and list styling
+ * @returns {string} - Additional CSS
  */
-function detectAndStyleTocAndIndex(document, styleInfo) {
-  try {
-    // Use TOC information from document analysis
-    const tocInfo = styleInfo.tocStyles || {};
-    const hasToc = tocInfo.hasTableOfContents || styleInfo.documentStructure?.hasToc;
-    
-    if (hasToc) {
-      // Look for TOC headings first
-      const headings = Array.from(document.querySelectorAll("h1, h2, h3, p")).filter(
-        el => el.textContent.includes("Table of Contents") || 
-             el.textContent.includes("Contents") ||
-             (el.className && el.className.includes("TOC"))
-      );
-      
-      if (headings.length > 0) {
-        // Style the first matching heading as TOC heading
-        const tocHeading = headings[0];
-        tocHeading.classList.add("docx-toc-heading");
-        
-        // Apply any specific TOC heading styles from the document
-        if (tocInfo.tocHeadingStyle) {
-          if (tocInfo.tocHeadingStyle.fontSize) {
-            tocHeading.style.fontSize = tocInfo.tocHeadingStyle.fontSize;
-          }
-          if (tocInfo.tocHeadingStyle.fontFamily) {
-            tocHeading.style.fontFamily = tocInfo.tocHeadingStyle.fontFamily;
-          }
-        }
-      }
-      
-      // Now look for paragraphs with tab characters and page numbers that follow a TOC heading
-      if (headings.length > 0) {
-        const tocHeading = headings[0];
-        let nextElement = tocHeading.nextElementSibling;
-        
-        // Skip until we find a paragraph or list
-        while (nextElement && 
-              nextElement.nodeName !== 'P' && 
-              nextElement.nodeName !== 'OL' &&
-              nextElement.nodeName !== 'UL') {
-          nextElement = nextElement.nextElementSibling;
-        }
-        
-        // If we found a list, we've already processed it as a TOC list
-        if (nextElement && (nextElement.nodeName === 'OL' || nextElement.nodeName === 'UL')) {
-          // If it doesn't already have the TOC list class, add it
-          if (!nextElement.classList.contains('docx-toc-list')) {
-            nextElement.classList.add('docx-toc-list');
-          }
-        }
-        // If we found a paragraph, check if it's a potential TOC entry
-        else if (nextElement && nextElement.nodeName === 'P') {
-          const text = nextElement.textContent;
-          
-          // Check if it might be a TOC entry (has tabs, spaces, or ends with a number)
-          if (text.includes("\t") || text.includes("   ") || /\d+\s*$/.test(text)) {
-            // Create a container for TOC entries
-            const tocContainer = document.createElement('div');
-            tocContainer.classList.add('docx-toc');
-            
-            // Insert the container before the first TOC entry
-            nextElement.parentNode.insertBefore(tocContainer, nextElement);
-            
-            // Process potential TOC entries
-            let currentElement = nextElement;
-            let entryCount = 0;
-            
-            while (currentElement && entryCount < 50) { // Limit to avoid infinite loop
-              const text = currentElement.textContent;
-              
-              // Check if this still looks like a TOC entry
-              if (text.includes("\t") || text.includes("   ") || /\d+\s*$/.test(text)) {
-                // Create a TOC entry element
-                const entry = document.createElement('div');
-                entry.classList.add('docx-toc-entry');
-                
-                // Determine the level based on indentation or numbering
-                let level = 1;
-                if (text.match(/^\s*[a-z]\./)) {
-                  level = 2; // Alpha entries are level 2
-                } else if (text.trim().match(/^\d+\.\d+/)) {
-                  level = 2; // Entries with format 1.1 are level 2
-                }
-                
-                entry.classList.add(`docx-toc-level-${level}`);
-                
-                // Extract text and page number
-                const pageMatch = text.match(/(.*?)(\d+)\s*$/);
-                if (pageMatch) {
-                  const content = pageMatch[1].trim();
-                  const pageNum = pageMatch[2].trim();
-                  
-                  // Create formatted entry
-                  const textSpan = document.createElement('span');
-                  textSpan.classList.add('docx-toc-text');
-                  textSpan.textContent = content;
-                  
-                  const dotsSpan = document.createElement('span');
-                  dotsSpan.classList.add('docx-toc-dots');
-                  
-                  const pageSpan = document.createElement('span');
-                  pageSpan.classList.add('docx-toc-pagenum');
-                  pageSpan.textContent = pageNum;
-                  
-                  entry.appendChild(textSpan);
-                  entry.appendChild(dotsSpan);
-                  entry.appendChild(pageSpan);
-                } else {
-                  // Just use the text if we can't extract a page number
-                  entry.textContent = text;
-                }
-                
-                // Add the entry to the TOC container
-                tocContainer.appendChild(entry);
-                
-                // Save the next element before removing the current one
-                const nextToProcess = currentElement.nextElementSibling;
-                
-                // Remove the original paragraph
-                currentElement.parentNode.removeChild(currentElement);
-                
-                // Move to the next element
-                currentElement = nextToProcess;
-                entryCount++;
-              } else {
-                // Break if we've found a non-TOC element
-                break;
-              }
-            }
-          }
-        }
-      }
-    }
-    
-    // Process Index elements
-    // Look for Index headings
-    const indexHeadings = Array.from(document.querySelectorAll("h1, h2, h3, p")).filter(
-      el => el.textContent.includes("Index")
-    );
-    
-    if (indexHeadings.length > 0) {
-      // Style the first matching heading as Index heading
-      const indexHeading = indexHeadings[0];
-      indexHeading.classList.add("docx-index-heading");
-      
-      // Create a placeholder for the index if needed
-      if (indexHeading.nextElementSibling && 
-          indexHeading.nextElementSibling.nodeName === 'P' &&
-          indexHeading.nextElementSibling.textContent.trim() === '') {
-        const placeholder = document.createElement('p');
-        placeholder.classList.add('docx-placeholder');
-        placeholder.textContent = '** INDEX HERE **';
-        
-        indexHeading.parentNode.insertBefore(placeholder, indexHeading.nextElementSibling);
-      }
-    }
-    
-  } catch (error) {
-    console.error("Error in detectAndStyleTocAndIndex:", error.message);
+function generateAdditionalCss() {
+  return `
+/* Document defaults */
+body {
+  font-family: "Cambria", sans-serif;
+  font-size: 12pt;
+  line-height: 1.15;
+  margin: 20px;
+  padding: 0;
+  color: #333;
+  background-color: #fff;
+}
+
+/* For better mobile readability */
+@media (max-width: 768px) {
+  body {
+    margin: 10px;
+    font-size: 14pt;
   }
+}
+
+/* ICANN Document Specific Styling */
+.icann-document h1, 
+.icann-document h2, 
+.icann-document h3, 
+.icann-document h4, 
+.icann-document h5, 
+.icann-document h6 {
+  color: #345A8A;
+  font-family: "Cambria", sans-serif;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.icann-document h1 {
+  font-size: 16pt;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.2em;
+}
+
+.icann-document h2 {
+  font-size: 14pt;
+}
+
+.icann-document h3 {
+  font-size: 13pt;
+  font-style: italic;
+}
+
+/* Heading numbers */
+.heading-number {
+  font-weight: bold;
+  color: #345A8A;
+}
+
+/* Improved TOC styling */
+.toc-container {
+  margin: 1.5em 0;
+  border: 1px solid #eee;
+  padding: 1em;
+  background-color: #f9f9f9;
+}
+
+.toc-heading {
+  margin-top: 1em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.toc-entry {
+  display: flex !important;
+  align-items: baseline;
+  margin-bottom: 0.25em;
+  line-height: 1.5;
+}
+
+.toc-entry .docx-toc-text {
+  flex-grow: 0;
+  flex-shrink: 1;
+  margin-right: 0.5em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 80%;
+}
+
+.toc-entry .docx-toc-dots {
+  flex-grow: 1;
+  margin: 0 0.5em;
+  height: 1px;
+  border-bottom: 1px dotted #999;
+}
+
+.toc-entry .docx-toc-pagenum {
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 1.5em;
+  font-weight: normal;
+}
+
+/* Improved list styling */
+ol.docx-numbered-list {
+  counter-reset: item;
+  list-style-type: none;
+  padding-left: 0;
+  margin: 1em 0;
+}
+
+ol.docx-numbered-list > li {
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.5em;
+  line-height: 1.4;
+}
+
+ol.docx-numbered-list > li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix) ".";
+  font-weight: bold;
+  color: #345A8A;
+}
+
+ol.docx-alpha-list {
+  counter-reset: alpha;
+  list-style-type: none;
+  padding-left: 0;
+  margin: 0.5em 0 0.5em 1.5em;
+}
+
+ol.docx-alpha-list > li {
+  position: relative;
+  padding-left: 2em;
+  margin-bottom: 0.3em;
+  line-height: 1.4;
+}
+
+ol.docx-alpha-list > li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix) ".";
+  font-weight: bold;
+  color: #345A8A;
+}
+
+/* Special formatting for Rationale sections */
+.docx-rationale {
+  font-style: italic;
+  margin: 0.5em 0 1em 2em;
+  color: #666;
+  border-left: 3px solid #ddd;
+  padding-left: 1em;
+}
+
+/* Table improvements */
+.table-responsive {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+table.docx-table-default {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+}
+
+table.docx-table-default th,
+table.docx-table-default td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  vertical-align: top;
+}
+
+table.docx-table-default th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+  text-align: left;
+}
+
+/* Image handling */
+figure {
+  margin: 1.5em 0;
+  text-align: center;
+}
+
+.docx-image {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+figcaption {
+  font-style: italic;
+  color: #666;
+  margin-top: 0.5em;
+  font-size: 0.9em;
+}
+
+/* Right-to-left text */
+.docx-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+/* Language-specific styling */
+[lang="zh"] {
+  font-family: "SimSun", "NSimSun", "Microsoft YaHei", sans-serif;
+}
+
+[lang="ru"] {
+  font-family: "Arial", sans-serif;
+}
+
+[lang="ar"] {
+  font-family: "Tahoma", "Arial", sans-serif;
+}
+
+/* Print styling */
+@media print {
+  body {
+    font-size: 10pt;
+    margin: 0;
+  }
+  
+  .toc-container {
+    border: none;
+    background: none;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+    page-break-inside: avoid;
+  }
+  
+  img, table, figure {
+    page-break-inside: avoid;
+  }
+  
+  .table-responsive {
+    overflow-x: visible;
+  }
+}
+
+/* Utility styles */
+.docx-underline { text-decoration: underline; }
+.docx-strike { text-decoration: line-through; }
+.docx-tab { display: inline-block; width: 36pt; }
+.docx-placeholder { 
+  font-weight: bold; 
+  text-align: center; 
+  padding: 15px; 
+  margin: 20px 0; 
+  background-color: #f0f0f0; 
+  border: 1px dashed #999; 
+  border-radius: 5px; 
+}
+`;
 }
 
 module.exports = {

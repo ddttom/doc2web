@@ -28,6 +28,8 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Supports Unicode and multilingual content
 - Processes single files, directories, or file lists
 - Preserves original directory structures in output
+- Accurately extracts and renders Table of Contents (TOC) elements
+- Maintains hierarchical list structures with proper nesting and numbering
 
 ## Installation
 
@@ -191,6 +193,7 @@ For each processed DOCX file, doc2web generates:
 - Contains styles extracted from the document
 - Implements DOCX styling in web-friendly format
 - Linked from the HTML file
+- Includes specific styles for TOC and hierarchical lists
 
 ### Images Folder
 
@@ -233,8 +236,24 @@ doc2web intelligently detects and handles navigation elements:
 - Properly decorates these elements with appropriate styling in the output
 - In HTML output: Elements are styled with the appropriate CSS classes
 - In Markdown output: Elements are formatted with proper structure
+- Preserves TOC leader lines (dots, dashes, or underscores)
+- Maintains proper alignment of page numbers
+- Applies appropriate indentation for different TOC levels
 
 This feature prevents unnecessary duplication of navigation elements in web formats while maintaining their visual structure, improving readability and organization.
+
+### Hierarchical List Handling
+
+doc2web provides advanced handling of hierarchical lists:
+
+- Maintains proper nesting of multi-level lists (1., a., b., c., 2., etc.)
+- Preserves numbering formats (decimal, alphabetic, roman numerals)
+- Correctly indents sub-items based on their level
+- Handles special cases like "Rationale for Resolution" paragraphs between list items
+- Ensures consistent numbering throughout the document
+- Applies appropriate styling for different list levels
+
+The enhanced list handling ensures that complex document structures are accurately preserved in both HTML and Markdown output.
 
 ## Multilingual Support
 
@@ -346,11 +365,21 @@ For very large documents that cause memory issues:
 NODE_OPTIONS=--max-old-space-size=4096 node doc2web.js large-document.docx
 ```
 
+#### TOC and List Structure Issues
+
+If you notice problems with Table of Contents formatting or hierarchical list structures:
+
+1. Ensure you're using the latest version (v1.0.6 or later)
+2. Check that the original document has a properly formatted TOC
+3. For complex lists, make sure the document uses Word's built-in list formatting rather than manual numbering
+
 ### Error Messages
 
 - **"Error: File not found"**: Check the file path and ensure the file exists.
 - **"Error: Not a .docx document"**: The file must be in DOCX format.
 - **"Error processing document"**: The document may be corrupted or password-protected.
+- **"Error parsing DOCX styles"**: The document may have non-standard or corrupted style definitions.
+- **"Error selecting nodes with expression"**: There may be issues with the XML structure in the DOCX file.
 
 ## FAQ
 
@@ -374,7 +403,10 @@ A: Not yet, all outputs go to the `./output` directory.
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
 
 **Q: How does doc2web handle Table of Contents and Index sections?**  
-A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats.
+A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. The tool preserves TOC leader lines, page numbers, and proper indentation for different levels.
+
+**Q: How does doc2web handle hierarchical lists?**  
+A: The tool maintains proper nesting of multi-level lists, preserves numbering formats, correctly indents sub-items, and handles special cases like "Rationale for Resolution" paragraphs between list items.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.
@@ -389,6 +421,9 @@ A: Yes, it should work with any standard DOCX files, including those created by 
 
 **Q: Is doc2web available as an npm package?**  
 A: Not yet, but you can use it directly from the source code.
+
+**Q: How does doc2web extract style information from DOCX files?**  
+A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures.
 
 ---
 
