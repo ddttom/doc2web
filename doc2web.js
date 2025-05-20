@@ -1,4 +1,4 @@
-// doc2web.js
+// doc2web.js - Enhanced version with improved style extraction
 const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
@@ -112,9 +112,11 @@ async function processDocxFile(filePath, options) {
     // Extract images
     await processImages(filePath, imagesDir);
     
-    // Extract styles and convert to styled HTML
+    // Extract styles and convert to styled HTML with improved style extraction
     console.log(`Extracting styled content from "${filePath}"...`);
     const cssFilename = path.basename(outputPaths.cssFile);
+    
+    // Use our enhanced style extractor for better TOC and list handling
     const { html, styles } = await extractAndApplyStyles(filePath, cssFilename);
     
     // Save the HTML with link to external CSS
@@ -298,4 +300,14 @@ async function main() {
 }
 
 // Run the main function
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  processDocxFile,
+  processDirectory,
+  processFileList,
+  getOutputPath,
+  ensureDirectory
+};

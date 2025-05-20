@@ -1,6 +1,7 @@
-// docx-style-parser.js - Extract styles directly from DOCX documents
+// docx-style-parser.js - Enhanced to better extract DOCX styles
 const JSZip = require('jszip');
 const fs = require('fs');
+const { DOMParser } = require('jsdom').JSDOM;
 const xpath = require('xpath');
 const dom = require('xmldom').DOMParser;
 
@@ -14,6 +15,16 @@ const NAMESPACES = {
   wp: 'http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing',
   mc: 'http://schemas.openxmlformats.org/markup-compatibility/2006'
 };
+
+/**
+ * Create an XPath selector with namespaces registered
+ * @param {string} expression - XPath expression
+ * @returns {xpath.XPathSelect} - XPath selector with namespaces
+ */
+function createXPathSelector(expression) {
+  const select = xpath.useNamespaces(NAMESPACES);
+  return select(expression);
+}
 
 /**
  * Select nodes using XPath with namespaces
@@ -58,56 +69,720 @@ async function parseDocxStyles(docxPath) {
     const data = fs.readFileSync(docxPath);
     const zip = await JSZip.loadAsync(data);
     
-    // Extract all relevant files
+    // Extract key files
     const styleXml = await zip.file('word/styles.xml')?.async('string');
     const documentXml = await zip.file('word/document.xml')?.async('string');
     const themeXml = await zip.file('word/theme/theme1.xml')?.async('string');
     const settingsXml = await zip.file('word/settings.xml')?.async('string');
     const numberingXml = await zip.file('word/numbering.xml')?.async('string');
-    const fontTableXml = await zip.file('word/fontTable.xml')?.async('string');
     
-    if (!documentXml) {
-      throw new Error('Invalid DOCX file: missing document.xml');
+    if (!styleXml || !documentXml) {
+      throw new Error('Invalid DOCX file: missing core XML files');
     }
     
     // Parse XML content
+    const styleDoc = new dom().parseFromString(styleXml);
     const documentDoc = new dom().parseFromString(documentXml);
-    const styleDoc = styleXml ? new dom().parseFromString(styleXml) : null;
     const themeDoc = themeXml ? new dom().parseFromString(themeXml) : null;
     const settingsDoc = settingsXml ? new dom().parseFromString(settingsXml) : null;
     const numberingDoc = numberingXml ? new dom().parseFromString(numberingXml) : null;
-    const fontTableDoc = fontTableXml ? new dom().parseFromString(fontTableXml) : null;
     
-    // Extract document information
-    const documentInfo = {
-      styles: styleDoc ? parseStyles(styleDoc) : {},
-      theme: themeDoc ? parseTheme(themeDoc) : { colors: {}, fonts: {} },
-      settings: settingsDoc ? parseSettings(settingsDoc) : {},
-      numbering: numberingDoc ? parseNumbering(numberingDoc) : {},
-      fonts: fontTableDoc ? parseFontTable(fontTableDoc) : {},
-      paragraphs: parseParagraphs(documentDoc),
-      sections: parseSections(documentDoc),
-      tables: parseTables(documentDoc),
-      lists: parseListsFromDocument(documentDoc, numberingDoc),
-      hasRTL: checkForRTL(documentDoc)
+    // Parse styles from XML
+    const styles = parseStyles(styleDoc);
+    
+    // Parse theme (colors, fonts)
+    const theme = parseTheme(themeDoc);
+    
+    // Parse document defaults
+    const documentDefaults = parseDocumentDefaults(styleDoc);
+    
+    // Parse document settings
+    const settings = parseSettings(settingsDoc);
+    
+    // Parse TOC styles (improved)
+    const tocStyles = parseTocStyles(documentDoc, styleDoc);
+    
+    // Parse numbering definitions (improved)
+    const numberingDefs = parseNumberingDefinitions(numberingDoc);
+    
+    // Extract document structure (improved)
+    const documentStructure = analyzeDocumentStructure(documentDoc, numberingDoc);
+    
+    // Return combined style information
+    return {
+      styles,
+      theme,
+      documentDefaults,
+      settings,
+      tocStyles,
+      numberingDefs,
+      documentStructure
     };
-    
-    return documentInfo;
   } catch (error) {
     console.error('Error parsing DOCX styles:', error);
-    return { 
-      styles: {}, 
-      theme: { colors: {}, fonts: {} }, 
-      settings: {},
-      numbering: {},
-      fonts: {},
-      paragraphs: [],
-      sections: [],
-      tables: [],
-      lists: [],
-      hasRTL: false
-    };
+    // Return default style info if parsing fails
+    return getDefaultStyleInfo();
   }
+}
+
+/**
+ * IMPROVED: Enhanced TOC parsing to better capture leader lines and formatting
+ * @param {Document} documentDoc - Document XML
+ * @param {Document} styleDoc - Style XML
+ * @returns {Object} - TOC specific style information
+ */
+function parseTocStyles(documentDoc, styleDoc) {
+  const tocStyles = {
+    hasTableOfContents: false,
+    tocHeadingStyle: {},
+    tocEntryStyles: [],
+    leaderStyle: {
+      character: '.',
+      spacesBetween: 3,
+      position: 0
+    }
+  };
+  
+  try {
+    // Check for TOC field
+    const tocFieldNodes = selectNodes("//w:fldChar[@w:fldCharType='begin']/following-sibling::w:instrText[contains(., 'TOC')]", documentDoc);
+    tocStyles.hasTableOfContents = tocFieldNodes.length > 0;
+    
+    if (tocStyles.hasTableOfContents) {
+      // Extract TOC field properties
+      for (const tocNode of tocFieldNodes) {
+        const instrText = tocNode.textContent || '';
+        
+        // Extract leader character if specified
+        const leaderMatch = instrText.match(/\\[a-z]\s+([\.\_\-])/);
+        if (leaderMatch) {
+          tocStyles.leaderStyle.character = leaderMatch[1];
+        }
+        
+        // Extract heading levels if specified
+        const levelMatch = instrText.match(/\\o\s+"([1-9])"-"([1-9])"/);
+        if (levelMatch) {
+          tocStyles.startLevel = parseInt(levelMatch[1], 10);
+          tocStyles.endLevel = parseInt(levelMatch[2], 10);
+        }
+      }
+    }
+    
+    // Look for TOC styles in the style definitions - improved to catch more TOC styles
+    const tocStyleNodes = selectNodes("//w:style[contains(@w:styleId, 'TOC') or contains(w:name/@w:val, 'TOC') or contains(w:name/@w:val, 'Contents')]", styleDoc);
+    
+    tocStyleNodes.forEach((node, index) => {
+      const styleId = node.getAttribute('w:styleId');
+      const nameNode = selectSingleNode("w:name", node);
+      const name = nameNode ? nameNode.getAttribute('w:val') : styleId;
+      
+      // Parse specific style properties
+      const pPrNode = selectSingleNode("w:pPr", node);
+      const rPrNode = selectSingleNode("w:rPr", node);
+      
+      const style = {
+        id: styleId,
+        name,
+        indentation: {},
+        fontSize: null,
+        fontFamily: null,
+        tabs: [] // Enhanced to store tab information
+      };
+      
+      // Extract paragraph properties
+      if (pPrNode) {
+        // Get indentation
+        const indNode = selectSingleNode("w:ind", pPrNode);
+        if (indNode) {
+          const left = indNode.getAttribute('w:left');
+          const hanging = indNode.getAttribute('w:hanging');
+          const firstLine = indNode.getAttribute('w:firstLine');
+          
+          if (left) style.indentation.left = convertTwipToPt(left);
+          if (hanging) style.indentation.hanging = convertTwipToPt(hanging);
+          if (firstLine) style.indentation.firstLine = convertTwipToPt(firstLine);
+        }
+        
+        // Get tab stops - IMPROVED to handle more tab types
+        const tabsNode = selectSingleNode("w:tabs", pPrNode);
+        if (tabsNode) {
+          const tabNodes = selectNodes("w:tab", tabsNode);
+          
+          tabNodes.forEach(tabNode => {
+            const pos = tabNode.getAttribute('w:pos');
+            const val = tabNode.getAttribute('w:val');
+            const leader = tabNode.getAttribute('w:leader');
+            
+            if (pos && val) {
+              const tabPosition = convertTwipToPt(pos);
+              style.tabs.push({
+                position: tabPosition,
+                type: val,
+                leader: leader || 'none'
+              });
+              
+              // If we find a right-aligned tab with leader, use it for TOC dots
+              if (val === 'right' && (leader === 'dot' || leader === '1')) {
+                tocStyles.leaderStyle.character = '.';
+                tocStyles.leaderStyle.position = tabPosition;
+              }
+            }
+          });
+        }
+      }
+      
+      // Extract text properties
+      if (rPrNode) {
+        // Font size
+        const szNode = selectSingleNode("w:sz", rPrNode);
+        if (szNode) {
+          const size = parseInt(szNode.getAttribute('w:val'), 10) || 22; // Default 11pt
+          style.fontSize = (size / 2) + 'pt';
+        }
+        
+        // Font family
+        const fontNode = selectSingleNode("w:rFonts", rPrNode);
+        if (fontNode) {
+          style.fontFamily = fontNode.getAttribute('w:ascii') || 
+                           fontNode.getAttribute('w:hAnsi') || 
+                           'Calibri';
+        }
+      }
+      
+      // Determine if this is a TOC heading or entry style
+      if (name.includes('Heading') || styleId === 'TOCHeading') {
+        tocStyles.tocHeadingStyle = style;
+      } else {
+        // Extract level info from the style ID if possible
+        const levelMatch = styleId.match(/TOC(\d+)/);
+        if (levelMatch) {
+          style.level = parseInt(levelMatch[1], 10);
+        } else {
+          // Default to sequential level based on order
+          style.level = index + 1;
+        }
+        
+        tocStyles.tocEntryStyles.push(style);
+      }
+    });
+    
+    // Sort TOC entry styles by level
+    tocStyles.tocEntryStyles.sort((a, b) => a.level - b.level);
+    
+    // IMPROVED: Scan document for actual TOC entries to get better tab/dot information
+    const paragraphNodes = selectNodes("//w:p", documentDoc);
+    let inTocSection = false;
+    
+    for (let i = 0; i < paragraphNodes.length; i++) {
+      const p = paragraphNodes[i];
+      
+      // Check if this is a TOC heading paragraph
+      const pStyle = selectSingleNode("w:pPr/w:pStyle", p);
+      const styleId = pStyle ? pStyle.getAttribute('w:val') : '';
+      
+      // Start of TOC detection
+      if (styleId === 'TOCHeading' || styleId.startsWith('TOC') || 
+          (selectSingleNode(".//w:t[contains(text(), 'Table of Contents')]", p) !== null)) {
+        inTocSection = true;
+        continue;
+      }
+      
+      // If we're in TOC section, analyze the paragraph for tab stops and dots
+      if (inTocSection) {
+        // Get text content to check if it looks like TOC entry
+        const textNodes = selectNodes(".//w:t", p);
+        let text = '';
+        textNodes.forEach(t => text += t.textContent || '');
+        
+        // Check if this paragraph has page number pattern (text....number)
+        const pageNumMatch = text.match(/^(.*?)[\.\s]*(\d+)$/);
+        
+        if (pageNumMatch) {
+          // This looks like a TOC entry with page number
+          const tabsNode = selectSingleNode("w:pPr/w:tabs", p);
+          
+          if (tabsNode) {
+            const rightTab = selectSingleNode("w:tab[@w:val='right']", tabsNode);
+            if (rightTab) {
+              const leader = rightTab.getAttribute('w:leader');
+              const pos = rightTab.getAttribute('w:pos');
+              
+              if (leader) {
+                tocStyles.leaderStyle.character = leader === '1' ? '.' : 
+                                              leader === '2' ? '-' : 
+                                              leader === '3' ? '_' : '.';
+              }
+              
+              if (pos) {
+                tocStyles.leaderStyle.position = convertTwipToPt(pos);
+              }
+            }
+          }
+        } else if (text.trim() === '' || styleId === 'Normal') {
+          // Empty line might indicate end of TOC
+          inTocSection = false;
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error parsing TOC styles:', error);
+  }
+  
+  return tocStyles;
+}
+
+/**
+ * IMPROVED: Enhanced numbering definition parsing to capture more details
+ * @param {Document} numberingDoc - Numbering XML document
+ * @returns {Object} - Numbering definitions
+ */
+function parseNumberingDefinitions(numberingDoc) {
+  const numberingDefs = {
+    abstractNums: {},
+    nums: {},
+    numIdMap: {} // Maps numId to abstractNumId for quicker lookup
+  };
+  
+  if (!numberingDoc) {
+    return numberingDefs;
+  }
+  
+  try {
+    // Parse abstract numbering definitions
+    const abstractNumNodes = selectNodes("//w:abstractNum", numberingDoc);
+    
+    abstractNumNodes.forEach(node => {
+      const id = node.getAttribute('w:abstractNumId');
+      if (!id) return;
+      
+      const abstractNum = {
+        id,
+        levels: {}
+      };
+      
+      // Parse level definitions with enhanced property extraction
+      const levelNodes = selectNodes("w:lvl", node);
+      levelNodes.forEach(lvlNode => {
+        const ilvl = lvlNode.getAttribute('w:ilvl');
+        if (ilvl === null) return;
+        
+        const level = {
+          level: parseInt(ilvl, 10),
+          format: 'decimal', // Default
+          text: '%1.',      // Default
+          alignment: 'left', // Default
+          indentation: {},
+          isLegal: false,  // Added property
+          textFormat: '',   // Added property for display
+          restart: null,    // Added property
+          start: 1          // Default start value
+        };
+        
+        // Get numbering format (decimal, lowerLetter, upperLetter, etc.)
+        const numFmtNode = selectSingleNode("w:numFmt", lvlNode);
+        if (numFmtNode) {
+          level.format = numFmtNode.getAttribute('w:val') || 'decimal';
+        }
+        
+        // Get level text (how the number appears)
+        const lvlTextNode = selectSingleNode("w:lvlText", lvlNode);
+        if (lvlTextNode) {
+          level.text = lvlTextNode.getAttribute('w:val') || '%1.';
+          
+          // Analyze text format for display
+          if (level.text) {
+            // Store raw format for later use
+            level.textFormat = level.text;
+            
+            // Replace placeholders with computed values for CSS content property
+            let cssText = level.text
+              .replace(/%(\d+)/g, 'counter(item$1)')
+              .replace(/^\s+|\s+$/g, '');
+            
+            // Add specific handling for common formats
+            if (level.format === 'decimal') {
+              // No transformation needed for decimal
+            } else if (level.format === 'lowerLetter') {
+              // a, b, c format
+              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, lower-alpha)');
+            } else if (level.format === 'upperLetter') {
+              // A, B, C format
+              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, upper-alpha)');
+            } else if (level.format === 'lowerRoman') {
+              // i, ii, iii format
+              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, lower-roman)');
+            } else if (level.format === 'upperRoman') {
+              // I, II, III format
+              cssText = cssText.replace(/counter\(item(\d+)\)/g, 'counter(item$1, upper-roman)');
+            }
+            
+            level.cssText = cssText;
+          }
+        }
+        
+        // Get if legal style numbering
+        const isLegalNode = selectSingleNode("w:isLgl", lvlNode);
+        if (isLegalNode) {
+          level.isLegal = isLegalNode.getAttribute('w:val') === '1';
+        }
+        
+        // Get alignment
+        const alignmentNode = selectSingleNode("w:lvlJc", lvlNode);
+        if (alignmentNode) {
+          level.alignment = alignmentNode.getAttribute('w:val') || 'left';
+        }
+        
+        // Get indentation - IMPROVED with more detail
+        const indentNode = selectSingleNode("w:pPr/w:ind", lvlNode);
+        if (indentNode) {
+          const left = indentNode.getAttribute('w:left');
+          const hanging = indentNode.getAttribute('w:hanging');
+          const firstLine = indentNode.getAttribute('w:firstLine');
+          
+          if (left) level.indentation.left = convertTwipToPt(left);
+          if (hanging) level.indentation.hanging = convertTwipToPt(hanging);
+          if (firstLine) level.indentation.firstLine = convertTwipToPt(firstLine);
+        }
+        
+        // Get restart information
+        const lvlRestartNode = selectSingleNode("w:lvlRestart", lvlNode);
+        if (lvlRestartNode) {
+          level.restart = parseInt(lvlRestartNode.getAttribute('w:val'), 10);
+        }
+        
+        // Get start value
+        const startNode = selectSingleNode("w:start", lvlNode);
+        if (startNode) {
+          level.start = parseInt(startNode.getAttribute('w:val'), 10) || 1;
+        }
+        
+        abstractNum.levels[ilvl] = level;
+      });
+      
+      numberingDefs.abstractNums[id] = abstractNum;
+    });
+    
+    // Parse numbering instances
+    const numNodes = selectNodes("//w:num", numberingDoc);
+    
+    numNodes.forEach(node => {
+      const id = node.getAttribute('w:numId');
+      if (!id) return;
+      
+      const abstractNumIdNode = selectSingleNode("w:abstractNumId", node);
+      if (!abstractNumIdNode) return;
+      
+      const abstractNumId = abstractNumIdNode.getAttribute('w:val');
+      if (!abstractNumId) return;
+      
+      // Enhanced with level overrides
+      const levelOverrideNodes = selectNodes("w:lvlOverride", node);
+      const overrides = {};
+      
+      levelOverrideNodes.forEach(overrideNode => {
+        const ilvl = overrideNode.getAttribute('w:ilvl');
+        if (ilvl === null) return;
+        
+        const startOverrideNode = selectSingleNode("w:startOverride", overrideNode);
+        if (startOverrideNode) {
+          const startVal = parseInt(startOverrideNode.getAttribute('w:val'), 10);
+          overrides[ilvl] = { start: startVal };
+        }
+        
+        // Check for complete level override
+        const lvlNode = selectSingleNode("w:lvl", overrideNode);
+        if (lvlNode) {
+          // Complete level override - parse it like a regular level
+          if (!overrides[ilvl]) overrides[ilvl] = {};
+          
+          // Get format override
+          const numFmtNode = selectSingleNode("w:numFmt", lvlNode);
+          if (numFmtNode) {
+            overrides[ilvl].format = numFmtNode.getAttribute('w:val');
+          }
+          
+          // Get text override
+          const lvlTextNode = selectSingleNode("w:lvlText", lvlNode);
+          if (lvlTextNode) {
+            overrides[ilvl].text = lvlTextNode.getAttribute('w:val');
+          }
+        }
+      });
+      
+      numberingDefs.nums[id] = {
+        id,
+        abstractNumId,
+        overrides: Object.keys(overrides).length > 0 ? overrides : null
+      };
+      
+      // Add to quick lookup map
+      numberingDefs.numIdMap[id] = abstractNumId;
+    });
+    
+  } catch (error) {
+    console.error('Error parsing numbering definitions:', error);
+  }
+  
+  return numberingDefs;
+}
+
+/**
+ * IMPROVED: Enhanced document structure analysis to capture more details
+ * @param {Document} documentDoc - Document XML
+ * @param {Document} numberingDoc - Numbering XML document for reference
+ * @returns {Object} - Document structure information
+ */
+function analyzeDocumentStructure(documentDoc, numberingDoc) {
+  const structure = {
+    hasToc: false,
+    tocLocation: null,
+    paragraphTypes: {},
+    specialSections: [],
+    lists: [],
+    hasRationale: false,
+    specialParagraphPatterns: [] // Store regex patterns for special paragraph types
+  };
+  
+  try {
+    // Check for TOC field
+    const tocFieldNodes = selectNodes("//w:fldChar[@w:fldCharType='begin']/following-sibling::w:instrText[contains(., 'TOC')]", documentDoc);
+    structure.hasToc = tocFieldNodes.length > 0;
+    
+    // Check for common patterns in paragraphs
+    const paragraphNodes = selectNodes("//w:p", documentDoc);
+    let currentList = null;
+    let currentListId = null;
+    let currentListLevel = -1;
+    
+    // Find patterns for special paragraphs by analyzing the document
+    const textPatterns = {};
+    const specialPhrases = [
+      'Rationale for Resolution',
+      'Whereas,',
+      'Resolved',
+      'RESOLVED'
+    ];
+    
+    paragraphNodes.forEach((p, index) => {
+      // Check for style information
+      const pStyle = selectSingleNode("w:pPr/w:pStyle", p);
+      const styleId = pStyle ? pStyle.getAttribute('w:val') : null;
+      
+      // Check for numbering information
+      const numPr = selectSingleNode("w:pPr/w:numPr", p);
+      const numId = numPr ? selectSingleNode("w:numId", numPr)?.getAttribute('w:val') : null;
+      const ilvl = numPr ? selectSingleNode("w:ilvl", numPr)?.getAttribute('w:val') : null;
+      
+      // Get paragraph text
+      const textNodes = selectNodes(".//w:t", p);
+      let text = '';
+      textNodes.forEach(t => {
+        text += t.textContent || '';
+      });
+      
+      // Check for TOC entries
+      if (text.includes('Table of Contents') || 
+          text.includes('Contents') ||
+          (styleId && styleId.toLowerCase().includes('toc'))) {
+        structure.hasToc = true;
+        structure.tocLocation = index;
+      }
+      
+      // Identify patterns for special paragraphs
+      specialPhrases.forEach(phrase => {
+        if (text.includes(phrase)) {
+          if (!textPatterns[phrase]) {
+            textPatterns[phrase] = { count: 0, indexes: [] };
+          }
+          textPatterns[phrase].count++;
+          textPatterns[phrase].indexes.push(index);
+          
+          // Check for "Rationale" specifically
+          if (phrase === 'Rationale for Resolution') {
+            structure.hasRationale = true;
+            
+            // Add to special sections list
+            structure.specialSections.push({
+              type: 'rationale',
+              index: index,
+              text: text.trim()
+            });
+          }
+        }
+      });
+      
+      // Track style usage
+      if (styleId) {
+        if (!structure.paragraphTypes[styleId]) {
+          structure.paragraphTypes[styleId] = { count: 0, samples: [] };
+        }
+        structure.paragraphTypes[styleId].count++;
+        
+        // Store a few samples of each style for analysis
+        if (structure.paragraphTypes[styleId].samples.length < 3) {
+          structure.paragraphTypes[styleId].samples.push(text.substring(0, 100));
+        }
+      }
+      
+      // Track numbering info for hierarchical lists - IMPROVED to track list structure
+      if (numId && ilvl !== null) {
+        const level = parseInt(ilvl, 10);
+        
+        // Check if this is a new list or continuation
+        if (currentListId !== numId || level === 0) {
+          // Start a new list
+          currentListId = numId;
+          currentList = {
+            id: numId,
+            startIndex: index,
+            items: [],
+            levels: {}
+          };
+          structure.lists.push(currentList);
+        }
+        
+        // Track items at different levels
+        if (!currentList.levels[level]) {
+          currentList.levels[level] = {
+            count: 0,
+            items: []
+          };
+        }
+        
+        currentList.levels[level].count++;
+        currentListLevel = level;
+        
+        // Add this item to the list
+        const listItem = {
+          index: index,
+          level: level,
+          text: text.trim(),
+          hasNumId: !!numId,
+          numId: numId,
+          styleId: styleId
+        };
+        
+        currentList.items.push(listItem);
+        currentList.levels[level].items.push(listItem);
+      } else {
+        // Not a list item - check if it interrupts a list
+        if (currentList && text.trim()) {
+          // Check if this looks like a special paragraph within a list
+          let isSpecial = false;
+          for (const phrase of specialPhrases) {
+            if (text.includes(phrase)) {
+              isSpecial = true;
+              
+              // Add to current list as a special item
+              currentList.items.push({
+                index: index,
+                level: currentListLevel, // Keep same level as previous item
+                text: text.trim(),
+                isSpecial: true,
+                specialType: phrase.split(' ')[0].toLowerCase() // e.g., "rationale", "whereas", "resolved"
+              });
+              break;
+            }
+          }
+          
+          // If not special, and not empty, this might end the list
+          if (!isSpecial && !text.match(/^\s*$/)) {
+            currentList = null;
+            currentListId = null;
+            currentListLevel = -1;
+          }
+        }
+      }
+    });
+    
+    // Analyze patterns and register common special paragraph patterns
+    for (const [phrase, data] of Object.entries(textPatterns)) {
+      if (data.count >= 2) {
+        // This appears to be a recurring pattern
+        let pattern;
+        
+        if (phrase === 'Rationale for Resolution') {
+          pattern = /^Rationale for Resolution/i;
+        } else if (phrase === 'Whereas,') {
+          pattern = /^Whereas,/i;
+        } else if (phrase === 'Resolved' || phrase === 'RESOLVED') {
+          pattern = /^Resolved \([\d\.]+\)/i;
+        }
+        
+        if (pattern) {
+          structure.specialParagraphPatterns.push({
+            type: phrase.split(' ')[0].toLowerCase(),
+            pattern: pattern.toString(),
+            count: data.count
+          });
+        }
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error analyzing document structure:', error);
+  }
+  
+  return structure;
+}
+
+/**
+ * Get default style information if parsing fails
+ * @returns {Object} - Default style information
+ */
+function getDefaultStyleInfo() {
+  return {
+    styles: {
+      paragraph: {},
+      character: {},
+      table: {},
+      numbering: {}
+    },
+    theme: {
+      colors: {},
+      fonts: {
+        major: 'Calibri Light',
+        minor: 'Calibri'
+      }
+    },
+    documentDefaults: {
+      paragraph: {},
+      character: {
+        fontSize: '11pt'
+      }
+    },
+    settings: {
+      defaultTabStop: '720',
+      characterSpacing: 'normal',
+      doNotHyphenateCaps: false,
+      rtlGutter: false
+    },
+    tocStyles: {
+      hasTableOfContents: false,
+      tocHeadingStyle: {},
+      tocEntryStyles: [],
+      leaderStyle: {
+        character: '.',
+        spacesBetween: 3,
+        position: 6 * 72 // Default position for right tab (6 inches)
+      }
+    },
+    numberingDefs: {
+      abstractNums: {},
+      nums: {},
+      numIdMap: {}
+    },
+    documentStructure: {
+      hasToc: false,
+      tocLocation: null,
+      paragraphTypes: {},
+      specialSections: [],
+      lists: [],
+      hasRationale: false,
+      specialParagraphPatterns: []
+    }
+  };
 }
 
 /**
@@ -120,163 +795,161 @@ function parseStyles(styleDoc) {
     paragraph: {},
     character: {},
     table: {},
-    numbering: {},
-    defaults: {
-      paragraph: {},
-      character: {}
-    }
+    numbering: {}
   };
   
   try {
-    // Get document defaults
-    const docDefaultsNode = selectSingleNode("//w:docDefaults", styleDoc);
-    if (docDefaultsNode) {
-      // Get paragraph defaults
-      const pPrDefaultNode = selectSingleNode(".//w:pPrDefault/w:pPr", docDefaultsNode);
-      if (pPrDefaultNode) {
-        styles.defaults.paragraph = parseParagraphProperties(pPrDefaultNode);
-      }
-      
-      // Get character defaults
-      const rPrDefaultNode = selectSingleNode(".//w:rPrDefault/w:rPr", docDefaultsNode);
-      if (rPrDefaultNode) {
-        styles.defaults.character = parseRunProperties(rPrDefaultNode);
-      }
-    }
+    // XPath for different style types
+    const paragraphStylesXPath = "//w:style[@w:type='paragraph']";
+    const characterStylesXPath = "//w:style[@w:type='character']";
+    const tableStylesXPath = "//w:style[@w:type='table']";
+    const numberingStylesXPath = "//w:style[@w:type='numbering']";
     
-    // Parse all style definitions
-    const styleNodes = selectNodes("//w:style", styleDoc);
+    // Select nodes using namespace-aware selectors
+    const paragraphStyleNodes = selectNodes(paragraphStylesXPath, styleDoc);
+    const characterStyleNodes = selectNodes(characterStylesXPath, styleDoc);
+    const tableStyleNodes = selectNodes(tableStylesXPath, styleDoc);
+    const numberingStyleNodes = selectNodes(numberingStylesXPath, styleDoc);
     
-    styleNodes.forEach(node => {
-      const styleType = node.getAttribute('w:type');
-      const styleId = node.getAttribute('w:styleId');
-      
-      if (!styleType || !styleId) return;
-      
-      const style = {
-        id: styleId,
-        type: styleType,
-        name: '',
-        basedOn: null,
-        next: null,
-        isDefault: false,
-        properties: {}
-      };
-      
-      // Get style name
-      const nameNode = selectSingleNode("w:name", node);
-      if (nameNode) {
-        style.name = nameNode.getAttribute('w:val') || styleId;
-      }
-      
-      // Get based on style
-      const basedOnNode = selectSingleNode("w:basedOn", node);
-      if (basedOnNode) {
-        style.basedOn = basedOnNode.getAttribute('w:val');
-      }
-      
-      // Get next style
-      const nextNode = selectSingleNode("w:next", node);
-      if (nextNode) {
-        style.next = nextNode.getAttribute('w:val');
-      }
-      
-      // Check if default style
-      const defaultNode = node.getAttribute('w:default');
-      style.isDefault = defaultNode === '1';
-      
-      // Get style properties based on type
-      if (styleType === 'paragraph') {
-        // Get paragraph properties
-        const pPrNode = selectSingleNode("w:pPr", node);
-        if (pPrNode) {
-          style.properties.paragraph = parseParagraphProperties(pPrNode);
-        }
-        
-        // Get run properties within paragraph style
-        const rPrNode = selectSingleNode("w:rPr", node);
-        if (rPrNode) {
-          style.properties.character = parseRunProperties(rPrNode);
-        }
-        
-        styles.paragraph[styleId] = style;
-      } 
-      else if (styleType === 'character') {
-        // Get run properties
-        const rPrNode = selectSingleNode("w:rPr", node);
-        if (rPrNode) {
-          style.properties = parseRunProperties(rPrNode);
-        }
-        
-        styles.character[styleId] = style;
-      } 
-      else if (styleType === 'table') {
-        // Get table properties
-        const tblPrNode = selectSingleNode("w:tblPr", node);
-        if (tblPrNode) {
-          style.properties.table = parseTableProperties(tblPrNode);
-        }
-        
-        // Get conditional formatting for table parts
-        const tblStylePrNodes = selectNodes("w:tblStylePr", node);
-        if (tblStylePrNodes.length > 0) {
-          style.properties.conditionalFormatting = {};
-          
-          tblStylePrNodes.forEach(tblStylePrNode => {
-            const type = tblStylePrNode.getAttribute('w:type');
-            if (type) {
-              style.properties.conditionalFormatting[type] = {
-                paragraph: null,
-                character: null,
-                table: null
-              };
-              
-              // Get paragraph properties
-              const pPrNode = selectSingleNode("w:pPr", tblStylePrNode);
-              if (pPrNode) {
-                style.properties.conditionalFormatting[type].paragraph = parseParagraphProperties(pPrNode);
-              }
-              
-              // Get run properties
-              const rPrNode = selectSingleNode("w:rPr", tblStylePrNode);
-              if (rPrNode) {
-                style.properties.conditionalFormatting[type].character = parseRunProperties(rPrNode);
-              }
-              
-              // Get table properties
-              const tcPrNode = selectSingleNode("w:tcPr", tblStylePrNode);
-              if (tcPrNode) {
-                style.properties.conditionalFormatting[type].table = parseTableCellProperties(tcPrNode);
-              }
-            }
-          });
-        }
-        
-        styles.table[styleId] = style;
-      }
-      else if (styleType === 'numbering') {
-        // Get numbering properties
-        const numPrNode = selectSingleNode("w:pPr/w:numPr", node);
-        if (numPrNode) {
-          const numId = selectSingleNode("w:numId", numPrNode);
-          const ilvl = selectSingleNode("w:ilvl", numPrNode);
-          
-          if (numId && ilvl) {
-            style.properties.numbering = {
-              id: numId.getAttribute('w:val'),
-              level: ilvl.getAttribute('w:val')
-            };
-          }
-        }
-        
-        styles.numbering[styleId] = style;
-      }
+    // Process paragraph styles
+    paragraphStyleNodes.forEach(node => {
+      const style = parseStyleNode(node);
+      styles.paragraph[style.id] = style;
+    });
+    
+    // Process character styles
+    characterStyleNodes.forEach(node => {
+      const style = parseStyleNode(node);
+      styles.character[style.id] = style;
+    });
+    
+    // Process table styles
+    tableStyleNodes.forEach(node => {
+      const style = parseStyleNode(node);
+      styles.table[style.id] = style;
+    });
+    
+    // Process numbering styles
+    numberingStyleNodes.forEach(node => {
+      const style = parseStyleNode(node);
+      styles.numbering[style.id] = style;
     });
   } catch (error) {
     console.error('Error parsing styles:', error);
   }
   
   return styles;
+}
+
+/**
+ * Parse individual style node
+ * @param {Node} node - XML node for a style
+ * @returns {Object} - Style properties
+ */
+function parseStyleNode(node) {
+  try {
+    const styleId = node.getAttribute('w:styleId');
+    const type = node.getAttribute('w:type');
+    
+    // Get style name
+    const nameNode = selectSingleNode("w:name", node);
+    const name = nameNode ? nameNode.getAttribute('w:val') : styleId;
+    
+    // Get based on style
+    const basedOnNode = selectSingleNode("w:basedOn", node);
+    const basedOn = basedOnNode ? basedOnNode.getAttribute('w:val') : null;
+    
+    // Check if default style
+    const defaultNode = selectSingleNode("@w:default", node);
+    const isDefault = defaultNode && defaultNode.value === '1';
+    
+    // Parse running properties (text formatting)
+    const rPrNode = selectSingleNode("w:rPr", node);
+    const runningProps = rPrNode ? parseRunningProperties(rPrNode) : {};
+    
+    // Parse paragraph properties
+    const pPrNode = selectSingleNode("w:pPr", node);
+    const paragraphProps = pPrNode ? parseParagraphProperties(pPrNode) : {};
+    
+    // Combine all properties
+    return {
+      id: styleId,
+      type,
+      name,
+      basedOn,
+      isDefault,
+      ...runningProps,
+      ...paragraphProps
+    };
+  } catch (error) {
+    console.error('Error parsing style node:', error);
+    return { id: 'default', name: 'Default', type: 'paragraph' };
+  }
+}
+
+/**
+ * Parse running properties (text formatting)
+ * @param {Node} rPrNode - Running properties node
+ * @returns {Object} - Running properties
+ */
+function parseRunningProperties(rPrNode) {
+  const props = {};
+  
+  try {
+    // Font
+    const fontNode = selectSingleNode("w:rFonts", rPrNode);
+    if (fontNode) {
+      props.font = {
+        ascii: fontNode.getAttribute('w:ascii'),
+        hAnsi: fontNode.getAttribute('w:hAnsi'),
+        eastAsia: fontNode.getAttribute('w:eastAsia'),
+        cs: fontNode.getAttribute('w:cs')
+      };
+    }
+    
+    // Size
+    const szNode = selectSingleNode("w:sz", rPrNode);
+    if (szNode) {
+      // Size is in half-points, convert to points
+      const sizeHalfPoints = parseInt(szNode.getAttribute('w:val'), 10) || 22; // Default 11pt
+      props.fontSize = (sizeHalfPoints / 2) + 'pt';
+    }
+    
+    // Bold
+    const bNode = selectSingleNode("w:b", rPrNode);
+    props.bold = bNode !== null;
+    
+    // Italic
+    const iNode = selectSingleNode("w:i", rPrNode);
+    props.italic = iNode !== null;
+    
+    // Underline
+    const uNode = selectSingleNode("w:u", rPrNode);
+    if (uNode) {
+      props.underline = {
+        type: uNode.getAttribute('w:val') || 'single'
+      };
+    }
+    
+    // Color
+    const colorNode = selectSingleNode("w:color", rPrNode);
+    if (colorNode) {
+      const colorVal = colorNode.getAttribute('w:val');
+      if (colorVal) {
+        props.color = '#' + colorVal;
+      }
+    }
+    
+    // Highlight
+    const highlightNode = selectSingleNode("w:highlight", rPrNode);
+    if (highlightNode) {
+      props.highlight = highlightNode.getAttribute('w:val');
+    }
+  } catch (error) {
+    console.error('Error parsing running properties:', error);
+  }
+  
+  return props;
 }
 
 /**
@@ -297,43 +970,46 @@ function parseParagraphProperties(pPrNode) {
     // Indentation
     const indNode = selectSingleNode("w:ind", pPrNode);
     if (indNode) {
-      props.indentation = {};
+      props.indentation = {
+        left: indNode.getAttribute('w:left'),
+        right: indNode.getAttribute('w:right'),
+        firstLine: indNode.getAttribute('w:firstLine'),
+        hanging: indNode.getAttribute('w:hanging')
+      };
+    }
+    
+    // Tab stops - IMPROVED to capture more details
+    const tabsNode = selectSingleNode("w:tabs", pPrNode);
+    if (tabsNode) {
+      const tabNodes = selectNodes("w:tab", tabsNode);
+      props.tabs = [];
       
-      const left = indNode.getAttribute('w:left');
-      const right = indNode.getAttribute('w:right');
-      const firstLine = indNode.getAttribute('w:firstLine');
-      const hanging = indNode.getAttribute('w:hanging');
-      
-      if (left) props.indentation.left = parseInt(left, 10);
-      if (right) props.indentation.right = parseInt(right, 10);
-      if (firstLine) props.indentation.firstLine = parseInt(firstLine, 10);
-      if (hanging) props.indentation.hanging = parseInt(hanging, 10);
+      tabNodes.forEach(tabNode => {
+        const pos = tabNode.getAttribute('w:pos');
+        const val = tabNode.getAttribute('w:val');
+        const leader = tabNode.getAttribute('w:leader');
+        
+        if (pos && val) {
+          props.tabs.push({
+            position: pos,
+            positionPt: convertTwipToPt(pos),
+            type: val,
+            leader: leader || 'none',
+            leaderChar: getLeaderChar(leader)
+          });
+        }
+      });
     }
     
     // Spacing
     const spacingNode = selectSingleNode("w:spacing", pPrNode);
     if (spacingNode) {
-      props.spacing = {};
-      
-      const before = spacingNode.getAttribute('w:before');
-      const after = spacingNode.getAttribute('w:after');
-      const line = spacingNode.getAttribute('w:line');
-      const lineRule = spacingNode.getAttribute('w:lineRule');
-      const beforeAutospacing = spacingNode.getAttribute('w:beforeAutospacing');
-      const afterAutospacing = spacingNode.getAttribute('w:afterAutospacing');
-      
-      if (before) props.spacing.before = parseInt(before, 10);
-      if (after) props.spacing.after = parseInt(after, 10);
-      if (line) props.spacing.line = parseInt(line, 10);
-      if (lineRule) props.spacing.lineRule = lineRule;
-      if (beforeAutospacing === '1') props.spacing.beforeAutospacing = true;
-      if (afterAutospacing === '1') props.spacing.afterAutospacing = true;
-    }
-    
-    // Bidirectional settings
-    const bidiNode = selectSingleNode("w:bidi", pPrNode);
-    if (bidiNode) {
-      props.bidi = bidiNode.getAttribute('w:val') !== '0';
+      props.spacing = {
+        before: spacingNode.getAttribute('w:before'),
+        after: spacingNode.getAttribute('w:after'),
+        line: spacingNode.getAttribute('w:line'),
+        lineRule: spacingNode.getAttribute('w:lineRule')
+      };
     }
     
     // Borders
@@ -352,50 +1028,18 @@ function parseParagraphProperties(pPrNode) {
       };
     }
     
-    // Numbering properties
+    // Numbering properties - IMPROVED
     const numPrNode = selectSingleNode("w:numPr", pPrNode);
     if (numPrNode) {
       const numId = selectSingleNode("w:numId", numPrNode);
       const ilvl = selectSingleNode("w:ilvl", numPrNode);
       
-      if (numId || ilvl) {
-        props.numbering = {};
-        if (numId) props.numbering.id = numId.getAttribute('w:val');
-        if (ilvl) props.numbering.level = ilvl.getAttribute('w:val');
+      if (numId) {
+        props.numbering = {
+          id: numId.getAttribute('w:val'),
+          level: ilvl ? ilvl.getAttribute('w:val') : '0'
+        };
       }
-    }
-    
-    // Tabs
-    const tabsNode = selectSingleNode("w:tabs", pPrNode);
-    if (tabsNode) {
-      const tabNodes = selectNodes("w:tab", tabsNode);
-      props.tabs = [];
-      
-      tabNodes.forEach(tabNode => {
-        const pos = tabNode.getAttribute('w:pos');
-        const val = tabNode.getAttribute('w:val');
-        const leader = tabNode.getAttribute('w:leader');
-        
-        if (pos && val) {
-          props.tabs.push({
-            position: parseInt(pos, 10),
-            type: val,
-            leader: leader || 'none'
-          });
-        }
-      });
-    }
-    
-    // Outline level
-    const outlineLvlNode = selectSingleNode("w:outlineLvl", pPrNode);
-    if (outlineLvlNode) {
-      props.outlineLevel = parseInt(outlineLvlNode.getAttribute('w:val'), 10);
-    }
-    
-    // Style reference
-    const pStyleNode = selectSingleNode("w:pStyle", pPrNode);
-    if (pStyleNode) {
-      props.style = pStyleNode.getAttribute('w:val');
     }
   } catch (error) {
     console.error('Error parsing paragraph properties:', error);
@@ -405,110 +1049,36 @@ function parseParagraphProperties(pPrNode) {
 }
 
 /**
- * Parse run properties (text formatting)
- * @param {Node} rPrNode - Run properties node
- * @returns {Object} - Run properties
+ * Get leader character based on leader type
+ * @param {string} leader - Leader type
+ * @returns {string} - Leader character
  */
-function parseRunProperties(rPrNode) {
-  const props = {};
+function getLeaderChar(leader) {
+  if (!leader) return '';
   
-  try {
-    // Font
-    const fontNode = selectSingleNode("w:rFonts", rPrNode);
-    if (fontNode) {
-      props.fonts = {};
-      
-      const ascii = fontNode.getAttribute('w:ascii');
-      const hAnsi = fontNode.getAttribute('w:hAnsi');
-      const eastAsia = fontNode.getAttribute('w:eastAsia');
-      const cs = fontNode.getAttribute('w:cs');
-      
-      if (ascii) props.fonts.ascii = ascii;
-      if (hAnsi) props.fonts.hAnsi = hAnsi;
-      if (eastAsia) props.fonts.eastAsia = eastAsia;
-      if (cs) props.fonts.cs = cs;
-    }
-    
-    // Size
-    const szNode = selectSingleNode("w:sz", rPrNode);
-    if (szNode) {
-      const size = parseInt(szNode.getAttribute('w:val'), 10);
-      if (!isNaN(size)) {
-        props.size = size; // Size in half-points
-      }
-    }
-    
-    // Bold
-    const bNode = selectSingleNode("w:b", rPrNode);
-    if (bNode) {
-      props.bold = bNode.getAttribute('w:val') !== '0';
-    }
-    
-    // Italic
-    const iNode = selectSingleNode("w:i", rPrNode);
-    if (iNode) {
-      props.italic = iNode.getAttribute('w:val') !== '0';
-    }
-    
-    // Underline
-    const uNode = selectSingleNode("w:u", rPrNode);
-    if (uNode) {
-      props.underline = {
-        type: uNode.getAttribute('w:val') || 'single',
-        color: uNode.getAttribute('w:color')
-      };
-    }
-    
-    // Strikethrough
-    const strikeNode = selectSingleNode("w:strike", rPrNode);
-    if (strikeNode) {
-      props.strike = strikeNode.getAttribute('w:val') !== '0';
-    }
-    
-    // Color
-    const colorNode = selectSingleNode("w:color", rPrNode);
-    if (colorNode) {
-      props.color = colorNode.getAttribute('w:val');
-    }
-    
-    // Highlight
-    const highlightNode = selectSingleNode("w:highlight", rPrNode);
-    if (highlightNode) {
-      props.highlight = highlightNode.getAttribute('w:val');
-    }
-    
-    // All caps
-    const capsNode = selectSingleNode("w:caps", rPrNode);
-    if (capsNode) {
-      props.caps = capsNode.getAttribute('w:val') !== '0';
-    }
-    
-    // Small caps
-    const smallCapsNode = selectSingleNode("w:smallCaps", rPrNode);
-    if (smallCapsNode) {
-      props.smallCaps = smallCapsNode.getAttribute('w:val') !== '0';
-    }
-    
-    // Vertical alignment (superscript/subscript)
-    const vertAlignNode = selectSingleNode("w:vertAlign", rPrNode);
-    if (vertAlignNode) {
-      props.verticalAlignment = vertAlignNode.getAttribute('w:val');
-    }
-    
-    // Style reference
-    const rStyleNode = selectSingleNode("w:rStyle", rPrNode);
-    if (rStyleNode) {
-      props.style = rStyleNode.getAttribute('w:val');
-    }
-  } catch (error) {
-    console.error('Error parsing run properties:', error);
+  switch (leader) {
+    case 'dot':
+    case '1':
+      return '.';
+    case 'hyphen':
+    case '2':
+      return '-';
+    case 'underscore':
+    case '3':
+      return '_';
+    case 'heavy':
+    case '4':
+      return '=';
+    case 'middleDot':
+    case '5':
+      return '·';
+    default:
+      return '';
   }
-  
-  return props;
 }
 
 /**
- * Parse borders
+ * Parse border information
  * @param {Node} borderNode - Border properties node
  * @returns {Object} - Border properties
  */
@@ -520,8 +1090,8 @@ function parseBorders(borderNode) {
     const topNode = selectSingleNode("w:top", borderNode);
     if (topNode) {
       borders.top = {
-        type: topNode.getAttribute('w:val'),
-        size: parseInt(topNode.getAttribute('w:sz') || '0', 10),
+        value: topNode.getAttribute('w:val'),
+        size: topNode.getAttribute('w:sz'),
         color: topNode.getAttribute('w:color')
       };
     }
@@ -530,8 +1100,8 @@ function parseBorders(borderNode) {
     const bottomNode = selectSingleNode("w:bottom", borderNode);
     if (bottomNode) {
       borders.bottom = {
-        type: bottomNode.getAttribute('w:val'),
-        size: parseInt(bottomNode.getAttribute('w:sz') || '0', 10),
+        value: bottomNode.getAttribute('w:val'),
+        size: bottomNode.getAttribute('w:sz'),
         color: bottomNode.getAttribute('w:color')
       };
     }
@@ -540,8 +1110,8 @@ function parseBorders(borderNode) {
     const leftNode = selectSingleNode("w:left", borderNode);
     if (leftNode) {
       borders.left = {
-        type: leftNode.getAttribute('w:val'),
-        size: parseInt(leftNode.getAttribute('w:sz') || '0', 10),
+        value: leftNode.getAttribute('w:val'),
+        size: leftNode.getAttribute('w:sz'),
         color: leftNode.getAttribute('w:color')
       };
     }
@@ -550,8 +1120,8 @@ function parseBorders(borderNode) {
     const rightNode = selectSingleNode("w:right", borderNode);
     if (rightNode) {
       borders.right = {
-        type: rightNode.getAttribute('w:val'),
-        size: parseInt(rightNode.getAttribute('w:sz') || '0', 10),
+        value: rightNode.getAttribute('w:val'),
+        size: rightNode.getAttribute('w:sz'),
         color: rightNode.getAttribute('w:color')
       };
     }
@@ -563,192 +1133,50 @@ function parseBorders(borderNode) {
 }
 
 /**
- * Parse table properties
- * @param {Node} tblPrNode - Table properties node
- * @returns {Object} - Table properties
- */
-function parseTableProperties(tblPrNode) {
-  const props = {};
-  
-  try {
-    // Table style
-    const tblStyleNode = selectSingleNode("w:tblStyle", tblPrNode);
-    if (tblStyleNode) {
-      props.style = tblStyleNode.getAttribute('w:val');
-    }
-    
-    // Table width
-    const tblWNode = selectSingleNode("w:tblW", tblPrNode);
-    if (tblWNode) {
-      props.width = {
-        width: parseInt(tblWNode.getAttribute('w:w') || '0', 10),
-        type: tblWNode.getAttribute('w:type')
-      };
-    }
-    
-    // Table cell margins
-    const tblCellMarNode = selectSingleNode("w:tblCellMar", tblPrNode);
-    if (tblCellMarNode) {
-      props.cellMargins = {};
-      
-      const topNode = selectSingleNode("w:top", tblCellMarNode);
-      const leftNode = selectSingleNode("w:left", tblCellMarNode);
-      const bottomNode = selectSingleNode("w:bottom", tblCellMarNode);
-      const rightNode = selectSingleNode("w:right", tblCellMarNode);
-      
-      if (topNode) {
-        props.cellMargins.top = {
-          width: parseInt(topNode.getAttribute('w:w') || '0', 10),
-          type: topNode.getAttribute('w:type')
-        };
-      }
-      
-      if (leftNode) {
-        props.cellMargins.left = {
-          width: parseInt(leftNode.getAttribute('w:w') || '0', 10),
-          type: leftNode.getAttribute('w:type')
-        };
-      }
-      
-      if (bottomNode) {
-        props.cellMargins.bottom = {
-          width: parseInt(bottomNode.getAttribute('w:w') || '0', 10),
-          type: bottomNode.getAttribute('w:type')
-        };
-      }
-      
-      if (rightNode) {
-        props.cellMargins.right = {
-          width: parseInt(rightNode.getAttribute('w:w') || '0', 10),
-          type: rightNode.getAttribute('w:type')
-        };
-      }
-    }
-    
-    // Table borders
-    const tblBordersNode = selectSingleNode("w:tblBorders", tblPrNode);
-    if (tblBordersNode) {
-      props.borders = parseBorders(tblBordersNode);
-    }
-    
-    // Table layout
-    const tblLayoutNode = selectSingleNode("w:tblLayout", tblPrNode);
-    if (tblLayoutNode) {
-      props.layout = tblLayoutNode.getAttribute('w:type');
-    }
-    
-    // Table look
-    const tblLookNode = selectSingleNode("w:tblLook", tblPrNode);
-    if (tblLookNode) {
-      props.look = {
-        firstRow: (parseInt(tblLookNode.getAttribute('w:firstRow') || '0', 16) & 0x0020) !== 0,
-        lastRow: (parseInt(tblLookNode.getAttribute('w:lastRow') || '0', 16) & 0x0040) !== 0,
-        firstColumn: (parseInt(tblLookNode.getAttribute('w:firstColumn') || '0', 16) & 0x0080) !== 0,
-        lastColumn: (parseInt(tblLookNode.getAttribute('w:lastColumn') || '0', 16) & 0x0100) !== 0,
-        noHBand: (parseInt(tblLookNode.getAttribute('w:noHBand') || '0', 16) & 0x0200) !== 0,
-        noVBand: (parseInt(tblLookNode.getAttribute('w:noVBand') || '0', 16) & 0x0400) !== 0
-      };
-    }
-  } catch (error) {
-    console.error('Error parsing table properties:', error);
-  }
-  
-  return props;
-}
-
-/**
- * Parse table cell properties
- * @param {Node} tcPrNode - Table cell properties node
- * @returns {Object} - Table cell properties
- */
-function parseTableCellProperties(tcPrNode) {
-  const props = {};
-  
-  try {
-    // Cell width
-    const tcWNode = selectSingleNode("w:tcW", tcPrNode);
-    if (tcWNode) {
-      props.width = {
-        width: parseInt(tcWNode.getAttribute('w:w') || '0', 10),
-        type: tcWNode.getAttribute('w:type')
-      };
-    }
-    
-    // Cell borders
-    const tcBordersNode = selectSingleNode("w:tcBorders", tcPrNode);
-    if (tcBordersNode) {
-      props.borders = parseBorders(tcBordersNode);
-    }
-    
-    // Cell shading
-    const shadingNode = selectSingleNode("w:shd", tcPrNode);
-    if (shadingNode) {
-      props.shading = {
-        value: shadingNode.getAttribute('w:val'),
-        color: shadingNode.getAttribute('w:color'),
-        fill: shadingNode.getAttribute('w:fill')
-      };
-    }
-    
-    // Vertical alignment
-    const vAlignNode = selectSingleNode("w:vAlign", tcPrNode);
-    if (vAlignNode) {
-      props.verticalAlignment = vAlignNode.getAttribute('w:val');
-    }
-  } catch (error) {
-    console.error('Error parsing table cell properties:', error);
-  }
-  
-  return props;
-}
-
-/**
  * Parse theme information
  * @param {Document} themeDoc - Theme XML document
  * @returns {Object} - Theme properties
  */
 function parseTheme(themeDoc) {
+  // Default theme structure
   const theme = {
     colors: {},
     fonts: {
-      major: null,
-      minor: null
+      major: 'Calibri Light',
+      minor: 'Calibri'
     }
   };
+  
+  if (!themeDoc) {
+    return theme;
+  }
   
   try {
     // Parse font scheme
     const fontSchemeNode = selectSingleNode("//a:fontScheme", themeDoc);
     if (fontSchemeNode) {
-      // Major fonts
-      const majorFontNode = selectSingleNode(".//a:majorFont/a:latin", fontSchemeNode);
-      if (majorFontNode) {
-        theme.fonts.major = majorFontNode.getAttribute('typeface');
+      const majorNode = selectSingleNode(".//a:majorFont/a:latin", fontSchemeNode);
+      const minorNode = selectSingleNode(".//a:minorFont/a:latin", fontSchemeNode);
+      
+      if (majorNode && majorNode.getAttribute('typeface')) {
+        theme.fonts.major = majorNode.getAttribute('typeface');
       }
       
-      // Minor fonts
-      const minorFontNode = selectSingleNode(".//a:minorFont/a:latin", fontSchemeNode);
-      if (minorFontNode) {
-        theme.fonts.minor = minorFontNode.getAttribute('typeface');
+      if (minorNode && minorNode.getAttribute('typeface')) {
+        theme.fonts.minor = minorNode.getAttribute('typeface');
       }
     }
     
     // Parse color scheme
     const clrSchemeNode = selectSingleNode("//a:clrScheme", themeDoc);
     if (clrSchemeNode) {
+      // Get main theme colors
       const colorNodes = selectNodes("./a:*", clrSchemeNode);
-      
       colorNodes.forEach(node => {
         const name = node.nodeName.split(':')[1];
-        
-        // Get color value (RGB or system color)
-        const srgbClrNode = selectSingleNode("./a:srgbClr", node);
-        const sysClrNode = selectSingleNode("./a:sysClr", node);
-        
-        if (srgbClrNode) {
-          theme.colors[name] = srgbClrNode.getAttribute('val');
-        } else if (sysClrNode) {
-          theme.colors[name] = sysClrNode.getAttribute('lastClr') || sysClrNode.getAttribute('val');
+        const colorValue = getColorValue(node);
+        if (colorValue) {
+          theme.colors[name] = colorValue;
         }
       });
     }
@@ -760,21 +1188,82 @@ function parseTheme(themeDoc) {
 }
 
 /**
+ * Get color value from theme color node
+ * @param {Node} colorNode - Color definition node
+ * @returns {string} - Color value
+ */
+function getColorValue(colorNode) {
+  try {
+    // Check srgbClr (standard RGB)
+    const srgbNode = selectSingleNode("./a:srgbClr", colorNode);
+    if (srgbNode && srgbNode.getAttribute('val')) {
+      return '#' + srgbNode.getAttribute('val');
+    }
+    
+    // Check system color
+    const sysClrNode = selectSingleNode("./a:sysClr", colorNode);
+    if (sysClrNode && sysClrNode.getAttribute('lastClr')) {
+      return '#' + sysClrNode.getAttribute('lastClr');
+    }
+  } catch (error) {
+    console.error('Error getting color value:', error);
+  }
+  
+  return null;
+}
+
+/**
+ * Parse document defaults
+ * @param {Document} styleDoc - Style XML document
+ * @returns {Object} - Document defaults
+ */
+function parseDocumentDefaults(styleDoc) {
+  const defaults = {
+    paragraph: {},
+    character: {}
+  };
+  
+  try {
+    // Get document defaults section
+    const docDefaultsNode = selectSingleNode("//w:docDefaults", styleDoc);
+    if (!docDefaultsNode) {
+      return defaults;
+    }
+    
+    // Get paragraph defaults
+    const pPrDefaultNode = selectSingleNode(".//w:pPrDefault/w:pPr", docDefaultsNode);
+    if (pPrDefaultNode) {
+      defaults.paragraph = parseParagraphProperties(pPrDefaultNode);
+    }
+    
+    // Get character defaults
+    const rPrDefaultNode = selectSingleNode(".//w:rPrDefault/w:rPr", docDefaultsNode);
+    if (rPrDefaultNode) {
+      defaults.character = parseRunningProperties(rPrDefaultNode);
+    }
+  } catch (error) {
+    console.error('Error parsing document defaults:', error);
+  }
+  
+  return defaults;
+}
+
+/**
  * Parse document settings
  * @param {Document} settingsDoc - Settings XML document
  * @returns {Object} - Document settings
  */
 function parseSettings(settingsDoc) {
   const settings = {
-    defaultTabStop: 720, // Default value (0.5 inch in twentieths of a point)
+    defaultTabStop: '720', // Default value (0.5 inch in twentieths of a point)
     characterSpacing: 'normal',
     doNotHyphenateCaps: false,
-    rtlGutter: false,
-    mirrorMargins: false,
-    displayBackgroundShape: false,
-    zoom: 100,
-    evenAndOddHeaders: false
+    rtlGutter: false
   };
+  
+  if (!settingsDoc) {
+    return settings;
+  }
   
   try {
     // Default tab stop
@@ -782,47 +1271,31 @@ function parseSettings(settingsDoc) {
     if (defaultTabStopNode) {
       const val = defaultTabStopNode.getAttribute('w:val');
       if (val) {
-        settings.defaultTabStop = parseInt(val, 10);
+        settings.defaultTabStop = val;
       }
     }
     
     // Character spacing control
     const characterSpacingControlNode = selectSingleNode("//w:characterSpacingControl", settingsDoc);
     if (characterSpacingControlNode) {
-      settings.characterSpacing = characterSpacingControlNode.getAttribute('w:val');
-    }
-    
-    // RTL gutter
-    const rtlGutterNode = selectSingleNode("//w:rtlGutter", settingsDoc);
-    if (rtlGutterNode) {
-      settings.rtlGutter = rtlGutterNode.getAttribute('w:val') === '1';
-    }
-    
-    // Mirror margins
-    const mirrorMarginsNode = selectSingleNode("//w:mirrorMargins", settingsDoc);
-    if (mirrorMarginsNode) {
-      settings.mirrorMargins = mirrorMarginsNode.getAttribute('w:val') === '1';
-    }
-    
-    // Display background shape
-    const displayBackgroundShapeNode = selectSingleNode("//w:displayBackgroundShape", settingsDoc);
-    if (displayBackgroundShapeNode) {
-      settings.displayBackgroundShape = displayBackgroundShapeNode.getAttribute('w:val') === '1';
-    }
-    
-    // Zoom
-    const zoomNode = selectSingleNode("//w:zoom", settingsDoc);
-    if (zoomNode) {
-      const percent = zoomNode.getAttribute('w:percent');
-      if (percent) {
-        settings.zoom = parseInt(percent, 10);
+      const val = characterSpacingControlNode.getAttribute('w:val');
+      if (val) {
+        settings.characterSpacing = val;
       }
     }
     
-    // Even and odd headers
-    const evenAndOddHeadersNode = selectSingleNode("//w:evenAndOddHeaders", settingsDoc);
-    if (evenAndOddHeadersNode) {
-      settings.evenAndOddHeaders = evenAndOddHeadersNode.getAttribute('w:val') === '1';
+    // Do not hyphenate capital letters
+    const doNotHyphenateCapsNode = selectSingleNode("//w:doNotHyphenateCaps", settingsDoc);
+    if (doNotHyphenateCapsNode) {
+      const val = doNotHyphenateCapsNode.getAttribute('w:val');
+      settings.doNotHyphenateCaps = val === 'true' || val === '1';
+    }
+    
+    // Right-to-left document gutter
+    const rtlGutterNode = selectSingleNode("//w:rtlGutter", settingsDoc);
+    if (rtlGutterNode) {
+      const val = rtlGutterNode.getAttribute('w:val');
+      settings.rtlGutter = val === 'true' || val === '1';
     }
   } catch (error) {
     console.error('Error parsing settings:', error);
@@ -832,1666 +1305,463 @@ function parseSettings(settingsDoc) {
 }
 
 /**
- * Parse numbering information
- * @param {Document} numberingDoc - Numbering XML document
- * @returns {Object} - Numbering information
- */
-function parseNumbering(numberingDoc) {
-  const numbering = {
-    abstractNums: {},
-    nums: {}
-  };
-  
-  try {
-    // Parse abstract numbering definitions
-    const abstractNumNodes = selectNodes("//w:abstractNum", numberingDoc);
-    
-    abstractNumNodes.forEach(node => {
-      const id = node.getAttribute('w:abstractNumId');
-      if (!id) return;
-      
-      const abstractNum = {
-        id,
-        levels: {}
-      };
-      
-      // Parse level definitions
-      const levelNodes = selectNodes("w:lvl", node);
-      levelNodes.forEach(lvlNode => {
-        const ilvl = lvlNode.getAttribute('w:ilvl');
-        if (ilvl === null) return;
-        
-        const level = {
-          level: parseInt(ilvl, 10),
-          start: 1,
-          format: 'decimal',
-          text: '%1.',
-          alignment: 'left',
-          properties: {
-            paragraph: {},
-            character: {}
-          }
-        };
-        
-        // Get start value
-        const startNode = selectSingleNode("w:start", lvlNode);
-        if (startNode) {
-          level.start = parseInt(startNode.getAttribute('w:val'), 10);
-        }
-        
-        // Get numbering format
-        const numFmtNode = selectSingleNode("w:numFmt", lvlNode);
-        if (numFmtNode) {
-          level.format = numFmtNode.getAttribute('w:val') || 'decimal';
-        }
-        
-        // Get level text
-        const lvlTextNode = selectSingleNode("w:lvlText", lvlNode);
-        if (lvlTextNode) {
-          level.text = lvlTextNode.getAttribute('w:val') || '%1.';
-        }
-        
-        // Get alignment
-        const alignmentNode = selectSingleNode("w:lvlJc", lvlNode);
-        if (alignmentNode) {
-          level.alignment = alignmentNode.getAttribute('w:val') || 'left';
-        }
-        
-        // Get paragraph properties
-        const pPrNode = selectSingleNode("w:pPr", lvlNode);
-        if (pPrNode) {
-          level.properties.paragraph = parseParagraphProperties(pPrNode);
-        }
-        
-        // Get run properties
-        const rPrNode = selectSingleNode("w:rPr", lvlNode);
-        if (rPrNode) {
-          level.properties.character = parseRunProperties(rPrNode);
-        }
-        
-        abstractNum.levels[ilvl] = level;
-      });
-      
-      numbering.abstractNums[id] = abstractNum;
-    });
-    
-    // Parse numbering instances
-    const numNodes = selectNodes("//w:num", numberingDoc);
-    
-    numNodes.forEach(node => {
-      const id = node.getAttribute('w:numId');
-      if (!id) return;
-      
-      const abstractNumIdNode = selectSingleNode("w:abstractNumId", node);
-      if (!abstractNumIdNode) return;
-      
-      const abstractNumId = abstractNumIdNode.getAttribute('w:val');
-      if (!abstractNumId) return;
-      
-      // Check for level overrides
-      const lvlOverrideNodes = selectNodes("w:lvlOverride", node);
-      let levelOverrides = null;
-      
-      if (lvlOverrideNodes.length > 0) {
-        levelOverrides = {};
-        
-        lvlOverrideNodes.forEach(lvlOverrideNode => {
-          const ilvl = lvlOverrideNode.getAttribute('w:ilvl');
-          if (ilvl === null) return;
-          
-          // Check if this level has a complete override or just property overrides
-          const lvlNode = selectSingleNode("w:lvl", lvlOverrideNode);
-          if (lvlNode) {
-            // Complete level override - parse as a regular level
-            const level = {
-              level: parseInt(ilvl, 10),
-              start: 1,
-              format: 'decimal',
-              text: '%1.',
-              alignment: 'left',
-              properties: {
-                paragraph: {},
-                character: {}
-              }
-            };
-            
-            // Get start value
-            const startNode = selectSingleNode("w:start", lvlNode);
-            if (startNode) {
-              level.start = parseInt(startNode.getAttribute('w:val'), 10);
-            }
-            
-            // Get numbering format
-            const numFmtNode = selectSingleNode("w:numFmt", lvlNode);
-            if (numFmtNode) {
-              level.format = numFmtNode.getAttribute('w:val') || 'decimal';
-            }
-            
-            // Get level text
-            const lvlTextNode = selectSingleNode("w:lvlText", lvlNode);
-            if (lvlTextNode) {
-              level.text = lvlTextNode.getAttribute('w:val') || '%1.';
-            }
-            
-            // Get alignment
-            const alignmentNode = selectSingleNode("w:lvlJc", lvlNode);
-            if (alignmentNode) {
-              level.alignment = alignmentNode.getAttribute('w:val') || 'left';
-            }
-            
-            // Get paragraph properties
-            const pPrNode = selectSingleNode("w:pPr", lvlNode);
-            if (pPrNode) {
-              level.properties.paragraph = parseParagraphProperties(pPrNode);
-            }
-            
-            // Get run properties
-            const rPrNode = selectSingleNode("w:rPr", lvlNode);
-            if (rPrNode) {
-              level.properties.character = parseRunProperties(rPrNode);
-            }
-            
-            levelOverrides[ilvl] = { complete: true, level };
-          } else {
-            // Just a start override
-            const startOverrideNode = selectSingleNode("w:startOverride", lvlOverrideNode);
-            if (startOverrideNode) {
-              const start = parseInt(startOverrideNode.getAttribute('w:val'), 10);
-              levelOverrides[ilvl] = { complete: false, startOverride: start };
-            }
-          }
-        });
-      }
-      
-      numbering.nums[id] = {
-        id,
-        abstractNumId,
-        levelOverrides
-      };
-    });
-  } catch (error) {
-    console.error('Error parsing numbering:', error);
-  }
-  
-  return numbering;
-}
-
-/**
- * Parse font table
- * @param {Document} fontTableDoc - Font table XML document
- * @returns {Object} - Font information
- */
-function parseFontTable(fontTableDoc) {
-  const fonts = {};
-  
-  try {
-    const fontNodes = selectNodes("//w:font", fontTableDoc);
-    
-    fontNodes.forEach(node => {
-      const name = node.getAttribute('w:name');
-      if (!name) return;
-      
-      const font = {
-        name,
-        altName: null,
-        family: null,
-        pitch: null,
-      };
-      
-      // Alternative name
-      const altNameNode = selectSingleNode("w:altName", node);
-      if (altNameNode) {
-        font.altName = altNameNode.getAttribute('w:val');
-      }
-      
-      // Family
-      const familyNode = selectSingleNode("w:family", node);
-      if (familyNode) {
-        font.family = familyNode.getAttribute('w:val');
-      }
-      
-      // Pitch
-      const pitchNode = selectSingleNode("w:pitch", node);
-      if (pitchNode) {
-        font.pitch = pitchNode.getAttribute('w:val');
-      }
-      
-      fonts[name] = font;
-    });
-  } catch (error) {
-    console.error('Error parsing font table:', error);
-  }
-  
-  return fonts;
-}
-
-/**
- * Parse paragraphs from document
- * @param {Document} documentDoc - Document XML
- * @returns {Array} - Paragraph information
- */
-function parseParagraphs(documentDoc) {
-  const paragraphs = [];
-  
-  try {
-    const paragraphNodes = selectNodes("//w:p", documentDoc);
-    
-    paragraphNodes.forEach((pNode, index) => {
-      const paragraph = {
-        id: `p${index}`,
-        styleId: null,
-        properties: {},
-        text: '',
-        runs: []
-      };
-      
-      // Get paragraph properties
-      const pPrNode = selectSingleNode("w:pPr", pNode);
-      if (pPrNode) {
-        paragraph.properties = parseParagraphProperties(pPrNode);
-        
-        // Get style ID
-        const pStyleNode = selectSingleNode("w:pStyle", pPrNode);
-        if (pStyleNode) {
-          paragraph.styleId = pStyleNode.getAttribute('w:val');
-        }
-      }
-      
-      // Get runs
-      const runNodes = selectNodes("w:r", pNode);
-      runNodes.forEach((rNode, runIndex) => {
-        const run = {
-          id: `${paragraph.id}_r${runIndex}`,
-          properties: {},
-          text: ''
-        };
-        
-        // Get run properties
-        const rPrNode = selectSingleNode("w:rPr", rNode);
-        if (rPrNode) {
-          run.properties = parseRunProperties(rPrNode);
-        }
-        
-        // Get text
-        const textNodes = selectNodes("w:t", rNode);
-        textNodes.forEach(tNode => {
-          run.text += tNode.textContent;
-        });
-        
-        // Get tabs
-        const tabNodes = selectNodes("w:tab", rNode);
-        if (tabNodes.length > 0) {
-          run.hasTabs = true;
-          run.tabCount = tabNodes.length;
-        }
-        
-        // Get breaks
-        const breakNodes = selectNodes("w:br", rNode);
-        if (breakNodes.length > 0) {
-          run.hasBreaks = true;
-          run.breakCount = breakNodes.length;
-          
-          // Check break types
-          run.breaks = breakNodes.map(brNode => {
-            return {
-              type: brNode.getAttribute('w:type') || 'textWrapping',
-              clear: brNode.getAttribute('w:clear')
-            };
-          });
-        }
-        
-        paragraph.runs.push(run);
-        paragraph.text += run.text;
-      });
-      
-      paragraphs.push(paragraph);
-    });
-  } catch (error) {
-    console.error('Error parsing paragraphs:', error);
-  }
-  
-  return paragraphs;
-}
-
-/**
- * Parse sections from document
- * @param {Document} documentDoc - Document XML
- * @returns {Array} - Section information
- */
-function parseSections(documentDoc) {
-  const sections = [];
-  
-  try {
-    // Get section properties from the document body
-    const sectPrNodes = selectNodes("//w:sectPr", documentDoc);
-    
-    sectPrNodes.forEach((sectPrNode, index) => {
-      const section = {
-        id: `section${index}`,
-        properties: {}
-      };
-      
-      // Page size
-      const pgSzNode = selectSingleNode("w:pgSz", sectPrNode);
-      if (pgSzNode) {
-        section.properties.pageSize = {
-          width: parseInt(pgSzNode.getAttribute('w:w') || '12240', 10), // Default is 8.5"
-          height: parseInt(pgSzNode.getAttribute('w:h') || '15840', 10), // Default is 11"
-          orientation: pgSzNode.getAttribute('w:orient') || 'portrait'
-        };
-      }
-      
-      // Page margins
-      const pgMarNode = selectSingleNode("w:pgMar", sectPrNode);
-      if (pgMarNode) {
-        section.properties.margins = {
-          top: parseInt(pgMarNode.getAttribute('w:top') || '1440', 10), // Default is 1"
-          right: parseInt(pgMarNode.getAttribute('w:right') || '1440', 10),
-          bottom: parseInt(pgMarNode.getAttribute('w:bottom') || '1440', 10),
-          left: parseInt(pgMarNode.getAttribute('w:left') || '1440', 10),
-          header: parseInt(pgMarNode.getAttribute('w:header') || '720', 10), // Default is 0.5"
-          footer: parseInt(pgMarNode.getAttribute('w:footer') || '720', 10),
-          gutter: parseInt(pgMarNode.getAttribute('w:gutter') || '0', 10)
-        };
-      }
-      
-      // Columns
-      const colsNode = selectSingleNode("w:cols", sectPrNode);
-      if (colsNode) {
-        section.properties.columns = {
-          count: parseInt(colsNode.getAttribute('w:num') || '1', 10),
-          spacing: parseInt(colsNode.getAttribute('w:space') || '720', 10) // Default is 0.5"
-        };
-      }
-      
-      // Headers and footers
-      const headerReferenceNodes = selectNodes("w:headerReference", sectPrNode);
-      const footerReferenceNodes = selectNodes("w:footerReference", sectPrNode);
-      
-      if (headerReferenceNodes.length > 0) {
-        section.properties.headers = {};
-        
-        headerReferenceNodes.forEach(headerNode => {
-          const type = headerNode.getAttribute('w:type');
-          const id = headerNode.getAttribute('r:id');
-          
-          if (type && id) {
-            section.properties.headers[type] = id;
-          }
-        });
-      }
-      
-      if (footerReferenceNodes.length > 0) {
-        section.properties.footers = {};
-        
-        footerReferenceNodes.forEach(footerNode => {
-          const type = footerNode.getAttribute('w:type');
-          const id = footerNode.getAttribute('r:id');
-          
-          if (type && id) {
-            section.properties.footers[type] = id;
-          }
-        });
-      }
-      
-      sections.push(section);
-    });
-  } catch (error) {
-    console.error('Error parsing sections:', error);
-  }
-  
-  return sections;
-}
-
-/**
- * Parse tables from document
- * @param {Document} documentDoc - Document XML
- * @returns {Array} - Table information
- */
-function parseTables(documentDoc) {
-  const tables = [];
-  
-  try {
-    const tableNodes = selectNodes("//w:tbl", documentDoc);
-    
-    tableNodes.forEach((tblNode, index) => {
-      const table = {
-        id: `table${index}`,
-        properties: {},
-        rows: []
-      };
-      
-      // Get table properties
-      const tblPrNode = selectSingleNode("w:tblPr", tblNode);
-      if (tblPrNode) {
-        table.properties = parseTableProperties(tblPrNode);
-      }
-      
-      // Get table grid
-      const tblGridNode = selectSingleNode("w:tblGrid", tblNode);
-      if (tblGridNode) {
-        table.grid = [];
-        
-        const gridColNodes = selectNodes("w:gridCol", tblGridNode);
-        gridColNodes.forEach(gridColNode => {
-          const width = parseInt(gridColNode.getAttribute('w:w') || '0', 10);
-          table.grid.push(width);
-        });
-      }
-      
-      // Get rows
-      const rowNodes = selectNodes("w:tr", tblNode);
-      rowNodes.forEach((trNode, rowIndex) => {
-        const row = {
-          id: `${table.id}_r${rowIndex}`,
-          properties: {},
-          cells: []
-        };
-        
-        // Get row properties
-        const trPrNode = selectSingleNode("w:trPr", trNode);
-        if (trPrNode) {
-          // Row height
-          const trHeightNode = selectSingleNode("w:trHeight", trPrNode);
-          if (trHeightNode) {
-            row.properties.height = {
-              value: parseInt(trHeightNode.getAttribute('w:val') || '0', 10),
-              rule: trHeightNode.getAttribute('w:hRule') || 'auto'
-            };
-          }
-          
-          // Header row
-          const tblHeaderNode = selectSingleNode("w:tblHeader", trPrNode);
-          if (tblHeaderNode) {
-            row.properties.header = true;
-          }
-        }
-        
-        // Get cells
-        const cellNodes = selectNodes("w:tc", trNode);
-        cellNodes.forEach((tcNode, cellIndex) => {
-          const cell = {
-            id: `${row.id}_c${cellIndex}`,
-            properties: {},
-            content: []
-          };
-          
-          // Get cell properties
-          const tcPrNode = selectSingleNode("w:tcPr", tcNode);
-          if (tcPrNode) {
-            cell.properties = parseTableCellProperties(tcPrNode);
-            
-            // Grid span
-            const gridSpanNode = selectSingleNode("w:gridSpan", tcPrNode);
-            if (gridSpanNode) {
-              cell.properties.gridSpan = parseInt(gridSpanNode.getAttribute('w:val') || '1', 10);
-            }
-            
-            // Vertical merge
-            const vMergeNode = selectSingleNode("w:vMerge", tcPrNode);
-            if (vMergeNode) {
-              const val = vMergeNode.getAttribute('w:val');
-              cell.properties.vMerge = val || 'continue';
-            }
-          }
-          
-          // Get paragraphs in cell
-          const paragraphNodes = selectNodes("w:p", tcNode);
-          paragraphNodes.forEach((pNode, pIndex) => {
-            const paragraph = {
-              id: `${cell.id}_p${pIndex}`,
-              styleId: null,
-              properties: {},
-              text: '',
-              runs: []
-            };
-            
-            // Get paragraph properties
-            const pPrNode = selectSingleNode("w:pPr", pNode);
-            if (pPrNode) {
-              paragraph.properties = parseParagraphProperties(pPrNode);
-              
-              // Get style ID
-              const pStyleNode = selectSingleNode("w:pStyle", pPrNode);
-              if (pStyleNode) {
-                paragraph.styleId = pStyleNode.getAttribute('w:val');
-              }
-            }
-            
-            // Get runs
-            const runNodes = selectNodes("w:r", pNode);
-            runNodes.forEach((rNode, runIndex) => {
-              const run = {
-                id: `${paragraph.id}_r${runIndex}`,
-                properties: {},
-                text: ''
-              };
-              
-              // Get run properties
-              const rPrNode = selectSingleNode("w:rPr", rNode);
-              if (rPrNode) {
-                run.properties = parseRunProperties(rPrNode);
-              }
-              
-              // Get text
-              const textNodes = selectNodes("w:t", rNode);
-              textNodes.forEach(tNode => {
-                run.text += tNode.textContent;
-              });
-              
-              paragraph.runs.push(run);
-              paragraph.text += run.text;
-            });
-            
-            cell.content.push(paragraph);
-          });
-          
-          row.cells.push(cell);
-        });
-        
-        table.rows.push(row);
-      });
-      
-      tables.push(table);
-    });
-  } catch (error) {
-    console.error('Error parsing tables:', error);
-  }
-  
-  return tables;
-}
-
-/**
- * Parse lists from document
- * @param {Document} documentDoc - Document XML
- * @param {Document} numberingDoc - Numbering XML document
- * @returns {Array} - List information
- */
-function parseListsFromDocument(documentDoc, numberingDoc) {
-  const lists = [];
-  
-  try {
-    if (!numberingDoc) return lists;
-    
-    // First, get all paragraphs with numbering properties
-    const numberedParaNodes = selectNodes("//w:p[.//w:numPr]", documentDoc);
-    
-    // Group paragraphs by numId to determine lists
-    const listsByNumId = {};
-    
-    numberedParaNodes.forEach((pNode, index) => {
-      // Get numbering properties
-      const numPrNode = selectSingleNode(".//w:numPr", pNode);
-      if (!numPrNode) return;
-      
-      const numIdNode = selectSingleNode("w:numId", numPrNode);
-      const ilvlNode = selectSingleNode("w:ilvl", numPrNode);
-      
-      if (!numIdNode) return;
-      
-      const numId = numIdNode.getAttribute('w:val');
-      const level = ilvlNode ? parseInt(ilvlNode.getAttribute('w:val'), 10) : 0;
-      
-      if (!numId) return;
-      
-      // Create or update list entry
-      if (!listsByNumId[numId]) {
-        listsByNumId[numId] = {
-          id: `list_${numId}`,
-          numId,
-          items: []
-        };
-      }
-      
-      // Get paragraph text
-      let text = '';
-      const textNodes = selectNodes(".//w:t", pNode);
-      textNodes.forEach(tNode => {
-        text += tNode.textContent;
-      });
-      
-      // Add item to list
-      listsByNumId[numId].items.push({
-        id: `list_${numId}_item${index}`,
-        level,
-        text,
-        node: pNode
-      });
-    });
-    
-    // Convert to arrays
-    Object.values(listsByNumId).forEach(list => {
-      // Sort items by their order in the document
-      list.items.sort((a, b) => {
-        const posA = getNodePosition(a.node);
-        const posB = getNodePosition(b.node);
-        return posA - posB;
-      });
-      
-      // Add list to result
-      lists.push(list);
-    });
-  } catch (error) {
-    console.error('Error parsing lists:', error);
-  }
-  
-  return lists;
-}
-
-/**
- * Get node position in document
- * @param {Node} node - XML node
- * @returns {number} - Position index
- */
-function getNodePosition(node) {
-  let count = 0;
-  let current = node;
-  
-  // Count previous siblings
-  while (current.previousSibling) {
-    current = current.previousSibling;
-    count++;
-  }
-  
-  return count;
-}
-
-/**
- * Check for right-to-left text in document
- * @param {Document} documentDoc - Document XML
- * @returns {boolean} - True if document contains RTL text
- */
-function checkForRTL(documentDoc) {
-  try {
-    // Check for RTL paragraph alignment
-    const rtlParagraphs = selectNodes("//w:p/w:pPr/w:bidi[@w:val='1']", documentDoc);
-    if (rtlParagraphs.length > 0) {
-      return true;
-    }
-    
-    // Check for RTL text runs
-    const rtlRuns = selectNodes("//w:r/w:rPr/w:rtl[@w:val='1']", documentDoc);
-    if (rtlRuns.length > 0) {
-      return true;
-    }
-    
-    // Check for RTL document settings
-    const rtlSettings = selectNodes("//w:rtlGutter[@w:val='1']", documentDoc);
-    if (rtlSettings.length > 0) {
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    console.error('Error checking for RTL:', error);
-    return false;
-  }
-}
-
-/**
- * Generate CSS from extracted document information
- * @param {Object} documentInfo - Document information
+ * IMPROVED: Generate CSS from extracted style information with better TOC and list handling
+ * @param {Object} styleInfo - Style information
  * @returns {string} - CSS stylesheet
  */
-function generateCssFromStyleInfo(documentInfo) {
+function generateCssFromStyleInfo(styleInfo) {
   let css = '';
   
   try {
-    // Generate default CSS
-    css += generateDefaultCss(documentInfo);
-    
-    // Generate style-specific CSS
-    css += generateStyleCss(documentInfo);
-    
-    // Generate table CSS
-    css += generateTableCss(documentInfo);
-    
-    // Generate list CSS
-    css += generateListCss(documentInfo);
-    
-    // Generate RTL support
-    if (documentInfo.hasRTL) {
-      css += generateRtlCss();
-    }
-    
-    // Generate print styles
-    css += generatePrintCss();
-    
-    // Generate utility styles
-    css += generateUtilityCss(documentInfo);
-  } catch (error) {
-    console.error('Error generating CSS:', error);
-    css = generateFallbackCss();
-  }
-  
-  return css;
-}
-
-/**
- * Generate default CSS rules
- * @param {Object} documentInfo - Document information
- * @returns {string} - CSS rules for default styles
- */
-function generateDefaultCss(documentInfo) {
-  // Get default font family
-  let fontFamily = 'Arial, sans-serif';
-  
-  if (documentInfo.theme && documentInfo.theme.fonts) {
-    const defaultFont = documentInfo.theme.fonts.minor || documentInfo.theme.fonts.major;
-    if (defaultFont) {
-      fontFamily = `"${defaultFont}", Arial, sans-serif`;
-    }
-  }
-  
-  // Get default font size
-  let fontSize = '12pt';
-  
-  if (documentInfo.styles && 
-      documentInfo.styles.defaults && 
-      documentInfo.styles.defaults.character && 
-      documentInfo.styles.defaults.character.size) {
-    fontSize = `${documentInfo.styles.defaults.character.size / 2}pt`;
-  }
-  
-  return `
+    // Add document defaults
+    css += `
 /* Document defaults */
 body {
-  font-family: ${fontFamily};
-  font-size: ${fontSize};
-  line-height: 1.5;
+  font-family: "${styleInfo.theme.fonts.minor}", sans-serif;
+  font-size: ${styleInfo.documentDefaults.character.fontSize || '11pt'};
+  line-height: 1.15;
   margin: 20px;
   padding: 0;
-  color: #333;
-  background-color: #fff;
 }
+`;
 
-/* Responsive design */
-@media (max-width: 768px) {
-  body {
-    margin: 10px;
-    font-size: ${parseInt(fontSize, 10) + 2}pt;
-  }
+    // Add paragraph styles
+    Object.entries(styleInfo.styles.paragraph || {}).forEach(([id, style]) => {
+      const className = `docx-p-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+      
+      css += `
+.${className} {
+  ${style.font ? `font-family: "${getFontFamily(style, styleInfo)}", sans-serif;` : ''}
+  ${style.fontSize ? `font-size: ${style.fontSize};` : ''}
+  ${style.bold ? 'font-weight: bold;' : ''}
+  ${style.italic ? 'font-style: italic;' : ''}
+  ${style.color ? `color: ${style.color};` : ''}
+  ${style.alignment ? `text-align: ${style.alignment};` : ''}
+  ${style.spacing?.before ? `margin-top: ${convertTwipToPt(style.spacing.before)}pt;` : ''}
+  ${style.spacing?.after ? `margin-bottom: ${convertTwipToPt(style.spacing.after)}pt;` : ''}
+  ${style.indentation?.left ? `margin-left: ${convertTwipToPt(style.indentation.left)}pt;` : ''}
+  ${style.indentation?.right ? `margin-right: ${convertTwipToPt(style.indentation.right)}pt;` : ''}
+  ${style.indentation?.firstLine ? `text-indent: ${convertTwipToPt(style.indentation.firstLine)}pt;` : ''}
 }
+`;
+    });
 
-/* Default heading styles */
-h1, h2, h3, h4, h5, h6 {
-  font-family: ${fontFamily};
-  margin-top: 1.5em;
-  margin-bottom: 0.5em;
-  font-weight: bold;
+    // Add character styles
+    Object.entries(styleInfo.styles.character || {}).forEach(([id, style]) => {
+      const className = `docx-c-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+      
+      css += `
+.${className} {
+  ${style.font ? `font-family: "${getFontFamily(style, styleInfo)}", sans-serif;` : ''}
+  ${style.fontSize ? `font-size: ${style.fontSize};` : ''}
+  ${style.bold ? 'font-weight: bold;' : ''}
+  ${style.italic ? 'font-style: italic;' : ''}
+  ${style.color ? `color: ${style.color};` : ''}
+  ${style.underline ? `text-decoration: ${style.underline.type === 'none' ? 'none' : 'underline'};` : ''}
 }
+`;
+    });
 
-h1 { font-size: 1.8em; }
-h2 { font-size: 1.5em; }
-h3 { font-size: 1.3em; }
-h4 { font-size: 1.2em; }
-h5 { font-size: 1.1em; }
-h6 { font-size: 1em; }
-
-/* Default paragraph */
-p {
-  margin-top: 0;
-  margin-bottom: 1em;
-}
-
-/* Default list styles */
-ul, ol {
-  margin-top: 0;
-  margin-bottom: 1em;
-  padding-left: 2em;
-}
-
-/* Default table styles */
-table {
+    // Add table styles
+    Object.entries(styleInfo.styles.table || {}).forEach(([id, style]) => {
+      const className = `docx-t-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+      
+      css += `
+.${className} {
   border-collapse: collapse;
   width: 100%;
-  margin-bottom: 1em;
+}
+.${className} td, .${className} th {
+  padding: 5pt;
+  ${getBorderStyle(style, 'top')}
+  ${getBorderStyle(style, 'bottom')}
+  ${getBorderStyle(style, 'left')}
+  ${getBorderStyle(style, 'right')}
+}
+`;
+    });
+
+    // IMPROVED: Enhanced TOC styles based on extracted information
+    if (styleInfo.tocStyles) {
+      const tocHeaderStyle = styleInfo.tocStyles.tocHeadingStyle;
+      const tocEntryStyles = styleInfo.tocStyles.tocEntryStyles;
+      const leaderStyle = styleInfo.tocStyles.leaderStyle;
+      
+      // Main TOC container
+      css += `
+/* Table of Contents Styles */
+.docx-toc {
+  margin: 20px 0;
+  width: 100%;
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  vertical-align: top;
-}
-
-th {
-  background-color: #f2f2f2;
+.docx-toc-heading {
+  ${tocHeaderStyle.fontFamily ? `font-family: "${tocHeaderStyle.fontFamily}", sans-serif;` : ''}
+  ${tocHeaderStyle.fontSize ? `font-size: ${tocHeaderStyle.fontSize};` : 'font-size: 14pt;'}
   font-weight: bold;
+  margin-bottom: 12pt;
+  text-align: center;
+}
+`;
+
+      // TOC entries with leader lines
+      css += `
+.docx-toc-entry {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  width: 100%;
+  margin-bottom: 4pt;
+  position: relative;
+  overflow: hidden;
   text-align: left;
 }
 
-/* Default image styles */
-img {
-  max-width: 100%;
-  height: auto;
-}
-`;
-}
-
-/**
- * Generate CSS for specific styles
- * @param {Object} documentInfo - Document information
- * @returns {string} - CSS for styles
- */
-function generateStyleCss(documentInfo) {
-  let css = '';
-  
-  if (!documentInfo.styles || !documentInfo.styles.paragraph) {
-    return css;
-  }
-  
-  // Process paragraph styles
-  Object.entries(documentInfo.styles.paragraph).forEach(([id, style]) => {
-    if (!style.name || !style.properties) return;
-    
-    // Create class name from style ID
-    const className = `.doc-p-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-    
-    css += `${className} {\n`;
-    
-    // Add paragraph properties
-    if (style.properties.paragraph) {
-      // Alignment
-      if (style.properties.paragraph.alignment) {
-        css += `  text-align: ${convertAlignment(style.properties.paragraph.alignment)};\n`;
-      }
-      
-      // Indentation
-      if (style.properties.paragraph.indentation) {
-        const indentation = style.properties.paragraph.indentation;
-        
-        if (indentation.left) {
-          css += `  margin-left: ${twipToPt(indentation.left)}pt;\n`;
-        }
-        
-        if (indentation.right) {
-          css += `  margin-right: ${twipToPt(indentation.right)}pt;\n`;
-        }
-        
-        if (indentation.firstLine) {
-          css += `  text-indent: ${twipToPt(indentation.firstLine)}pt;\n`;
-        }
-        
-        if (indentation.hanging) {
-          css += `  text-indent: -${twipToPt(indentation.hanging)}pt;\n`;
-        }
-      }
-      
-      // Spacing
-      if (style.properties.paragraph.spacing) {
-        const spacing = style.properties.paragraph.spacing;
-        
-        if (spacing.before) {
-          css += `  margin-top: ${twipToPt(spacing.before)}pt;\n`;
-        }
-        
-        if (spacing.after) {
-          css += `  margin-bottom: ${twipToPt(spacing.after)}pt;\n`;
-        }
-        
-        if (spacing.line) {
-          if (spacing.lineRule === 'auto') {
-            // Line spacing as multiple
-            const lineSpacing = spacing.line / 240; // 240 = 100%
-            css += `  line-height: ${lineSpacing.toFixed(2)};\n`;
-          } else if (spacing.lineRule === 'exact' || spacing.lineRule === 'atLeast') {
-            // Line spacing as absolute value
-            css += `  line-height: ${twipToPt(spacing.line)}pt;\n`;
-          }
-        }
-      }
-      
-      // Borders
-      if (style.properties.paragraph.borders) {
-        const borders = style.properties.paragraph.borders;
-        
-        if (borders.top) {
-          css += `  border-top: ${generateBorderStyle(borders.top)};\n`;
-        }
-        
-        if (borders.right) {
-          css += `  border-right: ${generateBorderStyle(borders.right)};\n`;
-        }
-        
-        if (borders.bottom) {
-          css += `  border-bottom: ${generateBorderStyle(borders.bottom)};\n`;
-        }
-        
-        if (borders.left) {
-          css += `  border-left: ${generateBorderStyle(borders.left)};\n`;
-        }
-      }
-      
-      // Shading
-      if (style.properties.paragraph.shading) {
-        const shading = style.properties.paragraph.shading;
-        
-        if (shading.fill && shading.fill !== 'auto') {
-          css += `  background-color: #${shading.fill};\n`;
-        }
-        
-        if (shading.color && shading.color !== 'auto') {
-          css += `  color: #${shading.color};\n`;
-        }
-      }
-      
-      // RTL
-      if (style.properties.paragraph.bidi) {
-        css += `  direction: rtl;\n`;
-        css += `  text-align: right;\n`;
-      }
-    }
-    
-    // Add character properties
-    if (style.properties.character) {
-      // Font
-      if (style.properties.character.fonts) {
-        const fonts = style.properties.character.fonts;
-        const fontFamily = fonts.ascii || fonts.hAnsi || 'inherit';
-        css += `  font-family: "${fontFamily}", Arial, sans-serif;\n`;
-      }
-      
-      // Size
-      if (style.properties.character.size) {
-        css += `  font-size: ${style.properties.character.size / 2}pt;\n`;
-      }
-      
-      // Bold
-      if (style.properties.character.bold) {
-        css += `  font-weight: bold;\n`;
-      }
-      
-      // Italic
-      if (style.properties.character.italic) {
-        css += `  font-style: italic;\n`;
-      }
-      
-      // Underline
-      if (style.properties.character.underline) {
-        css += `  text-decoration: underline;\n`;
-      }
-      
-      // Strike
-      if (style.properties.character.strike) {
-        css += `  text-decoration: line-through;\n`;
-      }
-      
-      // Color
-      if (style.properties.character.color) {
-        css += `  color: #${style.properties.character.color};\n`;
-      }
-      
-      // All caps
-      if (style.properties.character.caps) {
-        css += `  text-transform: uppercase;\n`;
-      }
-      
-      // Small caps
-      if (style.properties.character.smallCaps) {
-        css += `  font-variant: small-caps;\n`;
-      }
-      
-      // Vertical alignment
-      if (style.properties.character.verticalAlignment) {
-        if (style.properties.character.verticalAlignment === 'superscript') {
-          css += `  vertical-align: super;\n`;
-          css += `  font-size: smaller;\n`;
-        } else if (style.properties.character.verticalAlignment === 'subscript') {
-          css += `  vertical-align: sub;\n`;
-          css += `  font-size: smaller;\n`;
-        }
-      }
-    }
-    
-    css += `}\n\n`;
-  });
-  
-  // Process character styles
-  Object.entries(documentInfo.styles.character || {}).forEach(([id, style]) => {
-    if (!style.name || !style.properties) return;
-    
-    // Create class name from style ID
-    const className = `.doc-c-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-    
-    css += `${className} {\n`;
-    
-    // Font
-    if (style.properties.fonts) {
-      const fonts = style.properties.fonts;
-      const fontFamily = fonts.ascii || fonts.hAnsi || 'inherit';
-      css += `  font-family: "${fontFamily}", Arial, sans-serif;\n`;
-    }
-    
-    // Size
-    if (style.properties.size) {
-      css += `  font-size: ${style.properties.size / 2}pt;\n`;
-    }
-    
-    // Bold
-    if (style.properties.bold) {
-      css += `  font-weight: bold;\n`;
-    }
-    
-    // Italic
-    if (style.properties.italic) {
-      css += `  font-style: italic;\n`;
-    }
-    
-    // Underline
-    if (style.properties.underline) {
-      css += `  text-decoration: underline;\n`;
-    }
-    
-    // Strike
-    if (style.properties.strike) {
-      css += `  text-decoration: line-through;\n`;
-    }
-    
-    // Color
-    if (style.properties.color) {
-      css += `  color: #${style.properties.color};\n`;
-    }
-    
-    // All caps
-    if (style.properties.caps) {
-      css += `  text-transform: uppercase;\n`;
-    }
-    
-    // Small caps
-    if (style.properties.smallCaps) {
-      css += `  font-variant: small-caps;\n`;
-    }
-    
-    // Vertical alignment
-    if (style.properties.verticalAlignment) {
-      if (style.properties.verticalAlignment === 'superscript') {
-        css += `  vertical-align: super;\n`;
-        css += `  font-size: smaller;\n`;
-      } else if (style.properties.verticalAlignment === 'subscript') {
-        css += `  vertical-align: sub;\n`;
-        css += `  font-size: smaller;\n`;
-      }
-    }
-    
-    css += `}\n\n`;
-  });
-  
-  // Generate heading styles based on document paragraphs
-  const headingStyles = [
-    { name: 'heading 1', selector: 'h1' },
-    { name: 'heading 2', selector: 'h2' },
-    { name: 'heading 3', selector: 'h3' },
-    { name: 'heading 4', selector: 'h4' },
-    { name: 'heading 5', selector: 'h5' },
-    { name: 'heading 6', selector: 'h6' }
-  ];
-  
-  headingStyles.forEach(heading => {
-    // Find style with matching name (case-insensitive)
-    const matchingStyle = Object.values(documentInfo.styles.paragraph || {}).find(style => 
-      style.name.toLowerCase() === heading.name
-    );
-    
-    if (matchingStyle && matchingStyle.properties) {
-      css += `${heading.selector} {\n`;
-      
-      // Add character properties
-      if (matchingStyle.properties.character) {
-        // Font
-        if (matchingStyle.properties.character.fonts) {
-          const fonts = matchingStyle.properties.character.fonts;
-          const fontFamily = fonts.ascii || fonts.hAnsi || 'inherit';
-          css += `  font-family: "${fontFamily}", Arial, sans-serif;\n`;
-        }
-        
-        // Size
-        if (matchingStyle.properties.character.size) {
-          css += `  font-size: ${matchingStyle.properties.character.size / 2}pt;\n`;
-        }
-        
-        // Bold - headings are usually bold by default, so we only need to set it to normal if it's explicitly false
-        if (matchingStyle.properties.character.bold === false) {
-          css += `  font-weight: normal;\n`;
-        }
-        
-        // Italic
-        if (matchingStyle.properties.character.italic) {
-          css += `  font-style: italic;\n`;
-        }
-        
-        // Color
-        if (matchingStyle.properties.character.color) {
-          css += `  color: #${matchingStyle.properties.character.color};\n`;
-        }
-      }
-      
-      // Add paragraph properties
-      if (matchingStyle.properties.paragraph) {
-        // Spacing
-        if (matchingStyle.properties.paragraph.spacing) {
-          const spacing = matchingStyle.properties.paragraph.spacing;
-          
-          if (spacing.before) {
-            css += `  margin-top: ${twipToPt(spacing.before)}pt;\n`;
-          }
-          
-          if (spacing.after) {
-            css += `  margin-bottom: ${twipToPt(spacing.after)}pt;\n`;
-          }
-        }
-      }
-      
-      css += `}\n\n`;
-    }
-  });
-  
-  return css;
+.docx-toc-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-grow: 0;
+  flex-shrink: 1;
 }
 
-/**
- * Generate CSS for tables
- * @param {Object} documentInfo - Document information
- * @returns {string} - CSS for tables
- */
-function generateTableCss(documentInfo) {
-  let css = '';
-  
-  if (!documentInfo.tables || !documentInfo.styles || !documentInfo.styles.table) {
-    return css;
-  }
-  
-  // Add table wrapper for responsiveness
-  css += `
-/* Table wrapper for responsiveness */
-.doc-table-container {
-  overflow-x: auto;
-  margin-bottom: 1em;
-}
-`;
-  
-  // Process table styles
-  Object.entries(documentInfo.styles.table).forEach(([id, style]) => {
-    if (!style.name || !style.properties) return;
-    
-    // Create class name from style ID
-    const className = `.doc-t-${id.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
-    
-    css += `${className} {\n`;
-    css += `  border-collapse: collapse;\n`;
-    css += `  width: 100%;\n`;
-    
-    // Add table properties
-    if (style.properties.table) {
-      // Table width
-      if (style.properties.table.width) {
-        if (style.properties.table.width.type === 'dxa') {
-          css += `  width: ${twipToPt(style.properties.table.width.width)}pt;\n`;
-        } else if (style.properties.table.width.type === 'pct') {
-          css += `  width: ${style.properties.table.width.width / 50}%;\n`;
-        }
-      }
-      
-      // Table layout
-      if (style.properties.table.layout === 'fixed') {
-        css += `  table-layout: fixed;\n`;
-      }
-    }
-    
-    css += `}\n\n`;
-    
-    // Cell styles
-    css += `${className} td, ${className} th {\n`;
-    css += `  border: 1px solid #ddd;\n`;
-    css += `  padding: 8px;\n`;
-    css += `  vertical-align: top;\n`;
-    
-    // Add cell margins
-    if (style.properties.table && style.properties.table.cellMargins) {
-      const margins = style.properties.table.cellMargins;
-      
-      if (margins.top) {
-        css += `  padding-top: ${twipToPt(margins.top.width)}pt;\n`;
-      }
-      
-      if (margins.right) {
-        css += `  padding-right: ${twipToPt(margins.right.width)}pt;\n`;
-      }
-      
-      if (margins.bottom) {
-        css += `  padding-bottom: ${twipToPt(margins.bottom.width)}pt;\n`;
-      }
-      
-      if (margins.left) {
-        css += `  padding-left: ${twipToPt(margins.left.width)}pt;\n`;
-      }
-    }
-    
-    // Add borders
-    if (style.properties.table && style.properties.table.borders) {
-      const borders = style.properties.table.borders;
-      
-      if (borders.top) {
-        css += `  border-top: ${generateBorderStyle(borders.top)};\n`;
-      }
-      
-      if (borders.right) {
-        css += `  border-right: ${generateBorderStyle(borders.right)};\n`;
-      }
-      
-      if (borders.bottom) {
-        css += `  border-bottom: ${generateBorderStyle(borders.bottom)};\n`;
-      }
-      
-      if (borders.left) {
-        css += `  border-left: ${generateBorderStyle(borders.left)};\n`;
-      }
-    }
-    
-    css += `}\n\n`;
-    
-    // Add conditional formatting if available
-    if (style.properties.conditionalFormatting) {
-      // First row formatting
-      if (style.properties.conditionalFormatting.firstRow) {
-        css += `${className} tr:first-child td, ${className} tr:first-child th {\n`;
-        
-        const formatting = style.properties.conditionalFormatting.firstRow;
-        
-        // Add character properties
-        if (formatting.character) {
-          if (formatting.character.bold) {
-            css += `  font-weight: bold;\n`;
-          }
-          
-          if (formatting.character.color) {
-            css += `  color: #${formatting.character.color};\n`;
-          }
-        }
-        
-        // Add cell properties
-        if (formatting.table) {
-          if (formatting.table.shading) {
-            css += `  background-color: #${formatting.table.shading.fill};\n`;
-          }
-          
-          if (formatting.table.borders) {
-            const borders = formatting.table.borders;
-            
-            if (borders.top) {
-              css += `  border-top: ${generateBorderStyle(borders.top)};\n`;
-            }
-            
-            if (borders.bottom) {
-              css += `  border-bottom: ${generateBorderStyle(borders.bottom)};\n`;
-            }
-          }
-        }
-        
-        css += `}\n\n`;
-      }
-      
-      // Banded row formatting
-      if (style.properties.conditionalFormatting.band1Horz) {
-        css += `${className} tr:nth-child(odd) {\n`;
-        
-        const formatting = style.properties.conditionalFormatting.band1Horz;
-        
-        if (formatting.table && formatting.table.shading) {
-          css += `  background-color: #${formatting.table.shading.fill};\n`;
-        }
-        
-        css += `}\n\n`;
-      }
-      
-      if (style.properties.conditionalFormatting.band2Horz) {
-        css += `${className} tr:nth-child(even) {\n`;
-        
-        const formatting = style.properties.conditionalFormatting.band2Horz;
-        
-        if (formatting.table && formatting.table.shading) {
-          css += `  background-color: #${formatting.table.shading.fill};\n`;
-        }
-        
-        css += `}\n\n`;
-      }
-    }
-  });
-  
-  return css;
-}
-
-/**
- * Generate CSS for lists
- * @param {Object} documentInfo - Document information
- * @returns {string} - CSS for lists
- */
-function generateListCss(documentInfo) {
-  let css = '';
-  
-  if (!documentInfo.numbering || !documentInfo.numbering.abstractNums) {
-    return css;
-  }
-  
-  // Basic list styles
-  css += `
-/* List container */
-.doc-list {
-  margin: 0;
-  padding: 0;
-  list-style-position: outside;
-}
-
-/* List item */
-.doc-list-item {
+.docx-toc-dots {
+  flex-grow: 1;
+  margin: 0 4pt;
+  height: 1em;
   position: relative;
+  display: inline-block;
+  border-bottom: 1px dotted #999;
+  min-width: 2em;
+}
+
+.docx-toc-pagenum {
+  flex-shrink: 0;
+  text-align: right;
+  white-space: nowrap;
+  min-width: 2em;
 }
 `;
-  
-  // Process abstract numbering definitions
-  Object.entries(documentInfo.numbering.abstractNums).forEach(([abstractId, abstractNum]) => {
-    if (!abstractNum.levels) return;
-    
-    // Process each level
-    Object.entries(abstractNum.levels).forEach(([level, levelDef]) => {
-      // Create class names
-      const listClass = `.doc-list-${abstractId}`;
-      const levelClass = `.doc-list-${abstractId}-${level}`;
-      
-      // Determine list style type
-      let listStyleType = 'decimal';
-      
-      switch (levelDef.format) {
-        case 'decimal': listStyleType = 'decimal'; break;
-        case 'lowerLetter': listStyleType = 'lower-alpha'; break;
-        case 'upperLetter': listStyleType = 'upper-alpha'; break;
-        case 'lowerRoman': listStyleType = 'lower-roman'; break;
-        case 'upperRoman': listStyleType = 'upper-roman'; break;
-        case 'bullet': listStyleType = 'disc'; break;
-        default: listStyleType = 'decimal';
-      }
-      
-      // Add list style
-      css += `${listClass} {\n`;
-      css += `  list-style-type: ${listStyleType};\n`;
-      
-      // If there's a level 0, assume it's an ordered list
-      if (abstractNum.levels['0']) {
-        css += `  counter-reset: item;\n`;
-      }
-      
-      css += `}\n\n`;
-      
-      // Add level-specific styles
-      css += `${levelClass} {\n`;
-      
-      // Add indentation
-      const leftIndent = levelDef.properties.paragraph && levelDef.properties.paragraph.indentation ?
-                        (levelDef.properties.paragraph.indentation.left || 0) : 
-                        (parseInt(level, 10) + 1) * 720; // Default is 0.5" per level
-      
-      css += `  margin-left: ${twipToPt(leftIndent)}pt;\n`;
-      
-      // Add text properties from paragraph style
-      if (levelDef.properties.paragraph) {
-        if (levelDef.properties.paragraph.indentation && levelDef.properties.paragraph.indentation.hanging) {
-          const hanging = levelDef.properties.paragraph.indentation.hanging;
-          css += `  text-indent: -${twipToPt(hanging)}pt;\n`;
-        }
-      }
-      
-      // Add text properties from character style
-      if (levelDef.properties.character) {
-        if (levelDef.properties.character.bold) {
-          css += `  font-weight: bold;\n`;
-        }
+
+      // Specific styles for different TOC levels
+      tocEntryStyles.forEach(style => {
+        const level = style.level || 1;
+        const leftIndent = style.indentation?.left ? 
+                         convertTwipToPt(style.indentation.left) : 
+                         (level - 1) * 20;
         
-        if (levelDef.properties.character.italic) {
-          css += `  font-style: italic;\n`;
-        }
-        
-        if (levelDef.properties.character.color) {
-          css += `  color: #${levelDef.properties.character.color};\n`;
-        }
-      }
-      
-      css += `}\n\n`;
-    });
-  });
-  
-  return css;
-}
-
-/**
- * Generate CSS for RTL support
- * @returns {string} - CSS for RTL
- */
-function generateRtlCss() {
-  return `
-/* RTL support */
-.doc-rtl {
-  direction: rtl;
-  text-align: right;
-}
-
-[dir="rtl"] {
-  direction: rtl;
-  text-align: right;
-}
-
-/* Language-specific styling */
-[lang="ar"], [lang="he"], [lang="fa"], [lang="ur"] {
-  direction: rtl;
-  text-align: right;
+        css += `
+.docx-toc-level-${level} {
+  ${style.fontFamily ? `font-family: "${style.fontFamily}", sans-serif;` : ''}
+  ${style.fontSize ? `font-size: ${style.fontSize};` : ''}
+  margin-left: ${leftIndent}pt;
 }
 `;
-}
+      });
+    }
 
-/**
- * Generate CSS for print
- * @returns {string} - CSS for print
- */
-function generatePrintCss() {
-  return `
-/* Print styles */
-@media print {
-  body {
-    font-size: 10pt;
-    margin: 0;
-  }
-  
-  h1, h2, h3, h4, h5, h6 {
-    page-break-after: avoid;
-    page-break-inside: avoid;
-  }
-  
-  p, li {
-    orphans: 2;
-    widows: 2;
-  }
-  
-  img, table, figure {
-    page-break-inside: avoid;
-  }
-  
-  .doc-table-container {
-    overflow-x: visible;
-  }
-}
-`;
-}
-
-/**
- * Generate utility CSS
- * @param {Object} documentInfo - Document information
- * @returns {string} - CSS for utilities
- */
-function generateUtilityCss(documentInfo) {
-  // Calculate default tab width
-  const defaultTabStop = documentInfo.settings && documentInfo.settings.defaultTabStop ? 
-                        twipToPt(documentInfo.settings.defaultTabStop) : 
-                        36; // Default is 0.5" (36pt)
-  
-  return `
-/* Utility styles */
-.doc-underline { text-decoration: underline; }
-.doc-strike { text-decoration: line-through; }
-.doc-tab { display: inline-block; width: ${defaultTabStop}pt; }
-.doc-break { display: block; margin-bottom: 1em; }
-.doc-superscript { vertical-align: super; font-size: smaller; }
-.doc-subscript { vertical-align: sub; font-size: smaller; }
-.doc-smallcaps { font-variant: small-caps; }
-.doc-caps { text-transform: uppercase; }
-.doc-hidden { display: none; }
-
-/* Language-specific fonts */
-[lang="zh-CN"], [lang="zh-SG"] {
-  font-family: "SimSun", "NSimSun", "Microsoft YaHei", sans-serif;
-}
-
-[lang="zh-TW"], [lang="zh-HK"] {
-  font-family: "MingLiU", "PMingLiU", "Microsoft JhengHei", sans-serif;
-}
-
-[lang="ja"] {
-  font-family: "MS Mincho", "MS PMincho", "Meiryo", sans-serif;
-}
-
-[lang="ko"] {
-  font-family: "Batang", "Gulim", "Malgun Gothic", sans-serif;
-}
-
-[lang="ru"] {
-  font-family: "Times New Roman", "Arial", sans-serif;
-}
-
-[lang="ar"], [lang="he"], [lang="fa"], [lang="ur"] {
-  font-family: "Tahoma", "Arial", sans-serif;
-}
-`;
-}
-
-/**
- * Generate fallback CSS
- * @returns {string} - Fallback CSS
- */
-function generateFallbackCss() {
-  return `
-/* Fallback styles */
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  font-size: 12pt;
-  line-height: 1.5;
-  margin: 20px;
-  padding: 0;
-  color: #333;
-  background-color: #fff;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  margin-top: 1em;
+    // IMPROVED: Enhanced list styling based on extracted numbering definitions
+    if (styleInfo.numberingDefs && Object.keys(styleInfo.numberingDefs.abstractNums).length > 0) {
+      // Basic list containers
+      css += `
+/* List and Numbering Styles */
+ol.docx-numbered-list,
+ol.docx-alpha-list {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 0.5em;
   margin-bottom: 0.5em;
-  line-height: 1.3;
 }
 
-h1 { font-size: 1.8em; }
-h2 { font-size: 1.5em; }
-h3 { font-size: 1.3em; }
-h4 { font-size: 1.1em; }
-h5 { font-size: 1em; font-weight: bold; }
-h6 { font-size: 1em; font-style: italic; }
-
-p { margin-bottom: 1em; }
-
-ul, ol { margin-bottom: 1em; padding-left: 2em; }
-
-table {
-  border-collapse: collapse;
-  width: 100%;
-  margin-bottom: 1em;
+ol.docx-numbered-list > li,
+ol.docx-alpha-list > li {
+  position: relative;
+  padding-left: 2.5em;
+  margin-bottom: 0.5em;
+  min-height: 1.5em;
 }
 
-th, td {
-  border: 1px solid #ddd;
-  padding: 8px;
-  vertical-align: top;
+ol.docx-numbered-list > li::before,
+ol.docx-alpha-list > li::before {
+  position: absolute;
+  left: 0;
+  content: attr(data-prefix);
+  font-weight: bold;
+  display: inline-block;
+  min-width: 2em;
+}
+`;
+
+      // Generate specific styles for each numbering definition
+      const abstractNums = styleInfo.numberingDefs.abstractNums;
+      
+      Object.entries(abstractNums).forEach(([id, abstractNum]) => {
+        Object.entries(abstractNum.levels).forEach(([level, levelDef]) => {
+          const levelNum = parseInt(level, 10);
+          const className = `docx-num-${id}-${level}`;
+          
+          // Calculate indentation
+          const leftIndent = levelDef.indentation?.left ? 
+                           convertTwipToPt(levelDef.indentation.left) : 
+                           levelNum * 36; // Default 36pt per level
+                           
+          const hangingIndent = levelDef.indentation?.hanging ? 
+                              convertTwipToPt(levelDef.indentation.hanging) : 
+                              24; // Default 24pt
+          
+          css += `
+li.${className} {
+  padding-left: ${leftIndent}pt;
+  text-indent: -${hangingIndent}pt;
 }
 
-th {
-  background-color: #f2f2f2;
+li.${className}::before {
+  min-width: ${hangingIndent}pt;
+  text-align: ${levelDef.alignment || 'left'};
+}
+`;
+        });
+      });
+      
+      // Special handling for different list formats
+      css += `
+/* Specific list type formatting */
+.docx-decimal-list > li::before {
+  content: attr(data-prefix) ".";
+}
+
+.docx-alpha-list > li::before {
+  content: attr(data-prefix) ".";
+}
+
+.docx-roman-list > li::before {
+  content: attr(data-prefix) ".";
+}
+
+/* Special paragraph types within lists */
+.docx-list-item-special {
+  font-style: italic;
+  margin-left: 2.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+}
+
+.docx-rationale {
+  font-style: italic;
+  color: #555;
+  margin-left: 2.5em;
+  margin-top: 0.5em;
+  margin-bottom: 0.7em;
+  border-left: 2px solid #ddd;
+  padding-left: 0.7em;
+}
+
+.docx-whereas {
+  font-weight: normal;
+}
+
+.docx-resolved {
   font-weight: bold;
 }
+`;
+    }
 
-img { max-width: 100%; height: auto; margin-bottom: 1em; }
-
-@media (max-width: 768px) {
-  body { margin: 10px; font-size: 14pt; }
+    // Add utility styles
+    css += `
+/* Utility styles */
+.docx-underline { text-decoration: underline; }
+.docx-strike { text-decoration: line-through; }
+.docx-tab { display: inline-block; width: ${convertTwipToPt(styleInfo.settings.defaultTabStop)}pt; }
+.docx-rtl { direction: rtl; }
+.docx-image { max-width: 100%; height: auto; display: block; margin: 10px 0; }
+.docx-table-default { width: 100%; border-collapse: collapse; margin: 10px 0; }
+.docx-table-default td, .docx-table-default th { border: 1px solid #ddd; padding: 5pt; }
+.docx-placeholder { 
+  font-weight: bold; 
+  text-align: center; 
+  padding: 15px; 
+  margin: 20px 0; 
+  background-color: #f0f0f0; 
+  border: 1px dashed #999; 
+  border-radius: 5px; 
 }
 
-@media print {
-  body { margin: 0; font-size: 10pt; }
-  h1, h2, h3, h4, h5, h6 { page-break-after: avoid; }
-  img, table { page-break-inside: avoid; }
+/* Special paragraph styles */
+.docx-heading1, .docx-heading2, .docx-heading3, .docx-heading4, .docx-heading5, .docx-heading6 {
+  font-family: "${styleInfo.theme.fonts.major}", sans-serif;
+  color: #2F5496;
+  margin-top: 1.2em;
+  margin-bottom: 0.6em;
+}
+
+.docx-heading1 { font-size: 16pt; }
+.docx-heading2 { font-size: 14pt; }
+.docx-heading3 { font-size: 13pt; font-style: italic; }
+.docx-heading4 { font-size: 12pt; }
+.docx-heading5 { font-size: 11pt; font-style: italic; }
+.docx-heading6 { font-size: 11pt; }
+
+/* Document footer */
+.docx-footer {
+  text-align: center;
+  margin-top: 2em;
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* Improved table styles */
+.table-responsive {
+  overflow-x: auto;
+  margin: 1em 0;
 }
 `;
+
+  } catch (error) {
+    console.error('Error generating CSS:', error);
+    
+    // Provide fallback CSS
+    css = `
+body { font-family: Calibri, sans-serif; font-size: 11pt; line-height: 1.15; margin: 20px; }
+h1, h2, h3, h4, h5, h6 { font-family: "Calibri Light", sans-serif; color: #2F5496; }
+h1 { font-size: 16pt; }
+h2 { font-size: 13pt; }
+h3 { font-size: 12pt; }
+p { margin: 10pt 0; }
+.docx-underline { text-decoration: underline; }
+.docx-strike { text-decoration: line-through; }
+.docx-rtl { direction: rtl; }
+.docx-image { max-width: 100%; height: auto; display: block; margin: 10px 0; }
+table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+td, th { border: 1px solid #ddd; padding: 5pt; }
+
+/* Basic TOC styles */
+.docx-toc-entry {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: baseline;
+  width: 100%;
+  margin-bottom: 4pt;
+}
+.docx-toc-text {
+  white-space: nowrap;
+  overflow: hidden;
+  flex-grow: 0;
+}
+.docx-toc-dots {
+  flex-grow: 1;
+  margin: 0 4pt;
+  height: 1em;
+  border-bottom: 1px dotted #999;
+}
+.docx-toc-pagenum {
+  flex-shrink: 0;
+  text-align: right;
+}
+
+/* Basic list styles */
+ol.docx-numbered-list { counter-reset: item; list-style-type: none; padding-left: 0; }
+ol.docx-numbered-list li { counter-increment: item; position: relative; padding-left: 2em; margin-bottom: 0.5em; }
+ol.docx-numbered-list li::before { position: absolute; left: 0; content: attr(data-prefix); font-weight: bold; }
+ol.docx-alpha-list { list-style-type: none; padding-left: 0; }
+ol.docx-alpha-list li { position: relative; padding-left: 2em; margin-bottom: 0.5em; }
+ol.docx-alpha-list li::before { position: absolute; left: 0; content: attr(data-prefix) "."; font-weight: bold; }
+
+/* Special styles */
+.docx-rationale { font-style: italic; margin-left: 2em; }
+`;
+  }
+
+  return css;
+}
+
+/**
+ * Get font family based on style and theme
+ * @param {Object} style - Style information
+ * @param {Object} styleInfo - Style information including theme
+ * @returns {string} - Font family
+ */
+function getFontFamily(style, styleInfo) {
+  if (!style.font) {
+    return styleInfo.theme.fonts.minor;
+  }
+  
+  // Use ASCII font if available, fall back to theme
+  return style.font.ascii || style.font.hAnsi || styleInfo.theme.fonts.minor;
+}
+
+/**
+ * Get border style
+ * @param {Object} style - Style information
+ * @param {string} side - Border side (top, bottom, left, right)
+ * @returns {string} - CSS border property
+ */
+function getBorderStyle(style, side) {
+  if (!style.borders || !style.borders[side]) {
+    return '';
+  }
+  
+  const border = style.borders[side];
+  if (!border || !border.value || border.value === 'nil' || border.value === 'none') {
+    return `border-${side}: none;`;
+  }
+  
+  const width = border.size ? convertBorderSizeToPt(border.size) : 1;
+  const color = border.color ? `#${border.color}` : 'black';
+  const borderStyle = getBorderTypeValue(border.value);
+  
+  return `border-${side}: ${width}pt ${borderStyle} ${color};`;
+}
+
+/**
+ * Convert border size to point value
+ * @param {string} size - Border size value
+ * @returns {number} - Size in points
+ */
+function convertBorderSizeToPt(size) {
+  const sizeNum = parseInt(size, 10) || 1;
+  // Border size is in 1/8th points
+  return sizeNum / 8;
+}
+
+/**
+ * Get CSS border style from Word border value
+ * @param {string} value - Word border value
+ * @returns {string} - CSS border style
+ */
+function getBorderTypeValue(value) {
+  const borderTypes = {
+    'single': 'solid',
+    'double': 'double',
+    'dotted': 'dotted',
+    'dashed': 'dashed',
+    'wavy': 'wavy',
+    'dashSmallGap': 'dashed',
+    'dotDash': 'dashed',
+    'dotDotDash': 'dashed',
+    'triple': 'double',
+    'thinThickSmallGap': 'double',
+    'thickThinSmallGap': 'double'
+  };
+  
+  return borderTypes[value] || 'solid';
 }
 
 /**
  * Convert twip value to points
- * @param {number} twip - Value in twentieths of a point
+ * @param {string} twip - Value in twentieths of a point
  * @returns {number} - Value in points
  */
-function twipToPt(twip) {
-  return Math.round((parseInt(twip, 10) || 0) / 20 * 100) / 100;
-}
-
-/**
- * Convert Word alignment to CSS alignment
- * @param {string} alignment - Word alignment value
- * @returns {string} - CSS alignment value
- */
-function convertAlignment(alignment) {
-  switch (alignment) {
-    case 'left': return 'left';
-    case 'right': return 'right';
-    case 'center': return 'center';
-    case 'both': return 'justify';
-    default: return 'left';
-  }
-}
-
-/**
- * Generate CSS border style
- * @param {Object} border - Border definition
- * @returns {string} - CSS border style
- */
-function generateBorderStyle(border) {
-  if (!border || !border.type || border.type === 'nil' || border.type === 'none') {
-    return 'none';
-  }
-  
-  const width = border.size / 8; // Border size is in 1/8th points
-  const color = border.color ? `#${border.color}` : '#000000';
-  
-  let style = 'solid';
-  switch (border.type) {
-    case 'single': style = 'solid'; break;
-    case 'double': style = 'double'; break;
-    case 'dotted': style = 'dotted'; break;
-    case 'dashed': style = 'dashed'; break;
-    case 'dotDash': style = 'dashed'; break;
-    case 'dotDotDash': style = 'dashed'; break;
-    case 'triple': style = 'double'; break;
-    case 'wave': style = 'wavy'; break;
-    default: style = 'solid';
-  }
-  
-  return `${width}pt ${style} ${color}`;
+function convertTwipToPt(twip) {
+  const twipNum = parseInt(twip, 10) || 0;
+  // 20 twips = 1 point
+  return twipNum / 20;
 }
 
 module.exports = {
   parseDocxStyles,
   generateCssFromStyleInfo,
+  createXPathSelector,
   selectNodes,
   selectSingleNode,
-  twipToPt
+  convertTwipToPt
 };
