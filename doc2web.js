@@ -4,7 +4,8 @@ const path = require('path');
 const { promisify } = require('util');
 const mammoth = require('mammoth');
 const { markdownify } = require('./markdownify');
-const { extractAndApplyStyles } = require('./style-extractor');
+// Import extractAndApplyStyles but use extractImagesFromDocx instead of processImages
+const { extractAndApplyStyles, extractImagesFromDocx } = require('./lib');
 
 // Promisify fs functions for async/await usage
 const readFile = promisify(fs.readFile);
@@ -109,8 +110,8 @@ async function processDocxFile(filePath, options) {
     const imagesDir = path.join(outputPaths.directory, 'images');
     await ensureDirectory(imagesDir);
     
-    // Extract images
-    await processImages(filePath, imagesDir);
+    // Extract images - CHANGED: Using extractImagesFromDocx instead of processImages
+    await extractImagesFromDocx(filePath, imagesDir);
     
     // Extract styles and convert to styled HTML with improved style extraction
     console.log(`Extracting styled content from "${filePath}"...`);
@@ -145,41 +146,6 @@ async function processDocxFile(filePath, options) {
     
   } catch (error) {
     console.error(`Error processing file "${filePath}":`, error.message);
-  }
-}
-
-/**
- * Process images from a DOCX file
- * @param {string} docxPath - Path to the DOCX file
- * @param {string} outputDir - Directory to save images
- */
-async function processImages(docxPath, outputDir) {
-  try {
-    const options = {
-      path: docxPath,
-      encoding: 'utf8',
-      convertImage: mammoth.images.imgElement(function(image) {
-        return image.read("base64").then(function(imageBuffer) {
-          const extension = image.contentType.split('/')[1];
-          const filename = `image-${image.altText || Date.now()}.${extension}`;
-          
-          // Save the image to output directory
-          const imagePath = path.join(outputDir, filename);
-          fs.writeFileSync(imagePath, Buffer.from(imageBuffer, 'base64'));
-          
-          return {
-            src: `./images/${filename}`,
-            alt: image.altText || 'Image'
-          };
-        });
-      })
-    };
-    
-    // Convert to HTML with images
-    await mammoth.convertToHtml(options);
-    console.log('Images extracted successfully.');
-  } catch (error) {
-    console.error('Error extracting images:', error.message);
   }
 }
 
