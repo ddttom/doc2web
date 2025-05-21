@@ -49,6 +49,9 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Provide an intuitive interface for both individual and batch processing
 - Create organized output that mirrors the original directory structure
 - Accurately extract and render complex document elements like TOC and hierarchical lists
+- Accessibility Compliance: Ensure HTML output meets WCAG 2.1 Level AA standards
+- Metadata Preservation: Better extraction and preservation of document metadata
+- Track Changes Support: Handle documents with tracked changes appropriately
 
 ### 1.3 Project Scope
 
