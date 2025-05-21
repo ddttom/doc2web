@@ -12,6 +12,9 @@ This tool extracts content from DOCX files while maintaining:
 - Unicode and multilingual content
 - Table of Contents (TOC) with proper styling
 - Hierarchical list numbering and structure
+- **WCAG 2.1 Level AA accessibility compliance**
+- **Document metadata preservation**
+- **Track changes visualization and handling**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -21,10 +24,9 @@ The app must deeply inspect the docx and obtain css and formatting styles, font 
 
 The codebase has been refactored for better organization and maintainability:
 
-```
+```bash
 doc2web/
 ├── .gitignore
-├── .vscode
 ├── README.md
 ├── doc2web-install.sh
 ├── doc2web-run.js
@@ -32,7 +34,8 @@ doc2web/
 ├── docs/
 │   ├── prd.md                  # Product Requirements Document
 │   ├── refactoring.md          # Detailed refactoring documentation
-│   └── user-guide.md           # User guide for the refactored code
+│   ├── user-guide.md           # User guide for the refactored code
+│   └── architecture.md         # Technical architecture documentation
 ├── init-doc2web.sh
 ├── input/
 ├── lib/                        # Refactored library code
@@ -44,7 +47,9 @@ doc2web/
 │   │   ├── theme-parser.js     # Theme parsing functions
 │   │   ├── toc-parser.js       # TOC parsing functions
 │   │   ├── numbering-parser.js # Numbering definition parsing
-│   │   └── document-parser.js  # Document structure parsing
+│   │   ├── document-parser.js  # Document structure parsing
+│   │   ├── metadata-parser.js  # Document metadata parsing
+│   │   └── track-changes-parser.js # Track changes extraction
 │   ├── html/                   # HTML processing modules
 │   │   ├── html-generator.js   # Main HTML generation
 │   │   ├── structure-processor.js # HTML structure handling
@@ -53,6 +58,8 @@ doc2web/
 │   ├── css/                    # CSS generation modules
 │   │   ├── css-generator.js    # CSS generation functions
 │   │   └── style-mapper.js     # Style mapping functions
+│   ├── accessibility/          # Accessibility enhancement modules
+│   │   └── wcag-processor.js   # WCAG 2.1 compliance processor
 │   └── utils/                  # Utility functions
 │       ├── unit-converter.js   # Unit conversion utilities
 │       └── common-utils.js     # Common utility functions
@@ -145,42 +152,107 @@ output/
 - `--html-only`: Generate only HTML output, skip markdown
 - `--list`: Treat the input file as a list of files to process
 
-## Code Organization
+## Enhanced Features
 
-The codebase has been refactored into a modular structure:
+### Accessibility Compliance (WCAG 2.1 Level AA)
 
-- **XML Utilities** (`lib/xml/`): Functions for working with XML and XPath
-  - `xpath-utils.js`: Provides utilities for XPath queries with proper namespace handling
+doc2web now ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
 
-- **Parsers** (`lib/parsers/`): 
-  - `style-parser.js`: Parses DOCX styles and extracts formatting information
-  - `theme-parser.js`: Extracts theme information (colors, fonts)
-  - `toc-parser.js`: Parses Table of Contents styles and structure
-  - `numbering-parser.js`: Extracts numbering definitions for lists
-  - `document-parser.js`: Analyzes document structure and settings
+- Proper semantic structure with HTML5 sectioning elements and ARIA landmarks
+- Accessible tables with captions, header cells, and proper scope attributes
+- Images with appropriate alt text and figure/figcaption elements
+- Proper heading hierarchy with no skipped levels
+- Skip navigation links for keyboard users
+- Keyboard focus indicators and proper tab order
+- High contrast mode support
+- Reduced motion support
+- Screen reader compatibility
 
-- **HTML Processing** (`lib/html/`):
-  - `html-generator.js`: Main module for generating HTML from DOCX
-  - `structure-processor.js`: Ensures proper HTML document structure
-  - `content-processors.js`: Processes headings, TOC, and lists
-  - `element-processors.js`: Processes tables, images, and language elements
+To enable accessibility features (enabled by default):
 
-- **CSS Generation** (`lib/css/`):
-  - `css-generator.js`: Generates CSS from extracted style information
-  - `style-mapper.js`: Maps DOCX styles to CSS classes
+```javascript
+// When using the API
+const { extractAndApplyStyles } = require('./lib');
+const options = { enhanceAccessibility: true };
+const result = await extractAndApplyStyles('document.docx', null, options);
+```
 
-- **Utilities** (`lib/utils/`):
-  - `unit-converter.js`: Converts between different units (twips, points)
-  - `common-utils.js`: Common utility functions shared across modules
+### Metadata Preservation
 
-## Documentation
+doc2web now extracts and preserves document metadata in the generated HTML:
 
-- **README.md**: This file, providing an overview of the project
-- **docs/prd.md**: Product Requirements Document with detailed specifications
-- **docs/refactoring.md**: Detailed documentation of the refactoring process
-- **docs/user-guide.md**: User guide for working with the refactored code
+- Title, author, description, and keywords
+- Creation and modification dates
+- Document statistics (pages, words, characters)
+- Dublin Core metadata
+- Open Graph and Twitter Card metadata for social sharing
+- JSON-LD structured data for search engines
 
-## Recent Fixes
+To enable metadata preservation (enabled by default):
+
+```javascript
+// When using the API
+const { extractAndApplyStyles } = require('./lib');
+const options = { preserveMetadata: true };
+const result = await extractAndApplyStyles('document.docx', null, options);
+```
+
+### Track Changes Support
+
+doc2web now handles tracked changes in documents:
+
+- Visual representation of insertions, deletions, moves, and formatting changes
+- Multiple view modes (show changes, hide changes, accept all, reject all)
+- Author and date information for each change
+- Track changes legend with toggle functionality
+- Keyboard shortcut (Alt+T) to toggle track changes visibility
+
+To configure track changes handling:
+
+```javascript
+// When using the API
+const { extractAndApplyStyles } = require('./lib');
+const options = {
+  trackChangesMode: 'show', // 'show', 'hide', 'accept', or 'reject'
+  showAuthor: true,
+  showDate: true
+};
+const result = await extractAndApplyStyles('document.docx', null, options);
+```
+
+## API Usage
+
+```javascript
+const { extractAndApplyStyles } = require('./lib');
+
+async function convertDocument(docxPath) {
+  // Default options
+  const options = {
+    enhanceAccessibility: true,
+    preserveMetadata: true,
+    trackChangesMode: 'show',
+    showAuthor: true,
+    showDate: true
+  };
+
+  const result = await extractAndApplyStyles(docxPath, null, options);
+  console.log('HTML generated:', result.html);
+  console.log('CSS generated:', result.styles);
+  console.log('Metadata extracted:', result.metadata);
+  console.log('Track changes detected:', result.trackChanges.hasTrackedChanges);
+}
+
+convertDocument('document.docx').catch(console.error);
+```
+
+## Recent Fixes and Enhancements
+
+### v1.1.0 (2025-05-21)
+
+- Added support for WCAG 2.1 Level AA accessibility compliance
+- Implemented document metadata preservation
+- Added track changes support with multiple viewing modes
+- Enhanced API with configuration options for new features
 
 ### v1.0.7 (2025-05-20)
 
@@ -202,36 +274,12 @@ The codebase has been refactored into a modular structure:
   - Improved CSS generation for TOC and list styling
   - Added better detection and styling of special document sections
 
-- Enhanced TOC (Table of Contents) Processing:
-  - Proper leader line rendering with dots connecting entries to page numbers
-  - Right-aligned page numbers for better readability
-  - Correct indentation for different TOC levels
-  - Preservation of TOC structure through advanced DOM manipulation
-  - Better visual fidelity to the original document's TOC appearance
-
-- Improved List Handling:
-  - Hierarchical list numbering (1., a., b., etc.) maintained with proper nesting
-  - Proper indentation for different list levels
-  - Special handling for "Rationale for Resolution" paragraphs within lists
-  - Better recognition of list structures through content pattern analysis
-  - Consistent numbering throughout converted documents
-
-- More Robust Style Extraction:
-  - Enhanced DOCX style parser that captures more details from the document
-  - Better handling of special paragraph types
-  - Improved detection of document structure patterns
-  - More accurate conversion of DOCX styles to CSS
-  - Deeper inspection of document formatting attributes
-
 ### v1.0.5 (2025-05-19)
 
 - Fixed hierarchical list numbering in document conversion:
   - Properly maintains outline numbering structure (1., a., b., c., 2., etc.)
   - Correctly nests sub-items within parent items in HTML output
   - Preserves the original document's hierarchical list structure
-  - Ensures consistent numbering throughout converted documents
-  - Handles special cases like "Rationale for Resolution" paragraphs between list items
-  - Verified with test file `input/TEST-TWO.docx` containing complex hierarchical lists
 
 ### v1.0.4 (2025-05-19)
 
@@ -239,7 +287,6 @@ The codebase has been refactored into a modular structure:
   - Automatically detects table of contents and index elements in DOCX files
   - Properly decorates these elements in the output with appropriate styling
   - Prevents unnecessary content duplication in web output
-  - Improves readability by properly formatting navigation elements in web formats
 
 ### v1.0.3 (2025-05-16)
 
@@ -248,14 +295,6 @@ The codebase has been refactored into a modular structure:
   - Updated HTML files to use `<link>` tags to reference external CSS
   - Improved file organization and reduced HTML file size
   - Added 20px margin to body element for better readability
-- Fixed URL handling in markdown generation:
-  - Properly escaped special characters in URLs (parentheses, ampersands, etc.)
-  - Improved handling of empty link text
-  - Enhanced compatibility with markdown parsers and linters
-- Fixed list formatting in markdown generation:
-  - Added proper blank lines before and after lists (MD032)
-  - Ensured consistent spacing in list items
-  - Improved overall markdown structure and readability
 
 ### v1.0.2 (2025-05-16)
 
@@ -263,9 +302,6 @@ The codebase has been refactored into a modular structure:
   - Fixed hard tabs, trailing spaces, and trailing punctuation in headings
   - Ensured proper spacing around list markers and correct ordered list numbering
   - Added proper blank lines around headings
-  - Fixed spaces inside emphasis markers
-  - Ensured first line is a top-level heading and prevented multiple top-level headings
-  - Improved handling of empty links
 
 ### v1.0.1 (2025-05-16)
 

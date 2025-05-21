@@ -720,8 +720,7 @@ A test suite should include documents with the following characteristics:
 - [README.md](README.md) - Project overview and quick start guide
 - [Refactoring Documentation](refactoring.md) - Detailed documentation of the refactoring process
 - [User Guide](user-guide.md) - Guide for working with the refactored code
-- [API Documentation](api-docs.md) - Technical documentation for developers
-- [Testing Guidelines](testing.md) - Guidelines for testing doc2web
+- [Architecture Documentation](architecture.md) - Technical documentation for developers
 
 ### 17.3 References
 
