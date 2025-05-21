@@ -1,180 +1,4 @@
-## 18. Key Algorithms
-
-### 18.1 Style Extraction Algorithm
-
-```
-function parseDocxStyles(docxPath):
-    1. Read DOCX file and extract key XML files
-    2. Parse XML files into DOM structures
-    3. Extract styles from styles.xml
-    4. Extract theme information from theme/theme1.xml
-    5. Extract document defaults from styles.xml
-    6. Extract document settings from settings.xml
-    7. Extract TOC styles by analyzing styles and document structure
-    8. Extract numbering definitions from numbering.xml
-    9. Extract metadata from docProps/core.xml and docProps/app.xml
-    10. Extract tracked changes information from document.xml
-    11. Analyze document structure to identify patterns and special elements
-    12. Return combined style information
-```
-
-### 18.2 CSS Generation Algorithm
-
-```
-function generateCssFromStyleInfo(styleInfo):
-    1. Generate document defaults CSS (body styles)
-    2. For each paragraph style:
-        a. Generate a CSS class with appropriate properties
-    3. For each character style:
-        a. Generate a CSS class with appropriate properties
-    4. For each table style:
-        a. Generate CSS classes for tables and cells
-    5. Generate TOC styles:
-        a. Style TOC container and heading
-        b. Style TOC entries with proper levels and indentation
-        c. Create leader dot styles
-    6. Generate list styles:
-        a. Create counter reset and increment rules
-        b. Style list items for each level
-        c. Create pseudo-elements for numbering
-    7. Generate track changes styles:
-        a. Style insertion, deletion, and formatting change indicators
-        b. Style change metadata display
-    8. Generate accessibility styles:
-        a. Focus indicators and skip links
-        b. High contrast mode support
-        c. Screen reader enhancements
-    9. Add utility styles for common elements
-    10. Return combined CSS
-```
-
-### 18.3 TOC Processing Algorithm
-
-```
-function processTOC(document, styleInfo):
-    1. Find TOC entries (by class or content pattern)
-    2. If TOC entries found:
-        a. Create or find TOC container
-        b. Add ARIA role="navigation" and proper landmarks
-        c. For each TOC entry:
-            i. Determine TOC level
-            ii. Extract text content and page number
-            iii. Create structured elements (text, dots, page number)
-            iv. Apply appropriate classes and ARIA attributes
-            v. Ensure keyboard navigability
-            vi. Move to TOC container
-    3. Return enhanced document
-```
-
-### 18.4 Hierarchical List Processing Algorithm
-
-```
-function processNestedNumberedParagraphs(document, styleInfo):
-    1. Identify list patterns in the document
-    2. Process paragraphs that look like list items:
-        a. Match with different list patterns (main numbers, alpha, roman, etc.)
-        b. Determine list type, prefix, and level
-        c. Create/continue appropriate list structure
-        d. Create list items with proper attributes and ARIA roles
-        e. Handle special paragraphs within lists
-        f. Ensure proper list semantics for accessibility
-    3. Return enhanced document with structured lists
-```
-
-### 18.5 Metadata Processing Algorithm
-
-```
-function processMetadata(document, metadata):
-    1. Extract metadata from docProps/core.xml and docProps/app.xml
-    2. Add standard HTML meta tags (title, description, keywords, etc.)
-    3. Add Dublin Core metadata
-    4. Add Open Graph metadata
-    5. Add Twitter Card metadata
-    6. Create JSON-LD structured data
-    7. Add metadata to HTML head
-    8. Return enhanced document
-```
-
-### 18.6 Track Changes Processing Algorithm
-
-```
-function processTrackChanges(document, changes, options):
-    1. Determine track changes mode (show, hide, accept, reject)
-    2. Add mode-specific class to document body
-    3. Process insertions:
-        a. Find insertion elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (author, date) as attributes
-    4. Process deletions:
-        a. Find deletion elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (author, date) as attributes
-    5. Process moves:
-        a. Find move elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (source, destination) as attributes
-    6. Process formatting changes:
-        a. Find formatting change elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (before, after) as attributes
-    7. Return enhanced document
-```
-
-### 18.7 Accessibility Processing Algorithm
-
-```
-function processForAccessibility(document, styleInfo, metadata):
-    1. Add language attribute to HTML element
-    2. Add title and metadata
-    3. Process headings:
-        a. Ensure proper heading hierarchy
-        b. Add ARIA attributes for complex headings
-    4. Process tables:
-        a. Add table captions
-        b. Add header cells with scope
-        c. Add ARIA labels for complex tables
-    5. Process images:
-        a. Add appropriate alt text
-        b. Add figure and figcaption elements
-    6. Add ARIA landmarks:
-        a. Banner (header)
-        b. Navigation (TOC, menus)
-        c. Main (document content)
-        d. Complementary (asides)
-        e. Contentinfo (footer)
-    7. Add skip navigation link
-    8. Enhance keyboard navigability:
-        a. Add tabindex where needed
-        b. Ensure logical tab order
-        c. Add focus styles
-    9. Enhance color contrast and non-visual indicators
-    10. Return enhanced document
-```
-
-## 19. Conclusion
-
-The doc2web application provides a robust solution for converting DOCX documents to web-friendly formats while preserving styling and structure. By analyzing the document's XML structure rather than its content, the application remains generic and content-agnostic, working effectively with any document regardless of its domain or purpose.
-
-The enhanced implementation now includes comprehensive accessibility features ensuring WCAG 2.1 Level AA compliance, detailed metadata extraction and preservation, and robust track changes handling. These enhancements make the application suitable for professional and enterprise environments where accessibility, metadata, and revision tracking are critical requirements.
-
-The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents.### 5.7 Document Structure Analysis
-
-The application analyzes the document structure to identify special elements and patterns without relying on specific content words. This includes:
-
-1. **TOC Detection**
-   - Identify TOC fields in document.xml
-   - Extract TOC properties (leader character, heading levels)
-   - Find TOC styles in style definitions
-
-2. **List Structure Analysis**
-   - Identify hierarchical relationships between list items
-   - Detect non-numbered paragraphs within lists
-   - Analyze paragraph properties for list formatting
-
-3. **Paragraph Pattern Analysis**
-   - Identify structural patterns (NOT content-specific patterns)
-   - Look for formatting patterns in the document
-   - Analyze style usage across the document# doc2web Architecture
+# doc2web Architecture
 
 ## 1. Overview
 
@@ -186,7 +10,7 @@ The application is designed to be generic, content-agnostic, and document-struct
 
 The application follows a modular architecture organized into logical function groups:
 
-```
+```bash
 doc2web/
 ├── doc2web.js             # Main entry point and orchestrator
 ├── markdownify.js         # HTML to Markdown converter
@@ -217,6 +41,7 @@ doc2web/
 │   └── utils/             # Utility functions
 │       ├── unit-converter.js    # Unit conversion utilities
 │       └── common-utils.js      # Common utility functions
+
 ```
 
 ## 3. DOCX File Structure
@@ -640,7 +465,7 @@ The application includes comprehensive error handling:
 
 The following diagram illustrates the data flow through the application:
 
-```
+```bash
 Input DOCX File
     │
     ▼
@@ -694,11 +519,11 @@ Input DOCX File
 └────────────────────┘
 ```
 
-## 15. Accessibility Implementation
+## 13. Accessibility Implementation
 
 The application includes comprehensive accessibility features to ensure WCAG 2.1 Level AA compliance:
 
-### 15.1 Accessibility Processing
+### 13.1 Accessibility Processing
 
 The `wcag-processor.js` module enhances HTML output for accessibility:
 
@@ -740,7 +565,7 @@ function processForAccessibility(document, styleInfo, metadata) {
 }
 ```
 
-### 15.2 Key Accessibility Enhancements
+### 13.2 Key Accessibility Enhancements
 
 1. **Semantic Structure**
    - Proper HTML5 sectioning elements (header, main, nav, aside, footer)
@@ -783,11 +608,11 @@ function processForAccessibility(document, styleInfo, metadata) {
    - ARIA attributes for custom lists
    - Keyboard navigable TOC
 
-## 16. Metadata Implementation
+## 14. Metadata Implementation
 
 The application includes comprehensive metadata processing:
 
-### 16.1 Metadata Extraction and Application
+### 14.1 Metadata Extraction and Application
 
 The `metadata-parser.js` module extracts and applies document metadata:
 
@@ -812,13 +637,11 @@ function applyMetadataToHtml(document, metadata) {
     head.appendChild(metaDesc);
   }
   
-  // Add author
-  if (metadata.core.creator) {
-    const metaAuthor = document.createElement('meta');
-    metaAuthor.setAttribute('name', 'author');
-    metaAuthor.setAttribute('content', metadata.core.creator);
-    head.appendChild(metaAuthor);
-  }
+  // Add author (always set to "doc2web" regardless of original document author)
+  const metaAuthor = document.createElement('meta');
+  metaAuthor.setAttribute('name', 'author');
+  metaAuthor.setAttribute('content', 'doc2web');
+  head.appendChild(metaAuthor);
   
   // Add keywords
   if (metadata.core.keywords) {
@@ -841,7 +664,7 @@ function applyMetadataToHtml(document, metadata) {
 }
 ```
 
-### 16.2 Key Metadata Features
+### 14.2 Key Metadata Features
 
 1. **HTML Meta Tags**
    - Standard meta tags (title, description, author, keywords)
@@ -861,11 +684,11 @@ function applyMetadataToHtml(document, metadata) {
    - Conversion timestamp
    - Document statistics preservation
 
-## 17. Track Changes Implementation
+## 15. Track Changes Implementation
 
 The application includes comprehensive track changes processing:
 
-### 17.1 Track Changes Processing
+### 15.1 Track Changes Processing
 
 The `track-changes-parser.js` module extracts and processes tracked changes:
 
@@ -928,7 +751,7 @@ function processTrackChanges(document, changes, options) {
 }
 ```
 
-### 17.2 Key Track Changes Features
+### 15.2 Key Track Changes Features
 
 1. **Visualization Modes**
    - Show changes mode (display all insertions, deletions, and formatting changes)
@@ -952,3 +775,164 @@ function processTrackChanges(document, changes, options) {
    - ARIA attributes for screen readers
    - Non-visual indicators for changes
    - Keyboard shortcuts for navigating changes
+
+## 16. Key Algorithms
+
+### 16.1 Style Extraction Algorithm
+
+```
+function parseDocxStyles(docxPath):
+    1. Read DOCX file and extract key XML files
+    2. Parse XML files into DOM structures
+    3. Extract styles from styles.xml
+    4. Extract theme information from theme/theme1.xml
+    5. Extract document defaults from styles.xml
+    6. Extract document settings from settings.xml
+    7. Extract TOC styles by analyzing styles and document structure
+    8. Extract numbering definitions from numbering.xml
+    9. Extract metadata from docProps/core.xml and docProps/app.xml
+    10. Extract tracked changes information from document.xml
+    11. Analyze document structure to identify patterns and special elements
+    12. Return combined style information
+```
+
+### 16.2 CSS Generation Algorithm
+
+```
+function generateCssFromStyleInfo(styleInfo):
+    1. Generate document defaults CSS (body styles)
+    2. For each paragraph style:
+        a. Generate a CSS class with appropriate properties
+    3. For each character style:
+        a. Generate a CSS class with appropriate properties
+    4. For each table style:
+        a. Generate CSS classes for tables and cells
+    5. Generate TOC styles:
+        a. Style TOC container and heading
+        b. Style TOC entries with proper levels and indentation
+        c. Create leader dot styles
+    6. Generate list styles:
+        a. Create counter reset and increment rules
+        b. Style list items for each level
+        c. Create pseudo-elements for numbering
+    7. Generate track changes styles:
+        a. Style insertion, deletion, and formatting change indicators
+        b. Style change metadata display
+    8. Generate accessibility styles:
+        a. Focus indicators and skip links
+        b. High contrast mode support
+        c. Screen reader enhancements
+    9. Add utility styles for common elements
+    10. Return combined CSS
+```
+
+### 16.3 TOC Processing Algorithm
+
+```
+function processTOC(document, styleInfo):
+    1. Find TOC entries (by class or content pattern)
+    2. If TOC entries found:
+        a. Create or find TOC container
+        b. Add ARIA role="navigation" and proper landmarks
+        c. For each TOC entry:
+            i. Determine TOC level
+            ii. Extract text content and page number
+            iii. Create structured elements (text, dots, page number)
+            iv. Apply appropriate classes and ARIA attributes
+            v. Ensure keyboard navigability
+            vi. Move to TOC container
+    3. Return enhanced document
+```
+
+### 16.4 Hierarchical List Processing Algorithm
+
+```
+function processNestedNumberedParagraphs(document, styleInfo):
+    1. Identify list patterns in the document
+    2. Process paragraphs that look like list items:
+        a. Match with different list patterns (main numbers, alpha, roman, etc.)
+        b. Determine list type, prefix, and level
+        c. Create/continue appropriate list structure
+        d. Create list items with proper attributes and ARIA roles
+        e. Handle special paragraphs within lists
+        f. Ensure proper list semantics for accessibility
+    3. Return enhanced document with structured lists
+```
+
+### 16.5 Metadata Processing Algorithm
+
+```
+function processMetadata(document, metadata):
+    1. Extract metadata from docProps/core.xml and docProps/app.xml
+    2. Add standard HTML meta tags (title, description, keywords, etc.)
+    3. Add Dublin Core metadata
+    4. Add Open Graph metadata
+    5. Add Twitter Card metadata
+    6. Create JSON-LD structured data
+    7. Add metadata to HTML head
+    8. Return enhanced document
+```
+
+### 16.6 Track Changes Processing Algorithm
+
+```
+function processTrackChanges(document, changes, options):
+    1. Determine track changes mode (show, hide, accept, reject)
+    2. Add mode-specific class to document body
+    3. Process insertions:
+        a. Find insertion elements by change ID
+        b. Apply appropriate styling based on mode
+        c. Add metadata (author, date) as attributes
+    4. Process deletions:
+        a. Find deletion elements by change ID
+        b. Apply appropriate styling based on mode
+        c. Add metadata (author, date) as attributes
+    5. Process moves:
+        a. Find move elements by change ID
+        b. Apply appropriate styling based on mode
+        c. Add metadata (source, destination) as attributes
+    6. Process formatting changes:
+        a. Find formatting change elements by change ID
+        b. Apply appropriate styling based on mode
+        c. Add metadata (before, after) as attributes
+    7. Return enhanced document
+```
+
+### 16.7 Accessibility Processing Algorithm
+
+```
+function processForAccessibility(document, styleInfo, metadata):
+    1. Add language attribute to HTML element
+    2. Add title and metadata
+    3. Process headings:
+        a. Ensure proper heading hierarchy
+        b. Add ARIA attributes for complex headings
+    4. Process tables:
+        a. Add table captions
+        b. Add header cells with scope
+        c. Add ARIA labels for complex tables
+    5. Process images:
+        a. Add appropriate alt text
+        b. Add figure and figcaption elements
+    6. Add ARIA landmarks:
+        a. Banner (header)
+        b. Navigation (TOC, menus)
+        c. Main (document content)
+        d. Complementary (asides)
+        e. Contentinfo (footer)
+    7. Add skip navigation link
+    8. Enhance keyboard navigability:
+        a. Add tabindex where needed
+        b. Ensure logical tab order
+        c. Add focus styles
+    9. Enhance color contrast and non-visual indicators
+    10. Return enhanced document
+```
+
+## 17. Conclusion
+
+The doc2web application provides a robust solution for converting DOCX documents to web-friendly formats while preserving styling and structure. By analyzing the document's XML structure rather than its content, the application remains generic and content-agnostic, working effectively with any document regardless of its domain or purpose.
+
+The enhanced implementation now includes comprehensive accessibility features ensuring WCAG 2.1 Level AA compliance, detailed metadata extraction and preservation, and robust track changes handling. These enhancements make the application suitable for professional and enterprise environments where accessibility, metadata, and revision tracking are critical requirements.
+
+The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents.

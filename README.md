@@ -181,9 +181,10 @@ const result = await extractAndApplyStyles('document.docx', null, options);
 
 doc2web now extracts and preserves document metadata in the generated HTML:
 
-- Title, author, description, and keywords
+- Title, description, and keywords
 - Creation and modification dates
 - Document statistics (pages, words, characters)
+- Author is always set to "doc2web" (regardless of original document author)
 - Dublin Core metadata
 - Open Graph and Twitter Card metadata for social sharing
 - JSON-LD structured data for search engines

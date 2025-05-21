@@ -12,8 +12,12 @@
 8. [Multilingual Support](#multilingual-support)
 9. [Batch Processing](#batch-processing)
 10. [Interactive Mode](#interactive-mode)
-11. [Troubleshooting](#troubleshooting)
-12. [FAQ](#faq)
+11. [Accessibility Features](#accessibility-features)
+12. [Metadata Preservation](#metadata-preservation)
+13. [Track Changes Support](#track-changes-support)
+14. [API Usage](#api-usage)
+15. [Troubleshooting](#troubleshooting)
+16. [FAQ](#faq)
 
 ## Introduction
 
@@ -31,6 +35,9 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Accurately extracts and renders Table of Contents (TOC) elements with proper leader lines and page number alignment
 - Maintains hierarchical list structures with proper nesting, indentation, and numbering
 - Provides special handling for complex document structures and formatting patterns
+- Ensures WCAG 2.1 Level AA accessibility compliance
+- Preserves document metadata (title, author, creation date, etc.)
+- Supports track changes visualization and handling
 
 ## Installation
 
@@ -151,6 +158,12 @@ node doc2web.js <input> [options]
   - Path to a directory
   - Path to a text file containing a list of files
 
+|   - `--accessibility=<level>`: Set accessibility compliance level ('A', 'AA', or 'AAA', default: 'AA')
+|   - `--preserve-metadata`: Enable metadata preservation (default: enabled)
+|   - `--no-metadata`: Disable metadata preservation
+|   - `--track-changes=<mode>`: Set track changes mode ('show', 'hide', 'accept', or 'reject', default: 'show')
+|   - `--show-author`: Show change author information (default: enabled)
+|   - `--show-date`: Show change date information (default: enabled)
 - Options:
   - `--html-only`: Skip markdown generation
   - `--list`: Treat the input file as a list of files
@@ -260,6 +273,183 @@ doc2web provides advanced handling of hierarchical lists:
 - Recognizes list structures through content pattern analysis
 - Preserves the hierarchical relationship between list items
 - Maintains proper indentation for different list levels
+## Accessibility Features
+
+doc2web ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
+
+### Semantic Structure
+
+- Proper HTML5 sectioning elements (header, main, nav, aside, footer)
+- ARIA landmark roles (banner, navigation, main, contentinfo)
+- Proper heading hierarchy (h1-h6) with no skipped levels
+
+### Tables
+
+- Table captions
+- Header cells with scope attribute
+- Row and column headers
+- Complex tables with proper headers and ids
+- ARIA labels for table purpose
+
+### Images
+
+- Alt text for all images
+- Descriptive alt text based on image context
+- Empty alt for decorative images
+- Figure and figcaption for images with captions
+
+### Navigation
+
+- Skip navigation links for keyboard users
+- Keyboard focus indicators
+- Logical tab order
+- ARIA navigation landmarks
+
+### Color and Contrast
+
+- Sufficient color contrast (4.5:1 for normal text, 3:1 for large text)
+- Color not used as the only means of conveying information
+- High contrast mode support
+- Reduced motion support
+
+## Metadata Preservation
+
+doc2web extracts and preserves document metadata in the generated HTML:
+
+### Standard Metadata
+
+- Title, description, and keywords
+- Creation and modification dates
+- Document statistics (pages, words, characters)
+- Author is always set to "doc2web" (regardless of original document author)
+
+### Enhanced Metadata
+
+- Dublin Core metadata
+- Open Graph and Twitter Card metadata for social sharing
+- JSON-LD structured data for search engines
+
+### Metadata Usage
+
+The preserved metadata improves:
+- Search engine optimization (SEO)
+- Social media sharing
+- Document organization and cataloging
+- Content discovery
+
+## Track Changes Support
+
+doc2web handles tracked changes in documents:
+
+### Visualization Modes
+
+- Show changes mode (display all insertions, deletions, and formatting changes)
+- Hide changes mode (show the document without any change indicators)
+- Accept all changes mode (incorporate all insertions, remove all deletions)
+- Reject all changes mode (remove all insertions, keep all deletions)
+
+### Change Indicators
+
+- Insertions shown with underline or highlighting
+- Deletions shown with strikethrough
+- Formatting changes shown with highlight
+- Moves shown with special indicators
+
+### Change Metadata
+
+- Author information
+- Date and time of change
+- Original and modified content
+- Change type indicators
+
+### Accessibility Considerations
+
+- ARIA attributes for screen readers
+## API Usage
+
+For developers who want to integrate doc2web into their own applications, the tool provides a JavaScript API:
+
+### Basic Usage
+
+```javascript
+const { extractAndApplyStyles } = require('./lib');
+
+async function convertDocument(docxPath) {
+  const result = await extractAndApplyStyles(docxPath);
+  console.log('HTML generated:', result.html);
+  console.log('CSS generated:', result.styles);
+}
+
+convertDocument('document.docx').catch(console.error);
+```
+
+### Advanced Options
+
+```javascript
+const { extractAndApplyStyles } = require('./lib');
+
+async function convertDocument(docxPath) {
+  // Configure options
+  const options = {
+    enhanceAccessibility: true,     // Enable accessibility features
+    preserveMetadata: true,         // Enable metadata preservation
+    trackChangesMode: 'show',       // 'show', 'hide', 'accept', or 'reject'
+    showAuthor: true,               // Show change author information
+    showDate: true                  // Show change date information
+  };
+
+  const result = await extractAndApplyStyles(docxPath, null, options);
+  
+  // Access conversion results
+  console.log('HTML generated:', result.html);
+  console.log('CSS generated:', result.styles);
+  console.log('Metadata extracted:', result.metadata); // Note: Author will always be "doc2web"
+  console.log('Track changes detected:', result.trackChanges.hasTrackedChanges);
+}
+
+convertDocument('document.docx').catch(console.error);
+```
+
+### Integration Example
+
+```javascript
+const { extractAndApplyStyles } = require('./lib');
+const fs = require('fs').promises;
+const path = require('path');
+
+async function processDocuments(inputDir, outputDir) {
+  // Create output directory if it doesn't exist
+  await fs.mkdir(outputDir, { recursive: true });
+  
+  // Get all DOCX files in the input directory
+  const files = await fs.readdir(inputDir);
+  const docxFiles = files.filter(file => file.endsWith('.docx'));
+  
+  // Process each file
+  for (const file of docxFiles) {
+    const inputPath = path.join(inputDir, file);
+    const baseName = path.basename(file, '.docx');
+    const outputHtmlPath = path.join(outputDir, `${baseName}.html`);
+    const outputCssPath = path.join(outputDir, `${baseName}.css`);
+    
+    // Convert the document
+    const result = await extractAndApplyStyles(inputPath);
+    
+    // Write the output files
+    await fs.writeFile(outputHtmlPath, result.html);
+    await fs.writeFile(outputCssPath, result.styles);
+    
+    console.log(`Processed: ${file}`);
+  }
+}
+
+// Example usage
+processDocuments('./input', './output')
+  .then(() => console.log('All documents processed'))
+  .catch(console.error);
+```
+- Non-visual indicators for changes
+- Keyboard shortcut (Alt+T) to toggle track changes visibility
 
 The enhanced list handling ensures that complex document structures are accurately preserved in both HTML and Markdown output.
 
