@@ -321,6 +321,7 @@ convertDocument('document.docx').catch(console.error);
   - Improved handling of indentation, margins, and text flow based on DOCX properties
   - Ensured proper positioning of numbering elements with absolute positioning
   - Prevented potential conflicts or duplicate numbering in headings
+  - Fixed TOC display issues by explicitly preventing multi-column layout
   - Improved visual fidelity to original Word document numbering
 
 ### v1.2.0 (2025-05-22)

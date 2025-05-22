@@ -53,6 +53,7 @@
     - [4.6 DOM Serialization Requirements](#46-dom-serialization-requirements)
     - [4.7 Error Handling and Validation](#47-error-handling-and-validation)
     - [4.8 Recent Implementation Changes](#48-recent-implementation-changes)
+      - [4.8.1 CSS-Based Heading Numbering](#481-css-based-heading-numbering)
 
 ## 1. Product Overview
 
@@ -500,7 +501,7 @@ The implementation of heading numbering has been improved to rely on CSS ::befor
      - `position: relative;` is crucial for the absolute positioning of the ::before pseudo-element.
      - `margin-left`, `padding-left`, and `text-indent` are applied based on the parsed DOCX values. Default to 0 if not specified to avoid unexpected browser defaults interfering.
    - CSS for `::before` (the number/bullet):
-     - `content: ${getCSSCounterContent(levelDef, abstractNum.id, levelIndex)};` generates the actual number string using CSS counters.
+     - `content: ${getCSSCounterContent(levelDef, abstractNum.id, numberingDefs)};` generates the actual number string using CSS counters.
      - `position: absolute;`
      - `left: ${textIndent < 0 ? textIndent : 0}pt;`: This is a key adjustment. If there's a hanging indent (textIndent is negative), the number should start at that negative offset from the padding-left edge of the parent. If textIndent is zero or positive (standard first-line indent), the number starts at 0 (the padding edge).
      - `width: ${paddingLeft > 0 ? paddingLeft : (levelDef.indentation?.hanging || 24)}pt;`: The width of the number container is explicitly set, typically to the hanging indent amount. A fallback width (e.g., 24pt) is provided if paddingLeft isn't available from a hanging indent (though it should be if textIndent is negative).
