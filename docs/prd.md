@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.7  
+**Document Version:** 2.8  
 **Last Updated:** May 22, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -20,6 +20,7 @@
 | 2.5 | May 22, 2025 | Technical Team | Added document statistics calculation and metadata improvements |
 | 2.6 | May 22, 2025 | Technical Team | Added HTML formatting for improved debugging and readability |
 | 2.7 | May 22, 2025 | Technical Team | Improved CSS-based numbering implementation for headings |
+| 2.8 | May 22, 2025 | Technical Team | Fixed TOC layout and body content numbering issues |
 
 ## Table of Contents
 
@@ -54,6 +55,7 @@
     - [4.7 Error Handling and Validation](#47-error-handling-and-validation)
     - [4.8 Recent Implementation Changes](#48-recent-implementation-changes)
       - [4.8.1 CSS-Based Heading Numbering](#481-css-based-heading-numbering)
+      - [4.8.2 TOC and Body Content Numbering Fixes](#482-toc-and-body-content-numbering-fixes)
 
 ## 1. Product Overview
 
@@ -510,4 +512,27 @@ The implementation of heading numbering has been improved to rely on CSS ::befor
    - General improvements to default styles in `generateUtilityStyles` (e.g., centering images, better heading margins, basic print styles) and `generateTOCStyles` for robustness.
    - The `getCSSCounterFormat` was ensured to be imported for use in `getCSSCounterContent`.
 
-These changes aim to make the CSS directly responsible for rendering the numbers and their intricate indentation based purely on the data extracted from the DOCX structure, which should resolve the overlap issues and improve visual fidelity to the Word document. The HTML source formatting is handled by the existing `formatHtml` function in html-generator.js and is deemed sufficient as per PRD 4.3.
+#### 4.8.2 TOC and Body Content Numbering Fixes
+
+Several issues with the Table of Contents layout and body content numbering have been addressed:
+
+1. **TOC Layout Fixes**:
+   - Fixed the "ragged" or two-column appearance of the TOC by ensuring proper CSS styling in the `generateTOCStyles` function
+   - Added explicit `column-count: 1` to the `.docx-toc` selector to prevent unintended column layouts
+   - Improved the display and flex properties of TOC entries to ensure proper vertical stacking
+   - Enhanced TOC entry styling to maintain proper alignment of text, dots, and page numbers
+
+2. **Body Content Numbering Fixes**:
+   - Resolved issues with missing or "zero" numbering in the body content
+   - Fixed the hierarchical numbering string construction in the `buildHierarchicalNumbering` function
+   - Ensured proper counter initialization and incrementation in the CSS
+   - Improved the data attribute application in `processHeadings` and `processTOCEntry` functions
+   - Enhanced the CSS counter content generation in `getCSSCounterContent` to properly handle all numbering formats
+
+3. **CSS Counter Implementation**:
+   - Refined the counter reset strategy to ensure proper numbering hierarchy
+   - Improved the positioning and styling of numbering elements using ::before pseudo-elements
+   - Enhanced the handling of indentation and spacing for numbered elements
+   - Fixed the interaction between level counters and formatting segments
+
+These changes ensure that both the TOC and body content numbering now display correctly, maintaining the visual fidelity of the original DOCX document.
