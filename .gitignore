@@ -4,6 +4,7 @@ node_modules/
 # Output directory (generated files)
 output/
 input/
+debug-output/
 
 # Logs
 logs
