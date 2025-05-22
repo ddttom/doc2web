@@ -15,9 +15,10 @@
 11. [Accessibility Features](#accessibility-features)
 12. [Metadata Preservation](#metadata-preservation)
 13. [Track Changes Support](#track-changes-support)
-14. [API Usage](#api-usage)
-15. [Troubleshooting](#troubleshooting)
-16. [FAQ](#faq)
+14. [DOCX Introspection](#docx-introspection)
+15. [API Usage](#api-usage)
+16. [Troubleshooting](#troubleshooting)
+17. [FAQ](#faq)
 
 ## Introduction
 
@@ -38,6 +39,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Ensures WCAG 2.1 Level AA accessibility compliance
 - Preserves document metadata (title, author, creation date, etc.)
 - Supports track changes visualization and handling
+- **Extracts exact numbering and formatting from DOCX XML structure**
 
 ## Installation
 
@@ -210,6 +212,7 @@ For each processed DOCX file, doc2web generates:
 - Includes specific styles for TOC and hierarchical lists
 - Contains detailed styling for leader lines and page number alignment
 - Preserves indentation and formatting for different list levels
+- **Contains CSS counters that exactly match DOCX numbering definitions**
 
 ### Images Folder
 
@@ -270,9 +273,11 @@ doc2web provides advanced handling of hierarchical lists:
 - Handles special cases like "Rationale for Resolution" paragraphs between list items
 - Ensures consistent numbering throughout the document
 - Applies appropriate styling for different list levels
-- Recognizes list structures through content pattern analysis
-- Preserves the hierarchical relationship between list items
-- Maintains proper indentation for different list levels
+- **Extracts exact numbering definitions from DOCX XML structure**
+- **Resolves actual sequential numbers based on document position**
+- **Maintains hierarchical relationships from original document**
+- **Generates CSS counters that precisely match DOCX numbering**
+
 ## Accessibility Features
 
 doc2web ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
@@ -365,6 +370,88 @@ doc2web handles tracked changes in documents:
 ### Accessibility Considerations
 
 - ARIA attributes for screen readers
+- Non-visual indicators for changes
+- Keyboard shortcut (Alt+T) to toggle track changes visibility
+
+## DOCX Introspection
+
+doc2web now uses comprehensive DOCX introspection to extract exact numbering and formatting information directly from the DOCX XML structure:
+
+### Numbering Extraction
+
+- **Parses complete numbering definitions from `numbering.xml`**
+- **Extracts abstract numbering definitions with all level properties**
+- **Captures level text formats (e.g., "%1.", "%1.%2.", "(%1)")**
+- **Extracts indentation, alignment, and formatting for each level**
+- **Handles level overrides and start value modifications**
+- **Parses run properties (font, size, color) for numbering text**
+
+### Numbering Resolution
+
+- **Extracts paragraph numbering context from `document.xml`**
+- **Maps paragraphs to their numbering definitions**
+- **Resolves actual sequential numbers based on document position**
+- **Handles restart logic and level overrides**
+- **Tracks numbering sequences across the document**
+
+### HTML Generation
+
+- **Matches HTML elements to DOCX paragraph contexts**
+- **Applies exact numbering from DOCX to headings**
+- **Creates structured lists based on DOCX numbering definitions**
+- **Maintains hierarchical relationships from original document**
+
+### CSS Generation
+
+- **Generates CSS counters from DOCX numbering definitions**
+- **Creates level-specific styling for numbered elements**
+- **Supports hierarchical numbering with proper resets**
+- **Maintains visual fidelity to original DOCX formatting**
+
+### Benefits
+
+- **Exact Numbering Preservation**: Extracts the exact numbering format defined in the DOCX
+- **Content-Agnostic Processing**: No reliance on specific content words or patterns
+- **Complex Hierarchy Support**: Handles multi-level numbering with proper nesting
+- **Visual Fidelity**: Generated HTML closely matches original DOCX appearance
+
+### Example
+
+Original DOCX Content:
+```
+1. Consent Agenda:
+   a. Approval of Board Meeting Minutes
+   b. RSSAC Co-Chair Appointments
+2. Strategic Plan Discussion
+```
+
+Generated HTML (with DOCX introspection):
+```html
+<h1 class="docx-heading1" data-numbering-id="1" data-numbering-level="0">
+  <span class="heading-number">1. </span>Consent Agenda:
+</h1>
+<ol class="docx-numbered-list" data-numbering-id="1">
+  <li data-numbering-level="1" data-format="lowerLetter">Approval of Board Meeting Minutes</li>
+  <li data-numbering-level="1" data-format="lowerLetter">RSSAC Co-Chair Appointments</li>
+</ol>
+<h1 class="docx-heading1" data-numbering-id="1" data-numbering-level="0">
+  <span class="heading-number">2. </span>Strategic Plan Discussion
+</h1>
+```
+
+Generated CSS:
+```css
+[data-num-id="1"][data-num-level="0"]::before {
+  content: counter(docx-counter-1-0, decimal) ". ";
+  font-weight: bold;
+}
+
+[data-num-id="1"][data-num-level="1"]::before {
+  content: counter(docx-counter-1-1, lower-alpha) ". ";
+  margin-left: 36pt;
+}
+```
+
 ## API Usage
 
 For developers who want to integrate doc2web into their own applications, the tool provides a JavaScript API:
@@ -448,8 +535,6 @@ processDocuments('./input', './output')
   .then(() => console.log('All documents processed'))
   .catch(console.error);
 ```
-- Non-visual indicators for changes
-- Keyboard shortcut (Alt+T) to toggle track changes visibility
 
 The enhanced list handling ensures that complex document structures are accurately preserved in both HTML and Markdown output.
 
@@ -567,11 +652,20 @@ NODE_OPTIONS=--max-old-space-size=4096 node doc2web.js large-document.docx
 
 If you notice problems with Table of Contents formatting or hierarchical list structures:
 
-1. Ensure you're using the latest version (v1.0.6 or later)
+1. Ensure you're using the latest version (v1.2.0 or later)
 2. Check that the original document has a properly formatted TOC
 3. For complex lists, make sure the document uses Word's built-in list formatting rather than manual numbering
 4. Verify that the document's TOC was generated using Word's automatic TOC feature
 5. Check that leader lines and page numbers are properly formatted in the original document
+
+#### Numbering Format Issues
+
+If you encounter issues with complex numbering formats:
+
+1. Ensure you're using v1.2.0 or later, which includes comprehensive DOCX introspection
+2. Verify that the document uses Word's built-in numbering features rather than manual numbering
+3. Check that the document doesn't contain corrupted numbering definitions
+4. For documents with extremely complex numbering, try simplifying the structure in Word before conversion
 
 ### Error Messages
 
@@ -580,6 +674,7 @@ If you notice problems with Table of Contents formatting or hierarchical list st
 - **"Error processing document"**: The document may be corrupted or password-protected.
 - **"Error parsing DOCX styles"**: The document may have non-standard or corrupted style definitions.
 - **"Error selecting nodes with expression"**: There may be issues with the XML structure in the DOCX file.
+- **"Error parsing numbering definitions"**: The document may have corrupted numbering.xml or non-standard numbering definitions.
 
 ## FAQ
 
@@ -606,7 +701,7 @@ A: The HTML output attempts to preserve styling, but complex layouts may differ 
 A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. The tool preserves TOC leader lines with dots connecting entries to page numbers, maintains right-aligned page numbers, and applies proper indentation for different TOC levels through advanced DOM manipulation.
 
 **Q: How does doc2web handle hierarchical lists?**  
-A: The tool maintains proper nesting of multi-level lists, preserves numbering formats (1., a., b., etc.), correctly indents sub-items based on their level, and handles special cases like "Rationale for Resolution" paragraphs between list items. It recognizes list structures through content pattern analysis and ensures consistent numbering throughout the document.
+A: With the new DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting. This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.
@@ -623,7 +718,10 @@ A: Yes, it should work with any standard DOCX files, including those created by 
 A: Not yet, but you can use it directly from the source code.
 
 **Q: How does doc2web extract style information from DOCX files?**  
-A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures. The enhanced DOCX style parser captures more details from the document, provides better handling of special paragraph types, improves detection of document structure patterns, and ensures more accurate conversion of DOCX styles to CSS.
+A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures. The enhanced DOCX introspection extracts exact numbering and formatting information directly from the DOCX XML structure, ensuring precise preservation of document formatting.
+
+**Q: How does the new DOCX introspection feature work?**  
+A: The DOCX introspection feature extracts complete numbering definitions from numbering.xml, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting. This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
 
 ---
 

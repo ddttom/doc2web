@@ -15,6 +15,7 @@ This tool extracts content from DOCX files while maintaining:
 - **WCAG 2.1 Level AA accessibility compliance**
 - **Document metadata preservation**
 - **Track changes visualization and handling**
+- **Exact DOCX numbering preservation through XML introspection**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -47,6 +48,7 @@ doc2web/
 │   │   ├── theme-parser.js     # Theme parsing functions
 │   │   ├── toc-parser.js       # TOC parsing functions
 │   │   ├── numbering-parser.js # Numbering definition parsing
+│   │   ├── numbering-resolver.js # Numbering resolution engine
 │   │   ├── document-parser.js  # Document structure parsing
 │   │   ├── metadata-parser.js  # Document metadata parsing
 │   │   └── track-changes-parser.js # Track changes extraction
@@ -154,6 +156,20 @@ output/
 
 ## Enhanced Features
 
+### DOCX Introspection for Exact Numbering
+
+doc2web now extracts exact numbering and formatting information directly from the DOCX XML structure:
+
+- Parses complete numbering definitions from `numbering.xml`
+- Extracts level text formats (e.g., "%1.", "%1.%2.", "(%1)")
+- Captures indentation, alignment, and formatting for each level
+- Resolves actual sequential numbers based on document position
+- Handles restart logic and level overrides
+- Generates CSS counters that precisely match DOCX numbering
+- Maintains hierarchical relationships from the original document
+
+This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
+
 ### Accessibility Compliance (WCAG 2.1 Level AA)
 
 doc2web now ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
@@ -248,6 +264,17 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.0 (2025-05-22)
+
+- Added comprehensive DOCX introspection for exact numbering:
+  - Implemented enhanced numbering parser to extract complete definitions from numbering.xml
+  - Created numbering resolution engine to calculate actual sequential numbers
+  - Enhanced content processors to apply DOCX-derived numbering to HTML elements
+  - Improved style parser to integrate numbering context into style extraction
+  - Enhanced HTML generator to maintain numbering context through conversion
+  - Added CSS generator support for DOCX numbering formats
+  - Ensured content-agnostic processing that works with any language or domain
+
 ### v1.1.0 (2025-05-21)
 
 - Added support for WCAG 2.1 Level AA accessibility compliance
@@ -322,7 +349,11 @@ If you see errors related to border values or styles, ensure you're using the la
 
 ### TOC and List Structure Issues
 
-If you notice problems with Table of Contents formatting or hierarchical list structures, make sure you're using v1.0.6 or later, which includes significant improvements to TOC style extraction and list numbering handling.
+If you notice problems with Table of Contents formatting or hierarchical list structures, make sure you're using v1.2.0 or later, which includes comprehensive DOCX introspection for exact numbering and formatting preservation.
+
+### Numbering Format Issues
+
+If you encounter issues with complex numbering formats (multi-level, mixed formats, etc.), ensure you're using v1.2.0 or later, which extracts exact numbering definitions from the DOCX XML structure rather than inferring them from text patterns.
 
 ### General Issues
 
