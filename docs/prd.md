@@ -17,6 +17,8 @@
 | 2.2 | May 22, 2025 | Technical Team | Added comprehensive DOCX numbering introspection requirements |
 | 2.3 | May 22, 2025 | Technical Team | Added DOM serialization requirements for numbering preservation |
 | 2.4 | May 22, 2025 | Technical Team | Added critical fixes for DOM manipulation, error handling, and validation |
+| 2.5 | May 22, 2025 | Technical Team | Added document statistics calculation and metadata improvements |
+| 2.6 | May 22, 2025 | Technical Team | Added HTML formatting for improved debugging and readability |
 
 ## Table of Contents
 
@@ -65,7 +67,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Create organized output that mirrors the original directory structure
 - Accurately extract and render complex document elements like TOC and hierarchical lists
 - Accessibility Compliance: Ensure HTML output meets WCAG 2.1 Level AA standards
-- Metadata Preservation: Better extraction and preservation of document metadata
+- Metadata Preservation: Better extraction and preservation of document metadata, including accurate document statistics
 - Track Changes Support: Handle documents with tracked changes appropriately
 - **DOCX Introspection**: Extract exact numbering and formatting from DOCX XML structure
 - **DOM Serialization**: Ensure proper preservation of document content during DOM manipulation
@@ -85,6 +87,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Ensuring proper DOM serialization to preserve document content**
 - **Implementing comprehensive error handling and validation**
 - **Providing diagnostic tools for troubleshooting conversion issues**
+- **Extracting and calculating document statistics for metadata**
 
 The scope explicitly excludes:
 
@@ -158,6 +161,7 @@ The scope explicitly excludes:
 - **Ensure proper DOM serialization to preserve document content**
 - **Implement comprehensive error handling and validation**
 - **Provide detailed logging for troubleshooting conversion issues**
+- **Extract and calculate document statistics for metadata**
 
 #### 3.1.2 Style Preservation
 
@@ -234,6 +238,11 @@ The scope explicitly excludes:
 - **DOM serialization must preserve all document content and structure**
 - **Output files should be validated before saving**
 - **HTML files should be > 1000 characters for typical documents**
+- **CSS files should contain generated styles appropriate for the document**
+- **Document statistics (pages, words, characters, paragraphs, lines) must be accurately calculated and included in metadata**
+- **Document statistics must be calculated from document content when not available in metadata**
+- **HTML output must be properly formatted with indentation and line breaks for improved debugging**
+- **HTML formatting must preserve all content and structure while enhancing readability**
 
 #### 3.2.4 Document Analysis and Style Extraction
 
@@ -287,6 +296,7 @@ doc2web follows a modular architecture with these primary components:
        - `numbering-parser.js`: Extracts numbering definitions for lists
        - `numbering-resolver.js`: Resolves actual numbers based on document position
        - `document-parser.js`: Analyzes document structure and settings
+       - `metadata-parser.js`: Extracts and processes document metadata, calculates document statistics
 
      - **HTML Processing (lib/html/)**
        - `html-generator.js`: Main module for generating HTML from DOCX
@@ -326,6 +336,14 @@ doc2web follows a modular architecture with these primary components:
      - **Handles restart logic and level overrides**
      - **Tracks numbering sequences across the document**
 
+   - **Metadata Parser (lib/parsers/metadata-parser.js)**
+     - Extracts document metadata from core.xml and app.xml
+     - Processes document statistics (pages, words, characters, paragraphs, lines)
+     - Calculates statistics from document content when not available in metadata
+     - Applies metadata to HTML output as meta tags and comments
+     - Generates structured data (JSON-LD) with document information
+     - **Ensures accurate document statistics in output**
+
    - **Style Extractor (lib/html/html-generator.js)**
      - Extracts styling information from DOCX
      - Applies styles to HTML output
@@ -337,6 +355,8 @@ doc2web follows a modular architecture with these primary components:
      - **Ensures proper DOM serialization to preserve document content**
      - **Implements fallback mechanisms for DOM serialization issues**
      - **Verifies body content before serialization**
+     - **Formats HTML output with proper indentation and line breaks**
+     - **Preserves HTML structure while enhancing readability for debugging**
      - **Implements comprehensive error handling throughout the pipeline**
      - **Validates content at each processing step**
 
@@ -404,6 +424,10 @@ doc2web follows a modular architecture with these primary components:
 - **Fallback mechanisms must be in place to handle DOM serialization issues**
 - **HTML files should be > 1000 characters for typical documents**
 - **CSS files should contain generated styles appropriate for the document**
+- **Document statistics (pages, words, characters, paragraphs, lines) must be accurately calculated and included in metadata**
+- **Document statistics must be calculated from document content when not available in metadata**
+- **HTML output must be properly formatted with indentation and line breaks for improved debugging**
+- **HTML formatting must preserve all content and structure while enhancing readability**
 
 ### 4.4 Document Analysis Rules
 

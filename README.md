@@ -407,6 +407,7 @@ node debug-test.js path/to/your/document.docx
 ```
 
 This will create a debug-output/ directory with:
+
 - Test HTML and CSS files
 - Detailed diagnostic information
 - Component test results
@@ -414,6 +415,7 @@ This will create a debug-output/ directory with:
 ### Checking for Successful Conversion
 
 Look for these indicators of successful conversion:
+
 - HTML files > 1000 characters for typical documents
 - CSS files with generated styles
 - Proper directory structure maintained
