@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.4  
+**Document Version:** 2.7  
 **Last Updated:** May 22, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -19,6 +19,7 @@
 | 2.4 | May 22, 2025 | Technical Team | Added critical fixes for DOM manipulation, error handling, and validation |
 | 2.5 | May 22, 2025 | Technical Team | Added document statistics calculation and metadata improvements |
 | 2.6 | May 22, 2025 | Technical Team | Added HTML formatting for improved debugging and readability |
+| 2.7 | May 22, 2025 | Technical Team | Improved CSS-based numbering implementation for headings |
 
 ## Table of Contents
 
@@ -51,6 +52,7 @@
     - [4.5 API and Integration](#45-api-and-integration)
     - [4.6 DOM Serialization Requirements](#46-dom-serialization-requirements)
     - [4.7 Error Handling and Validation](#47-error-handling-and-validation)
+    - [4.8 Recent Implementation Changes](#48-recent-implementation-changes)
 
 ## 1. Product Overview
 
@@ -478,3 +480,33 @@ doc2web follows a modular architecture with these primary components:
 - **Verify content preservation at key processing steps**
 - **Implement safe DOM manipulation practices**
 - **Add validation for accessibility features**
+
+### 4.8 Recent Implementation Changes
+
+#### 4.8.1 CSS-Based Heading Numbering
+
+The implementation of heading numbering has been improved to rely on CSS ::before pseudo-elements rather than directly inserting numbers into the HTML. This change affects two key files:
+
+1. **lib/html/content-processors.js (processHeadings function)**:
+   - The function `applyNumberingToHeading` was effectively removed by commenting out its primary logic of inserting a `<span>`.
+   - The `processHeadings` function now directly sets `data-numbering-id`, `data-numbering-level`, and `data-format` attributes on heading elements if `context.resolvedNumbering` (numbering information derived from DOCX) exists.
+   - This ensures that headings intended to be numbered via DOCX definitions will rely solely on the CSS ::before pseudo-element mechanism, driven by these data attributes, rather than having numbers inserted directly into the HTML. This prevents potential conflicts or duplicate numbering.
+   - `ensureHeadingAccessibility` is still called to manage IDs and focusability.
+
+2. **lib/css/css-generator.js (generateDOCXNumberingStyles function)**:
+   - The core logic for calculating `marginLeft`, `paddingLeft` (for the number area), and `textIndent` (for the text flow, especially handling hanging indents) based on `levelDef.indentation.left`, `levelDef.indentation.hanging`, and `levelDef.indentation.firstLine` is maintained and emphasized. These DOCX properties are crucial for accurate layout.
+   - CSS for `[data-num-id][data-num-level]` (the numbered element itself):
+     - `display: block;` is added to ensure consistent block-level behavior, which is important for p, h1-h6, and li that might receive these attributes.
+     - `position: relative;` is crucial for the absolute positioning of the ::before pseudo-element.
+     - `margin-left`, `padding-left`, and `text-indent` are applied based on the parsed DOCX values. Default to 0 if not specified to avoid unexpected browser defaults interfering.
+   - CSS for `::before` (the number/bullet):
+     - `content: ${getCSSCounterContent(levelDef, abstractNum.id, levelIndex)};` generates the actual number string using CSS counters.
+     - `position: absolute;`
+     - `left: ${textIndent < 0 ? textIndent : 0}pt;`: This is a key adjustment. If there's a hanging indent (textIndent is negative), the number should start at that negative offset from the padding-left edge of the parent. If textIndent is zero or positive (standard first-line indent), the number starts at 0 (the padding edge).
+     - `width: ${paddingLeft > 0 ? paddingLeft : (levelDef.indentation?.hanging || 24)}pt;`: The width of the number container is explicitly set, typically to the hanging indent amount. A fallback width (e.g., 24pt) is provided if paddingLeft isn't available from a hanging indent (though it should be if textIndent is negative).
+     - `box-sizing: border-box;` is added to ensure the width includes any padding or border of the pseudo-element itself, which is good practice.
+   - The `generateEnhancedListStyles` function is simplified to primarily style the list containers (ol, ul) and basic li properties, assuming the numbering and precise indentation of li items (if they also get data-num-id attributes) will be handled by `generateDOCXNumberingStyles`.
+   - General improvements to default styles in `generateUtilityStyles` (e.g., centering images, better heading margins, basic print styles) and `generateTOCStyles` for robustness.
+   - The `getCSSCounterFormat` was ensured to be imported for use in `getCSSCounterContent`.
+
+These changes aim to make the CSS directly responsible for rendering the numbers and their intricate indentation based purely on the data extracted from the DOCX structure, which should resolve the overlap issues and improve visual fidelity to the Word document. The HTML source formatting is handled by the existing `formatHtml` function in html-generator.js and is deemed sufficient as per PRD 4.3.
