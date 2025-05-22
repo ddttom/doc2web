@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.3  
+**Document Version:** 2.4  
 **Last Updated:** May 22, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -16,6 +16,7 @@
 | 2.1 | May 20, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
 | 2.2 | May 22, 2025 | Technical Team | Added comprehensive DOCX numbering introspection requirements |
 | 2.3 | May 22, 2025 | Technical Team | Added DOM serialization requirements for numbering preservation |
+| 2.4 | May 22, 2025 | Technical Team | Added critical fixes for DOM manipulation, error handling, and validation |
 
 ## Table of Contents
 
@@ -47,6 +48,7 @@
     - [4.4 Document Analysis Rules](#44-document-analysis-rules)
     - [4.5 API and Integration](#45-api-and-integration)
     - [4.6 DOM Serialization Requirements](#46-dom-serialization-requirements)
+    - [4.7 Error Handling and Validation](#47-error-handling-and-validation)
 
 ## 1. Product Overview
 
@@ -67,6 +69,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Track Changes Support: Handle documents with tracked changes appropriately
 - **DOCX Introspection**: Extract exact numbering and formatting from DOCX XML structure
 - **DOM Serialization**: Ensure proper preservation of document content during DOM manipulation
+- **Robust Error Handling**: Provide comprehensive error reporting and recovery mechanisms
+- **Content Validation**: Implement validation at key processing steps to ensure data integrity
 
 ### 1.3 Project Scope
 
@@ -79,6 +83,8 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Extracting exact numbering definitions from DOCX XML structure**
 - **Resolving actual sequential numbers based on document position**
 - **Ensuring proper DOM serialization to preserve document content**
+- **Implementing comprehensive error handling and validation**
+- **Providing diagnostic tools for troubleshooting conversion issues**
 
 The scope explicitly excludes:
 
@@ -150,6 +156,8 @@ The scope explicitly excludes:
 - **Extract exact numbering formats from DOCX XML structure**
 - **Resolve actual sequential numbers based on document position**
 - **Ensure proper DOM serialization to preserve document content**
+- **Implement comprehensive error handling and validation**
+- **Provide detailed logging for troubleshooting conversion issues**
 
 #### 3.1.2 Style Preservation
 
@@ -167,6 +175,7 @@ The scope explicitly excludes:
 - **Handle level overrides and start value modifications**
 - **Parse run properties (font, size, color) for numbering text**
 - **Ensure content preservation during DOM manipulation and serialization**
+- **Implement fallback mechanisms for DOM manipulation errors**
 
 #### 3.1.3 Processing Capabilities
 
@@ -177,6 +186,9 @@ The scope explicitly excludes:
 - Maintain original directory structure in output
 - Support for batch processing with progress reporting
 - Resume capability for interrupted batch operations
+- **Provide diagnostic tools for troubleshooting conversion issues**
+- **Generate detailed logs for each processing step**
+- **Implement validation at key processing stages**
 
 #### 3.1.4 User Interface
 
@@ -185,6 +197,8 @@ The scope explicitly excludes:
 - Helper scripts for common batch operations
 - Clear, actionable error messages
 - Progress indicators for longer operations
+- **Detailed diagnostic output for troubleshooting**
+- **Performance metrics and summary statistics**
 
 ### 3.2 Technical Requirements
 
@@ -202,6 +216,7 @@ The scope explicitly excludes:
 - Handle documents up to 100MB in size
 - Memory usage under 1GB for standard operations
 - CPU utilization optimization for multi-core systems
+- **Performance timing and metrics for optimization**
 
 #### 3.2.3 Output Quality
 
@@ -217,6 +232,8 @@ The scope explicitly excludes:
 - **Numbering should exactly match the original DOCX document**
 - **CSS should accurately reflect DOCX numbering formats**
 - **DOM serialization must preserve all document content and structure**
+- **Output files should be validated before saving**
+- **HTML files should be > 1000 characters for typical documents**
 
 #### 3.2.4 Document Analysis and Style Extraction
 
@@ -233,6 +250,7 @@ The scope explicitly excludes:
 - **Map paragraphs to their numbering definitions**
 - **Handle restart logic and level overrides**
 - **Ensure proper DOM serialization to preserve document content**
+- **Validate document structure at each processing step**
 
 ## 4. Technical Specifications
 
@@ -245,6 +263,9 @@ doc2web follows a modular architecture with these primary components:
    - Manages file system operations and output organization
    - Coordinates the overall conversion process
    - Implements error handling and recovery
+   - **Provides detailed logging and diagnostics**
+   - **Implements input file validation**
+   - **Includes performance timing and metrics**
 
 2. **Markdown Generator (markdownify.js)**
    - Converts HTML to well-structured Markdown
@@ -316,6 +337,8 @@ doc2web follows a modular architecture with these primary components:
      - **Ensures proper DOM serialization to preserve document content**
      - **Implements fallback mechanisms for DOM serialization issues**
      - **Verifies body content before serialization**
+     - **Implements comprehensive error handling throughout the pipeline**
+     - **Validates content at each processing step**
 
    - **CSS Generator (lib/css/css-generator.js)**
      - Generates clean, readable CSS with proper margins and spacing
@@ -346,12 +369,14 @@ doc2web follows a modular architecture with these primary components:
    - Batch processing helpers (process-find.sh)
    - System compatibility checks
    - Error logging and reporting
+   - **Diagnostic tools (debug-test.js)**
 
 7. **Documentation**
    - `README.md`: Project overview and quick start guide
    - `docs/prd.md`: Product Requirements Document
    - `docs/refactoring.md`: Detailed documentation of the refactoring process
    - `docs/user-guide.md`: User guide for working with the refactored code
+   - `docs/troubleshooting_guide.md`: Guide for diagnosing and fixing issues
 
 ### 4.2 Dependencies
 
@@ -377,6 +402,8 @@ doc2web follows a modular architecture with these primary components:
 - **Hierarchical relationships maintained from original document**
 - **DOM serialization must preserve all document content and structure**
 - **Fallback mechanisms must be in place to handle DOM serialization issues**
+- **HTML files should be > 1000 characters for typical documents**
+- **CSS files should contain generated styles appropriate for the document**
 
 ### 4.4 Document Analysis Rules
 
@@ -390,6 +417,7 @@ doc2web follows a modular architecture with these primary components:
 - **Actual numbers must be resolved based on document position and numbering definitions**
 - **Numbering formats must be converted to appropriate CSS counter styles**
 - **DOM serialization must be verified to ensure content preservation**
+- **Document structure must be validated at each processing step**
 
 ### 4.5 API and Integration
 
@@ -409,3 +437,20 @@ doc2web follows a modular architecture with these primary components:
 - **Maintain proper nesting and hierarchical relationships**
 - **Preserve attributes and data attributes during serialization**
 - **Implement error handling for serialization failures**
+- **Avoid unnecessary DOM manipulation that could lose content**
+- **Validate serialized output before saving to file**
+- **Implement content preservation strategies during processing**
+
+### 4.7 Error Handling and Validation
+
+- **Implement comprehensive error handling throughout the pipeline**
+- **Provide detailed, actionable error messages**
+- **Log errors with context information for debugging**
+- **Validate input files before processing**
+- **Validate output files before saving**
+- **Implement fallback mechanisms for common error conditions**
+- **Provide diagnostic tools for troubleshooting issues**
+- **Include performance metrics and summary statistics**
+- **Verify content preservation at key processing steps**
+- **Implement safe DOM manipulation practices**
+- **Add validation for accessibility features**

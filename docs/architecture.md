@@ -16,6 +16,7 @@ doc2web/
 ├── markdownify.js         # HTML to Markdown converter
 ├── style-extractor.js     # Backward compatibility wrapper
 ├── docx-style-parser.js   # Backward compatibility wrapper
+├── debug-test.js          # Diagnostic tool for troubleshooting
 ├── lib/                   # Refactored library code
 │   ├── index.js           # Main entry point that re-exports public API
 │   ├── xml/               # XML parsing utilities
@@ -42,7 +43,6 @@ doc2web/
 │   └── utils/             # Utility functions
 │       ├── unit-converter.js    # Unit conversion utilities
 │       └── common-utils.js      # Common utility functions
-
 ```
 
 ## 3. DOCX File Structure
@@ -267,16 +267,19 @@ The application implements careful DOM serialization to preserve document conten
    - Verify document body content before serialization
    - Implement fallback mechanisms for empty body issues
    - Preserve all document structure during DOM manipulation
+   - Avoid unnecessary DOM operations that could lose content
 
 2. **Serialization Metrics**
    - Log serialization metrics for debugging purposes
    - Track content changes during processing
    - Verify content integrity after manipulation
+   - Compare content length before and after processing
 
 3. **Error Handling**
    - Implement error handling for serialization failures
    - Provide fallback mechanisms for browser-specific DOM issues
    - Ensure proper nesting and hierarchical relationships are maintained
+   - Log detailed error information for troubleshooting
 
 ## 6. HTML Generation Process
 
@@ -343,6 +346,35 @@ The generated HTML is enhanced with proper structure and styling:
    - Verify document body content before serialization
    - Implement fallback mechanisms for empty body issues
    - Ensure all content is properly serialized in the final HTML output
+   - Validate output before saving to file
+
+### 6.3 Fixed HTML Generation Issues
+
+The HTML generation pipeline has been improved to address several critical issues:
+
+1. **Content Loss Prevention**
+   - Implemented safer DOM manipulation techniques that preserve content
+   - Added content verification before and after DOM operations
+   - Reduced unnecessary DOM manipulations that could cause content loss
+   - Implemented fallback mechanisms when content is at risk
+
+2. **Enhanced Error Handling**
+   - Added comprehensive error handling throughout the pipeline
+   - Provided detailed, actionable error messages
+   - Logged errors with context information for debugging
+   - Implemented recovery mechanisms for common error conditions
+
+3. **DOM Serialization Improvements**
+   - Fixed issues with how the DOM was being serialized back to HTML
+   - Implemented verification of document body content before serialization
+   - Added fallback mechanisms for empty body issues
+   - Ensured proper handling of browser-specific serialization differences
+
+4. **Validation Enhancements**
+   - Added validation at key processing steps
+   - Verified input files before processing
+   - Validated output files before saving
+   - Implemented content integrity checks throughout the pipeline
 
 ## 7. CSS Generation Process
 
@@ -508,552 +540,97 @@ The application includes comprehensive error handling:
    - Check if files exist
    - Validate file types (must be .docx)
    - Create output directories if they don't exist
+   - Verify file size and content before processing
 
 2. **DOCX Parsing Errors**
    - Handle malformed XML
    - Provide fallback style information if parsing fails
    - Continue processing other files in batch mode
+   - Log detailed error information for troubleshooting
 
 3. **HTML Generation Errors**
    - Handle mammoth.js conversion errors
    - Recover from DOM manipulation errors
    - Provide fallback HTML if necessary
+   - Implement content preservation strategies
 
 4. **File System Errors**
    - Handle errors reading from or writing to the file system
    - Create directories recursively
    - Check file permissions
+   - Implement retry mechanisms for transient errors
 
 5. **DOM Serialization Errors**
    - Verify document body content before serialization
    - Implement fallback mechanisms for empty body issues
    - Log serialization metrics for debugging purposes
+   - Validate output before saving to file
 
-## 12. Processing Units and Data Flow
+6. **Enhanced Error Reporting**
+   - Provide detailed, actionable error messages
+   - Include context information for easier troubleshooting
+   - Log file paths, line numbers, and error types
+   - Suggest potential solutions for common errors
 
-The following diagram illustrates the data flow through the application:
+## 12. Diagnostic Tools
 
-```bash
-Input DOCX File
-    │
-    ▼
-┌───────────────┐
-│ DOCX Unpacker │ (JSZip)
-└───────┬───────┘
-        │
-        ▼
-┌───────────────────┐
-│ XML Parser        │ (xmldom)
-└────────┬──────────┘
-         │
-         ▼
-┌────────────────────────┐
-│ Style Extractor        │
-│  - Paragraph Styles    │
-│  - Character Styles    │
-│  - Table Styles        │
-│  - Theme Information   │
-│  - Numbering Definitions│
-└────────────┬───────────┘
-             │
-             ▼
-┌────────────────────────┐
-│ Numbering Resolver     │
-│  - Extract Contexts    │
-│  - Map Paragraphs      │
-│  - Resolve Sequences   │
-└────────────┬───────────┘
-             │
-             ▼
-┌─────────────────────┐    ┌───────────────────┐
-│ HTML Generator      │    │ CSS Generator     │
-│ (mammoth.js +       │───▶│  - Document CSS   │
-│  custom processing) │    │  - TOC Styles     │
-└────────┬────────────┘    │  - List Styles    │
-         │                 └─────────┬─────────┘
-         ▼                           │
-┌────────────────────┐               │
-│ HTML Enhancer      │               │
-│  - Structure       │               │
-│  - TOC Processing  │               │
-│  - List Processing │               │
-└────────┬───────────┘               │
-         │                           │
-         ▼                           ▼
-┌────────────────────┐    ┌────────────────────┐
-│ Markdown Converter │    │ External CSS File  │
-│ (markdownify.js)   │    │                    │
-└────────┬───────────┘    └────────────────────┘
-         │
-         ▼
-┌────────────────────┐
-│ Output Files       │
-│  - HTML            │
-│  - Markdown        │
-│  - CSS             │
-│  - Images          │
-└────────────────────┘
-```
+The application now includes a comprehensive diagnostic tool (debug-test.js) for troubleshooting conversion issues:
 
-## 13. Accessibility Implementation
+1. **Component Testing**
+   - Tests each component of the conversion pipeline individually
+   - Identifies exactly where issues occur
+   - Provides detailed diagnostic output
+   - Creates test files for inspection
 
-The application includes comprehensive accessibility features to ensure WCAG 2.1 Level AA compliance:
+2. **Detailed Logging**
+   - Logs each processing step and its success/failure
+   - Records file sizes and validation results
+   - Tracks performance metrics
+   - Captures specific error messages with context
 
-### 13.1 Accessibility Processing
+3. **Test Output**
+   - Creates a debug-output/ directory with test files
+   - Generates HTML and CSS files for inspection
+   - Provides detailed diagnostic information
+   - Includes component test results
 
-The `wcag-processor.js` module enhances HTML output for accessibility:
+4. **Validation Checks**
+   - Verifies HTML files are > 1000 characters for typical documents
+   - Checks CSS files for generated styles
+   - Confirms proper directory structure is maintained
+   - Validates that images are extracted to the images/ subdirectory
 
-```javascript
-function processForAccessibility(document, styleInfo, metadata) {
-  // Add language attribute to HTML element
-  const htmlElement = document.documentElement;
-  const documentLang = styleInfo.settings?.language || 'en';
-  htmlElement.setAttribute('lang', documentLang);
-  
-  // Add document title
-  const title = document.querySelector('title');
-  if (title) {
-    title.textContent = metadata?.core?.title || 'Document';
-  }
-  
-  // Process tables for accessibility
-  processTables(document);
-  
-  // Process images for accessibility
-  processImages(document);
-  
-  // Ensure proper heading hierarchy
-  ensureHeadingHierarchy(document);
-  
-  // Add ARIA landmarks
-  addAriaLandmarks(document);
-  
-  // Add skip navigation link
-  addSkipNavigation(document);
-  
-  // Enhance keyboard navigability
-  enhanceKeyboardNavigation(document);
-  
-  // Check and enhance color contrast
-  enhanceColorContrast(document, styleInfo);
-  
-  return document;
-}
-```
+## 13. Recent Fixes and Improvements
 
-### 13.2 Key Accessibility Enhancements
+The application has been enhanced with several critical fixes:
 
-1. **Semantic Structure**
-   - Proper HTML5 sectioning elements (header, main, nav, aside, footer)
-   - ARIA landmark roles (banner, navigation, main, contentinfo)
-   - Proper heading hierarchy (h1-h6) with no skipped levels
+1. **HTML Generator (lib/html/html-generator.js)**
+   - Fixed content loss during DOM manipulation
+   - Added comprehensive error handling and logging
+   - Improved content preservation during processing
+   - Enhanced validation at each processing step
+   - Implemented better fallback mechanisms
+   - Fixed JSDOM serialization issues
 
-2. **Tables**
-   - Table captions
-   - Header cells with scope attribute
-   - Row and column headers
-   - Complex tables with proper headers and ids
-   - ARIA labels for table purpose
+2. **Main Application (doc2web.js)**
+   - Enhanced input file validation
+   - Improved error reporting with actionable messages
+   - Added better logging to help identify issues
+   - Implemented performance timing and summary statistics
 
-3. **Images**
-   - Alt text for all images
-   - Descriptive alt text based on image context
-   - Empty alt for decorative images
-   - Figure and figcaption for images with captions
+3. **Accessibility Processor (lib/accessibility/wcag-processor.js)**
+   - Implemented safer DOM manipulation that preserves content
+   - Fixed the ARIA landmarks functionality
+   - Enhanced keyboard navigation features
+   - Added better error handling for accessibility enhancements
 
-4. **Forms**
-   - Labels for all form controls
-   - Error messages and validation
-   - Fieldset and legend for form groups
-   - ARIA roles and states
+4. **Debug Script (debug-test.js)**
+   - Added comprehensive testing tool for diagnosing issues
+   - Implemented component-level testing
+   - Added detailed diagnostic output
+   - Created test file generation for inspection
 
-5. **Navigation**
-   - Skip navigation links
-   - Keyboard focus indicators
-   - Logical tab order
-   - ARIA navigation landmarks
-
-6. **Color and Contrast**
-   - Sufficient color contrast (4.5:1 for normal text, 3:1 for large text)
-   - Color not used as the only means of conveying information
-   - High contrast mode support
-
-7. **List and TOC Enhancements**
-   - Proper list semantics (ul, ol, li)
-   - Proper nesting and hierarchy
-   - ARIA attributes for custom lists
-   - Keyboard navigable TOC
-
-## 14. Metadata Implementation
-
-The application includes comprehensive metadata processing:
-
-### 14.1 Metadata Extraction and Application
-
-The `metadata-parser.js` module extracts and applies document metadata:
-
-```javascript
-function applyMetadataToHtml(document, metadata) {
-  // Add standard meta tags
-  const head = document.head;
-  
-  // Add title
-  let titleElement = head.querySelector('title');
-  if (!titleElement) {
-    titleElement = document.createElement('title');
-    head.appendChild(titleElement);
-  }
-  titleElement.textContent = metadata.core.title || 'Document';
-  
-  // Add description
-  if (metadata.core.description) {
-    const metaDesc = document.createElement('meta');
-    metaDesc.setAttribute('name', 'description');
-    metaDesc.setAttribute('content', metadata.core.description);
-    head.appendChild(metaDesc);
-  }
-  
-  // Add author (always set to "doc2web" regardless of original document author)
-  const metaAuthor = document.createElement('meta');
-  metaAuthor.setAttribute('name', 'author');
-  metaAuthor.setAttribute('content', 'doc2web');
-  head.appendChild(metaAuthor);
-  
-  // Add keywords
-  if (metadata.core.keywords) {
-    const metaKeywords = document.createElement('meta');
-    metaKeywords.setAttribute('name', 'keywords');
-    metaKeywords.setAttribute('content', metadata.core.keywords);
-    head.appendChild(metaKeywords);
-  }
-  
-  // Add Dublin Core metadata
-  addDublinCoreMetadata(head, metadata.core);
-  
-  // Add Open Graph metadata
-  addOpenGraphMetadata(head, metadata.core);
-  
-  // Add JSON-LD structured data
-  addJsonLdStructuredData(head, metadata);
-  
-  return document;
-}
-```
-
-### 14.2 Key Metadata Features
-
-1. **HTML Meta Tags**
-   - Standard meta tags (title, description, author, keywords)
-   - Dublin Core metadata
-   - Open Graph metadata
-   - Twitter Card metadata
-
-2. **JSON-LD Structured Data**
-   - Schema.org Article or Document type
-   - Author, publisher, and date information
-   - Keywords and categories
-   - Document statistics (word count, page count)
-
-3. **Application-Specific Metadata**
-   - Original document information
-   - Application and template information
-   - Conversion timestamp
-   - Document statistics preservation
-
-## 15. Track Changes Implementation
-
-The application includes comprehensive track changes processing:
-
-### 15.1 Track Changes Processing
-
-The `track-changes-parser.js` module extracts and processes tracked changes:
-
-```javascript
-function processTrackChanges(document, changes, options) {
-  const { mode } = options; // 'show', 'hide', 'accept', or 'reject'
-  
-  // If no tracked changes, return the document unchanged
-  if (!changes.hasTrackedChanges) {
-    return document;
-  }
-  
-  // Add track changes mode class to body
-  document.body.classList.add(`docx-track-changes-${mode}`);
-  
-  // Process insertions
-  if (mode === 'show' || mode === 'accept') {
-    changes.insertions.forEach(insertion => {
-      const elements = document.querySelectorAll(`[data-change-id="${insertion.id}"]`);
-      elements.forEach(element => {
-        if (mode === 'show') {
-          element.classList.add('docx-insertion');
-          element.setAttribute('data-author', insertion.author);
-          element.setAttribute('data-date', insertion.date);
-        } else {
-          // For 'accept' mode, remove the track changes marking but keep the content
-          element.classList.remove('docx-insertion');
-          element.removeAttribute('data-author');
-          element.removeAttribute('data-date');
-          element.removeAttribute('data-change-id');
-        }
-      });
-    });
-  }
-  
-  // Process deletions
-  if (mode === 'show' || mode === 'reject') {
-    changes.deletions.forEach(deletion => {
-      const elements = document.querySelectorAll(`[data-change-id="${deletion.id}"]`);
-      elements.forEach(element => {
-        if (mode === 'show') {
-          element.classList.add('docx-deletion');
-          element.setAttribute('data-author', deletion.author);
-          element.setAttribute('data-date', deletion.date);
-        } else {
-          // For 'reject' mode, remove the track changes marking but keep the content
-          element.classList.remove('docx-deletion');
-          element.removeAttribute('data-author');
-          element.removeAttribute('data-date');
-          element.removeAttribute('data-change-id');
-        }
-      });
-    });
-  }
-  
-  // Similar processing for moves and formatting changes
-  // ...
-  
-  return document;
-}
-```
-
-### 15.2 Key Track Changes Features
-
-1. **Visualization Modes**
-   - Show changes mode (display all insertions, deletions, and formatting changes)
-   - Hide changes mode (show the document without any change indicators)
-   - Accept all changes mode (incorporate all insertions, remove all deletions)
-   - Reject all changes mode (remove all insertions, keep all deletions)
-
-2. **Change Indicators**
-   - Insertions shown with underline or highlighting
-   - Deletions shown with strikethrough
-   - Formatting changes shown with highlight
-   - Moves shown with special indicators
-
-3. **Change Metadata**
-   - Author information
-   - Date and time of change
-   - Original and modified content
-   - Change type indicators
-
-4. **Accessibility Considerations**
-   - ARIA attributes for screen readers
-   - Non-visual indicators for changes
-   - Keyboard shortcuts for navigating changes
-
-## 16. Key Algorithms
-
-### 16.1 Style Extraction Algorithm
-
-```
-function parseDocxStyles(docxPath):
-    1. Read DOCX file and extract key XML files
-    2. Parse XML files into DOM structures
-    3. Extract styles from styles.xml
-    4. Extract theme information from theme/theme1.xml
-    5. Extract document defaults from styles.xml
-    6. Extract document settings from settings.xml
-    7. Extract TOC styles by analyzing styles and document structure
-    8. Extract numbering definitions from numbering.xml
-    9. Extract metadata from docProps/core.xml and docProps/app.xml
-    10. Extract tracked changes information from document.xml
-    11. Analyze document structure to identify patterns and special elements
-    12. Return combined style information
-```
-
-### 16.2 CSS Generation Algorithm
-
-```
-function generateCssFromStyleInfo(styleInfo):
-    1. Generate document defaults CSS (body styles)
-    2. For each paragraph style:
-        a. Generate a CSS class with appropriate properties
-    3. For each character style:
-        a. Generate a CSS class with appropriate properties
-    4. For each table style:
-        a. Generate CSS classes for tables and cells
-    5. Generate TOC styles:
-        a. Style TOC container and heading
-        b. Style TOC entries with proper levels and indentation
-        c. Create leader dot styles
-    6. Generate list styles:
-        a. Create counter reset and increment rules
-        b. Style list items for each level
-        c. Create pseudo-elements for numbering
-    7. Generate track changes styles:
-        a. Style insertion, deletion, and formatting change indicators
-        b. Style change metadata display
-    8. Generate accessibility styles:
-        a. Focus indicators and skip links
-        b. High contrast mode support
-        c. Screen reader enhancements
-    9. Add utility styles for common elements
-    10. Return combined CSS
-```
-
-### 16.3 TOC Processing Algorithm
-
-```
-function processTOC(document, styleInfo):
-    1. Find TOC entries (by class or content pattern)
-    2. If TOC entries found:
-        a. Create or find TOC container
-        b. Add ARIA role="navigation" and proper landmarks
-        c. For each TOC entry:
-            i. Determine TOC level
-            ii. Extract text content and page number
-            iii. Create structured elements (text, dots, page number)
-            iv. Apply appropriate classes and ARIA attributes
-            v. Ensure keyboard navigability
-            vi. Move to TOC container
-    3. Return enhanced document
-```
-
-### 16.4 Numbering Resolver Algorithm
-
-```
-function resolveNumberingSequences(document, numberingDefinitions):
-    1. Extract paragraph numbering contexts from document.xml
-    2. Map paragraphs to their numbering definitions
-    3. Initialize counters for each numbering ID and level
-    4. For each paragraph with numbering:
-        a. Determine numbering ID and level
-        b. Check for level restarts or overrides
-        c. Increment appropriate counter
-        d. Resolve actual number based on counter value
-        e. Apply numbering format from level definition
-        f. Store resolved number with paragraph
-    5. Process hierarchical relationships:
-        a. Reset child level counters when parent level changes
-        b. Maintain proper nesting and sequence
-        c. Handle special cases (skipped levels, etc.)
-    6. Return resolved numbering information for all paragraphs
-```
-
-### 16.5 Hierarchical List Processing Algorithm
-
-```
-function processNestedNumberedParagraphs(document, styleInfo):
-    1. Identify list patterns in the document
-    2. Process paragraphs that look like list items:
-        a. Match with different list patterns (main numbers, alpha, roman, etc.)
-        b. Determine list type, prefix, and level
-        c. Create/continue appropriate list structure
-        d. Create list items with proper attributes and ARIA roles
-        e. Handle special paragraphs within lists
-        f. Ensure proper list semantics for accessibility
-    3. Return enhanced document with structured lists
-```
-
-### 16.6 Metadata Processing Algorithm
-
-```
-function processMetadata(document, metadata):
-    1. Extract metadata from docProps/core.xml and docProps/app.xml
-    2. Add standard HTML meta tags (title, description, keywords, etc.)
-    3. Add Dublin Core metadata
-    4. Add Open Graph metadata
-    5. Add Twitter Card metadata
-    6. Create JSON-LD structured data
-    7. Add metadata to HTML head
-    8. Return enhanced document
-```
-
-### 16.7 Track Changes Processing Algorithm
-
-```
-function processTrackChanges(document, changes, options):
-    1. Determine track changes mode (show, hide, accept, reject)
-    2. Add mode-specific class to document body
-    3. Process insertions:
-        a. Find insertion elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (author, date) as attributes
-    4. Process deletions:
-        a. Find deletion elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (author, date) as attributes
-    5. Process moves:
-        a. Find move elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (source, destination) as attributes
-    6. Process formatting changes:
-        a. Find formatting change elements by change ID
-        b. Apply appropriate styling based on mode
-        c. Add metadata (before, after) as attributes
-    7. Return enhanced document
-```
-
-### 16.8 DOM Serialization Algorithm
-
-```
-function ensureDomSerialization(document):
-    1. Verify document structure:
-        a. Check for valid html, head, and body elements
-        b. Ensure body contains content
-        c. Validate nesting of elements
-    2. Implement fallback mechanisms:
-        a. Create missing structural elements if needed
-        b. Add placeholder content for empty required elements
-        c. Fix invalid nesting or structure
-    3. Track serialization metrics:
-        a. Count elements before and after processing
-        b. Log content length and structure depth
-        c. Record processing time and operations
-    4. Handle browser-specific issues:
-        a. Fix known serialization differences between browsers
-        b. Add compatibility attributes where needed
-        c. Ensure proper closing of self-closing tags
-    5. Verify final document:
-        a. Check for content preservation
-        b. Validate structure integrity
-        c. Ensure all required elements are present
-    6. Return serialization-safe document
-```
-
-### 16.9 Accessibility Processing Algorithm
-
-```
-function processForAccessibility(document, styleInfo, metadata):
-    1. Add language attribute to HTML element
-    2. Add title and metadata
-    3. Process headings:
-        a. Ensure proper heading hierarchy
-        b. Add ARIA attributes for complex headings
-    4. Process tables:
-        a. Add table captions
-        b. Add header cells with scope
-        c. Add ARIA labels for complex tables
-    5. Process images:
-        a. Add appropriate alt text
-        b. Add figure and figcaption elements
-    6. Add ARIA landmarks:
-        a. Banner (header)
-        b. Navigation (TOC, menus)
-        c. Main (document content)
-        d. Complementary (asides)
-        e. Contentinfo (footer)
-    7. Add skip navigation link
-    8. Enhance keyboard navigability:
-        a. Add tabindex where needed
-        b. Ensure logical tab order
-        c. Add focus styles
-    9. Enhance color contrast and non-visual indicators
-    10. Return enhanced document
-```
-
-## 17. Conclusion
+## 14. Conclusion
 
 The doc2web application provides a robust solution for converting DOCX documents to web-friendly formats while preserving styling and structure. By analyzing the document's XML structure rather than its content, the application remains generic and content-agnostic, working effectively with any document regardless of its domain or purpose.
 
@@ -1063,4 +640,4 @@ The application now features advanced numbering extraction and resolution capabi
 
 Additionally, the implementation includes comprehensive DOM serialization verification to ensure content preservation during HTML processing. This addresses potential issues with empty body content, browser-specific serialization differences, and structure integrity, providing fallback mechanisms and detailed logging for debugging purposes.
 
-The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents.
+The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents. The recent fixes have significantly improved the reliability and robustness of the application, particularly in handling complex documents with extensive DOM manipulation requirements.

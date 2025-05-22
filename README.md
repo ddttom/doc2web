@@ -33,6 +33,7 @@ doc2web/
 ├── doc2web-install.sh
 ├── doc2web-run.js
 ├── doc2web.js
+├── debug-test.js           # Diagnostic tool for troubleshooting
 ├── docs/
 │   ├── prd.md                  # Product Requirements Document
 │   ├── refactoring.md          # Detailed refactoring documentation
@@ -135,6 +136,16 @@ node doc2web-run.js
 find . -name "*.docx" > docx-files.txt
 ./process-find.sh docx-files.txt
 ```
+
+### Diagnostic Testing
+
+For troubleshooting conversion issues:
+
+```bash
+node debug-test.js path/to/document.docx
+```
+
+This will create a debug-output/ directory with test files and diagnostic information.
 
 ## Output
 
@@ -282,6 +293,29 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.1 (2025-05-22)
+
+- Fixed critical issues in the HTML generation pipeline:
+  - Fixed content loss during DOM manipulation that was causing incomplete HTML output
+  - Improved error handling with detailed, actionable error messages
+  - Fixed DOM serialization problems that were causing content corruption
+  - Re-enabled ARIA landmarks functionality that was disabled due to DOM manipulation errors
+  - Added comprehensive validation at key processing steps
+- Enhanced main application (doc2web.js):
+  - Added better input file validation to prevent processing invalid files
+  - Improved error reporting with context-specific messages
+  - Enhanced logging to help identify conversion issues
+  - Added performance timing and summary statistics
+- Fixed accessibility processor (lib/accessibility/wcag-processor.js):
+  - Implemented safer DOM manipulation that preserves content
+  - Fixed ARIA landmarks functionality
+  - Enhanced keyboard navigation features
+- Added diagnostic tool (debug-test.js):
+  - Provides comprehensive testing for diagnosing issues
+  - Tests each component individually
+  - Generates detailed diagnostic output
+  - Creates test files for inspection
+
 ### v1.2.0 (2025-05-22)
 
 - Added comprehensive DOCX introspection for exact numbering:
@@ -364,6 +398,27 @@ convertDocument('document.docx').catch(console.error);
 
 ## Troubleshooting
 
+### Using the Debug Script
+
+If you encounter issues with document conversion, use the debug script first:
+
+```bash
+node debug-test.js path/to/your/document.docx
+```
+
+This will create a debug-output/ directory with:
+- Test HTML and CSS files
+- Detailed diagnostic information
+- Component test results
+
+### Checking for Successful Conversion
+
+Look for these indicators of successful conversion:
+- HTML files > 1000 characters for typical documents
+- CSS files with generated styles
+- Proper directory structure maintained
+- Images extracted to images/ subdirectory
+
 ### XML Namespace Errors
 
 If you encounter errors like `Cannot resolve QName w` or `Cannot resolve QName a`, this indicates an issue with XML namespace resolution in the DOCX file. These errors have been fixed in v1.0.1.
@@ -385,9 +440,26 @@ If you encounter issues with complex numbering formats (multi-level, mixed forma
 If you encounter missing content, empty sections, or corrupted HTML output:
 
 1. Check the console for serialization metrics and error messages
-2. Ensure you're using v1.2.0 or later, which includes comprehensive DOM serialization verification
+2. Ensure you're using v1.2.1 or later, which includes fixes for content preservation during DOM manipulation
 3. For complex documents with extensive DOM manipulation, consider enabling detailed logging
-4. If issues persist with specific documents, try processing them individually with enhanced error reporting
+4. If issues persist with specific documents, try processing them with the debug script
+
+### Content Loss Issues
+
+If you notice content missing from the generated HTML:
+
+1. Update to v1.2.1 which fixes content loss during DOM manipulation
+2. Check the error logs for specific issues
+3. Use the debug script to identify exactly where content is being lost
+4. Verify that the original DOCX file is not corrupted
+
+### Accessibility Processing Errors
+
+If accessibility features aren't working correctly:
+
+1. Update to v1.2.1 which fixes issues in the accessibility processor
+2. Check that the enhanceAccessibility option is enabled
+3. Use the debug script to test the accessibility processor independently
 
 ### General Issues
 
