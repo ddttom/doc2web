@@ -16,6 +16,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Document metadata preservation**
 - **Track changes visualization and handling**
 - **Exact DOCX numbering preservation through XML introspection**
+- **Reliable DOM serialization with content preservation**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -170,6 +171,20 @@ doc2web now extracts exact numbering and formatting information directly from th
 
 This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
 
+### DOM Serialization and Content Preservation
+
+doc2web now implements comprehensive DOM serialization verification to ensure content preservation during HTML processing:
+
+- Verifies document body content before serialization
+- Implements fallback mechanisms for empty body issues
+- Preserves all document structure during DOM manipulation
+- Logs serialization metrics for debugging purposes
+- Handles browser-specific DOM serialization differences
+- Ensures proper nesting and hierarchical relationships
+- Implements error handling for serialization failures
+
+This ensures that all document content is properly preserved during the conversion process, preventing content loss or corruption that can occur during complex DOM manipulations.
+
 ### Accessibility Compliance (WCAG 2.1 Level AA)
 
 doc2web now ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
@@ -249,7 +264,10 @@ async function convertDocument(docxPath) {
     preserveMetadata: true,
     trackChangesMode: 'show',
     showAuthor: true,
-    showDate: true
+    showDate: true,
+    verifyDomSerialization: true,
+    logSerializationMetrics: false,
+    enableSerializationFallbacks: true
   };
 
   const result = await extractAndApplyStyles(docxPath, null, options);
@@ -274,6 +292,13 @@ convertDocument('document.docx').catch(console.error);
   - Enhanced HTML generator to maintain numbering context through conversion
   - Added CSS generator support for DOCX numbering formats
   - Ensured content-agnostic processing that works with any language or domain
+- Implemented reliable DOM serialization with content preservation:
+  - Added verification of document body content before serialization
+  - Implemented fallback mechanisms for empty body issues
+  - Added serialization metrics logging for debugging purposes
+  - Enhanced error handling for serialization failures
+  - Ensured proper content preservation during DOM manipulation
+  - Added support for handling browser-specific serialization differences
 
 ### v1.1.0 (2025-05-21)
 
@@ -354,6 +379,15 @@ If you notice problems with Table of Contents formatting or hierarchical list st
 ### Numbering Format Issues
 
 If you encounter issues with complex numbering formats (multi-level, mixed formats, etc.), ensure you're using v1.2.0 or later, which extracts exact numbering definitions from the DOCX XML structure rather than inferring them from text patterns.
+
+### DOM Serialization Issues
+
+If you encounter missing content, empty sections, or corrupted HTML output:
+
+1. Check the console for serialization metrics and error messages
+2. Ensure you're using v1.2.0 or later, which includes comprehensive DOM serialization verification
+3. For complex documents with extensive DOM manipulation, consider enabling detailed logging
+4. If issues persist with specific documents, try processing them individually with enhanced error reporting
 
 ### General Issues
 

@@ -25,6 +25,7 @@ doc2web/
 │   │   ├── theme-parser.js      # Theme parsing functions
 │   │   ├── toc-parser.js        # TOC parsing functions
 │   │   ├── numbering-parser.js  # Numbering definition parsing
+│   │   ├── numbering-resolver.js # Numbering sequence resolution
 │   │   ├── document-parser.js   # Document structure parsing
 │   │   ├── metadata-parser.js   # Document metadata parsing
 │   │   └── track-changes-parser.js # Track changes extraction
@@ -198,18 +199,48 @@ The application extracts numbering definitions from numbering.xml to handle hier
 1. **Abstract Numbering Definitions**
    - Base definitions for numbering formats
    - Level-specific properties (format, text, alignment, indentation)
+   - Complete extraction of all level properties for accurate representation
+   - Run properties (font, size, color) for numbering text
 
 2. **Numbering Instances**
    - Instances that reference abstract numbering definitions
    - Level overrides for specific instances
+   - Start value modifications and restart behaviors
+   - Mapping between numbering IDs and abstract numbering definitions
 
 3. **Level Properties**
    - Numbering format (decimal, alpha, roman, etc.)
-   - Level text (how the number appears, e.g., "%1.")
+   - Level text (how the number appears, e.g., "%1.", "%1.%2.", "(%1)")
    - Alignment and indentation
    - Run properties (font, size, etc.)
+   - Exact format strings for precise numbering representation
 
-### 5.4 Document Structure Analysis
+4. **Numbering Format Conversion**
+   - Conversion of DOCX numbering formats to CSS counter styles
+   - Handling of complex multi-level formats (e.g., "1.1.1")
+   - Support for custom numbering formats and symbols
+
+### 5.4 Numbering Sequence Resolution
+
+The application resolves actual sequential numbers based on document position using the numbering-resolver.js module:
+
+1. **Paragraph Numbering Context**
+   - Extract paragraph numbering references from document.xml
+   - Map paragraphs to their numbering definitions
+   - Track current level for each numbering sequence
+
+2. **Sequential Number Resolution**
+   - Resolve actual numbers based on document position
+   - Handle level restarts and overrides
+   - Track numbering sequences across the entire document
+   - Maintain hierarchical relationships between numbered items
+
+3. **Numbering Continuity**
+   - Handle numbering continuations across document sections
+   - Process numbering restarts at specific values
+   - Maintain proper sequence even with interruptions
+
+### 5.5 Document Structure Analysis
 
 The application analyzes the document structure to identify special elements and patterns without relying on specific content words. This includes:
 
@@ -227,6 +258,25 @@ The application analyzes the document structure to identify special elements and
    - Identify structural patterns (NOT content-specific patterns)
    - Look for formatting patterns in the document
    - Analyze style usage across the document
+
+### 5.6 DOM Serialization Considerations
+
+The application implements careful DOM serialization to preserve document content:
+
+1. **Content Preservation**
+   - Verify document body content before serialization
+   - Implement fallback mechanisms for empty body issues
+   - Preserve all document structure during DOM manipulation
+
+2. **Serialization Metrics**
+   - Log serialization metrics for debugging purposes
+   - Track content changes during processing
+   - Verify content integrity after manipulation
+
+3. **Error Handling**
+   - Implement error handling for serialization failures
+   - Provide fallback mechanisms for browser-specific DOM issues
+   - Ensure proper nesting and hierarchical relationships are maintained
 
 ## 6. HTML Generation Process
 
@@ -265,9 +315,10 @@ The generated HTML is enhanced with proper structure and styling:
    - Add ARIA roles and attributes for accessibility
 
 3. **Process Headings**
-   - Add hierarchical numbering
+   - Add hierarchical numbering based on exact DOCX numbering definitions
    - Maintain proper heading structure
    - Ensure accessible heading hierarchy
+   - Apply exact numbering formats from DOCX
 
 4. **Process TOC**
    - Create properly structured TOC
@@ -280,12 +331,18 @@ The generated HTML is enhanced with proper structure and styling:
    - Maintain proper nesting and numbering
    - Process special paragraphs within lists
    - Ensure proper list semantics for screen readers
+   - Apply exact numbering from DOCX definitions
 
 6. **Process Track Changes**
    - Represent insertions, deletions, and formatting changes visually
    - Include change metadata (author, date) as data attributes
    - Add CSS for displaying changes
    - Provide option to view document with or without changes
+
+7. **DOM Serialization Verification**
+   - Verify document body content before serialization
+   - Implement fallback mechanisms for empty body issues
+   - Ensure all content is properly serialized in the final HTML output
 
 ## 7. CSS Generation Process
 
@@ -321,6 +378,9 @@ The application generates CSS from the extracted style information:
    - List containers and items
    - Counter reset and increment
    - Level-specific indentation and formatting
+   - CSS counters that accurately reflect DOCX numbering definitions
+   - Support for hierarchical numbering with proper resets
+   - Exact format strings matching DOCX level text formats
 
 7. **Track Changes Styles**
    - Insertion styles (typically underlined or highlighted)
@@ -375,11 +435,14 @@ The application processes hierarchical lists to maintain their structure and num
    - Create ordered or unordered lists as appropriate
    - Maintain proper nesting for hierarchical lists
    - Create list items with proper attributes
+   - Apply exact numbering from DOCX definitions
 
 3. **List Styling**
    - Apply CSS counters for automatic numbering
    - Style different list levels appropriately
    - Handle special cases like different numbering formats
+   - Generate CSS that exactly matches DOCX numbering formats
+   - Support complex multi-level formats (e.g., "1.1.1", "Article 1.a")
 
 ### 8.3 Language-Specific Elements
 
@@ -461,6 +524,11 @@ The application includes comprehensive error handling:
    - Create directories recursively
    - Check file permissions
 
+5. **DOM Serialization Errors**
+   - Verify document body content before serialization
+   - Implement fallback mechanisms for empty body issues
+   - Log serialization metrics for debugging purposes
+
 ## 12. Processing Units and Data Flow
 
 The following diagram illustrates the data flow through the application:
@@ -486,6 +554,14 @@ Input DOCX File
 │  - Table Styles        │
 │  - Theme Information   │
 │  - Numbering Definitions│
+└────────────┬───────────┘
+             │
+             ▼
+┌────────────────────────┐
+│ Numbering Resolver     │
+│  - Extract Contexts    │
+│  - Map Paragraphs      │
+│  - Resolve Sequences   │
 └────────────┬───────────┘
              │
              ▼
@@ -844,7 +920,28 @@ function processTOC(document, styleInfo):
     3. Return enhanced document
 ```
 
-### 16.4 Hierarchical List Processing Algorithm
+### 16.4 Numbering Resolver Algorithm
+
+```
+function resolveNumberingSequences(document, numberingDefinitions):
+    1. Extract paragraph numbering contexts from document.xml
+    2. Map paragraphs to their numbering definitions
+    3. Initialize counters for each numbering ID and level
+    4. For each paragraph with numbering:
+        a. Determine numbering ID and level
+        b. Check for level restarts or overrides
+        c. Increment appropriate counter
+        d. Resolve actual number based on counter value
+        e. Apply numbering format from level definition
+        f. Store resolved number with paragraph
+    5. Process hierarchical relationships:
+        a. Reset child level counters when parent level changes
+        b. Maintain proper nesting and sequence
+        c. Handle special cases (skipped levels, etc.)
+    6. Return resolved numbering information for all paragraphs
+```
+
+### 16.5 Hierarchical List Processing Algorithm
 
 ```
 function processNestedNumberedParagraphs(document, styleInfo):
@@ -859,7 +956,7 @@ function processNestedNumberedParagraphs(document, styleInfo):
     3. Return enhanced document with structured lists
 ```
 
-### 16.5 Metadata Processing Algorithm
+### 16.6 Metadata Processing Algorithm
 
 ```
 function processMetadata(document, metadata):
@@ -873,7 +970,7 @@ function processMetadata(document, metadata):
     8. Return enhanced document
 ```
 
-### 16.6 Track Changes Processing Algorithm
+### 16.7 Track Changes Processing Algorithm
 
 ```
 function processTrackChanges(document, changes, options):
@@ -898,7 +995,34 @@ function processTrackChanges(document, changes, options):
     7. Return enhanced document
 ```
 
-### 16.7 Accessibility Processing Algorithm
+### 16.8 DOM Serialization Algorithm
+
+```
+function ensureDomSerialization(document):
+    1. Verify document structure:
+        a. Check for valid html, head, and body elements
+        b. Ensure body contains content
+        c. Validate nesting of elements
+    2. Implement fallback mechanisms:
+        a. Create missing structural elements if needed
+        b. Add placeholder content for empty required elements
+        c. Fix invalid nesting or structure
+    3. Track serialization metrics:
+        a. Count elements before and after processing
+        b. Log content length and structure depth
+        c. Record processing time and operations
+    4. Handle browser-specific issues:
+        a. Fix known serialization differences between browsers
+        b. Add compatibility attributes where needed
+        c. Ensure proper closing of self-closing tags
+    5. Verify final document:
+        a. Check for content preservation
+        b. Validate structure integrity
+        c. Ensure all required elements are present
+    6. Return serialization-safe document
+```
+
+### 16.9 Accessibility Processing Algorithm
 
 ```
 function processForAccessibility(document, styleInfo, metadata):
@@ -933,6 +1057,10 @@ function processForAccessibility(document, styleInfo, metadata):
 
 The doc2web application provides a robust solution for converting DOCX documents to web-friendly formats while preserving styling and structure. By analyzing the document's XML structure rather than its content, the application remains generic and content-agnostic, working effectively with any document regardless of its domain or purpose.
 
-The enhanced implementation now includes comprehensive accessibility features ensuring WCAG 2.1 Level AA compliance, detailed metadata extraction and preservation, and robust track changes handling. These enhancements make the application suitable for professional and enterprise environments where accessibility, metadata, and revision tracking are critical requirements.
+The enhanced implementation now includes comprehensive accessibility features ensuring WCAG 2.1 Level AA compliance, detailed metadata extraction and preservation, robust track changes handling, exact numbering preservation, and reliable DOM serialization. These enhancements make the application suitable for professional and enterprise environments where accessibility, metadata, revision tracking, and precise document structure are critical requirements.
+
+The application now features advanced numbering extraction and resolution capabilities that ensure exact preservation of DOCX numbering formats in the HTML and CSS output. The numbering-resolver.js module maps paragraphs to their numbering definitions and resolves actual sequential numbers based on document position, handling complex hierarchical numbering with proper nesting and sequence.
+
+Additionally, the implementation includes comprehensive DOM serialization verification to ensure content preservation during HTML processing. This addresses potential issues with empty body content, browser-specific serialization differences, and structure integrity, providing fallback mechanisms and detailed logging for debugging purposes.
 
 The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents.
