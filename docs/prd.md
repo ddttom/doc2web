@@ -62,6 +62,7 @@
       - [4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)](#484-comprehensive-toc-implementation-fixes-v123)
       - [4.8.5 Section IDs for Navigation (v1.2.4)](#485-section-ids-for-navigation-v124)
       - [4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)](#486-character-overlap-and-numbering-display-fixes-v125)
+      - [4.8.7 Paragraph Numbering and TOC Display Fix (v1.2.6)](#487-paragraph-numbering-and-toc-display-fix-v126)
 
 ## 1. Product Overview
 
@@ -645,6 +646,44 @@ The implementation of section IDs for direct navigation to numbered headings and
 This enhancement significantly improves document navigation and accessibility while maintaining the existing functionality and keeping the TOC implementation intact. The section IDs provide a direct mapping between the document's hierarchical structure and the HTML navigation system, enabling precise targeting of specific sections regardless of document complexity.
 
 #### 4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)
+
+#### 4.8.7 Paragraph Numbering and TOC Display Fix (v1.2.6)
+
+The implementation of paragraph numbering and TOC display fixes addresses issues with missing paragraph numbers and subheader letters in the TOC and throughout the document:
+
+1. **Heading Numbering Display Fixes**:
+   - Fixed the issue where heading numbers were not displaying in the document
+   - Added code to populate the `<span class="heading-number">` element with the actual numbering content
+   - Ensured that heading numbers display correctly for all heading levels
+   - Maintained proper spacing between heading numbers and content
+   - Preserved accessibility attributes for screen readers
+
+2. **TOC Numbering Display Fixes**:
+   - Fixed the issue where TOC entries were missing their paragraph numbers and subheader letters
+   - Added code to prepend the numbering directly to the text content of TOC entries
+   - Improved the anchor creation logic to handle entries with section IDs from numbering
+   - Enhanced the TOC entry structure to maintain proper alignment with numbering
+   - Ensured consistent display of numbering across all TOC levels
+
+3. **Implementation Details**:
+   - **Heading Number Population**:
+     - Modified `processHeadings` function to add the actual numbering content to the heading-number span
+     - Used `context.resolvedNumbering.fullNumbering` to get the complete numbering string
+     - Maintained the existing HTML structure while adding the missing content
+   
+   - **TOC Entry Enhancement**:
+     - Updated `processTOCEntry` function to add numbering to TOC entry text
+     - Improved anchor creation to use section IDs for better navigation
+     - Enhanced the TOC entry structure to handle numbering properly
+     - Maintained compatibility with existing TOC styling
+
+4. **Diagnostic Tools**:
+   - Added a debug test script to verify numbering display
+   - Implemented validation for heading and TOC numbering
+   - Added logging for numbering-related operations
+   - Provided tools to test the fix without rebuilding the entire document
+
+These fixes ensure that paragraph numbers and subheader letters display correctly in both the TOC and throughout the document, improving the visual fidelity and usability of the generated HTML output.
 
 The implementation of character overlap and numbering display fixes addresses issues with paragraph numbers or letters from IDs not displaying correctly and characters overlapping:
 

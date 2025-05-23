@@ -310,6 +310,18 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.6 (2025-05-23)
+
+- Fixed missing paragraph numbers and subheader letters in TOC and document:
+  - Resolved issue where heading numbers were not displaying in the document
+  - Fixed missing paragraph numbers and subheader letters in the Table of Contents
+  - Added code to populate the heading-number span with actual numbering content
+  - Enhanced TOC entry processing to include numbering in the text content
+  - Improved anchor creation for better navigation between TOC and document sections
+  - Added debug test script to verify numbering display without rebuilding documents
+  - Maintained accessibility attributes for screen readers
+  - Ensured consistent display of numbering across all heading levels and TOC entries
+
 ### v1.2.5 (2025-05-23)
 
 - Fixed character overlap and numbering display issues:
