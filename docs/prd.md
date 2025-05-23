@@ -61,6 +61,7 @@
       - [4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)](#483-enhanced-toc-and-paragraph-numbering-v122)
       - [4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)](#484-comprehensive-toc-implementation-fixes-v123)
       - [4.8.5 Section IDs for Navigation (v1.2.4)](#485-section-ids-for-navigation-v124)
+      - [4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)](#486-character-overlap-and-numbering-display-fixes-v125)
 
 ## 1. Product Overview
 
@@ -642,6 +643,43 @@ The implementation of section IDs for direct navigation to numbered headings and
    - Documentation provides clear usage examples
 
 This enhancement significantly improves document navigation and accessibility while maintaining the existing functionality and keeping the TOC implementation intact. The section IDs provide a direct mapping between the document's hierarchical structure and the HTML navigation system, enabling precise targeting of specific sections regardless of document complexity.
+
+#### 4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)
+
+The implementation of character overlap and numbering display fixes addresses issues with paragraph numbers or letters from IDs not displaying correctly and characters overlapping:
+
+1. **CSS Spacing and Positioning Improvements**:
+   - Increased padding and width for numbering elements to prevent overlap with text
+   - Added proper box-sizing and overflow handling to prevent text from overflowing
+   - Added specific CSS rules for Roman numerals to ensure proper spacing
+   - Improved whitespace handling with `white-space: nowrap` for numbering elements
+   - Enhanced spacing between numbering and paragraph content
+
+2. **Section ID Display Enhancements**:
+   - Improved handling of Roman numerals in section IDs
+   - Added special CSS rules for Roman numeral sections
+   - Enhanced spacing for section headings with numbering
+   - Fixed character overlap in section IDs with proper padding
+
+3. **Box Model Fixes**:
+   - Added `overflow-wrap: break-word` and `word-wrap: break-word` to prevent text overflow
+   - Added extra padding for elements with Roman numerals
+   - Fixed line wrapping issues with indented paragraphs
+   - Implemented consistent box model across all numbered elements
+
+4. **Numbering Display Improvements**:
+   - Enhanced the `buildDisplayNumbering` method to add proper spacing between numbering segments
+   - Added special handling for Roman numerals to ensure they display correctly
+   - Fixed spacing issues between numbering and content
+   - Improved handling of complex numbering formats
+
+5. **HTML Structure Improvements**:
+   - Added wrapper elements for heading numbers to help with styling
+   - Added new CSS classes for Roman numeral sections and headings
+   - Applied inline styles for critical spacing properties
+   - Enhanced the structure of numbered elements for better display
+
+These fixes ensure that paragraph numbers and section IDs display correctly without character overlap, improving the readability and visual fidelity of the generated HTML output. The implementation is content-agnostic and works with all numbering formats, including Roman numerals, letters, and decimal numbers.
 
 The implementation of TOC formatting and paragraph numbering has been significantly improved to enhance visual fidelity and user experience:
 

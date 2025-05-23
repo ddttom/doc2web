@@ -310,6 +310,19 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.5 (2025-05-23)
+
+- Fixed character overlap and numbering display issues:
+  - Resolved issues with paragraph numbers or letters from IDs not displaying correctly
+  - Fixed character overlap in paragraphs with indentation
+  - Improved spacing and positioning for numbered elements
+  - Added special handling for Roman numerals to ensure proper display
+  - Enhanced box model handling to prevent content overflow
+  - Improved spacing between numbering and paragraph content
+  - Fixed line wrapping issues with indented paragraphs
+  - Added specific CSS rules for Roman numeral sections
+  - Implemented consistent box model across all numbered elements
+
 ### v1.2.4 (2025-05-23)
 
 - Added section IDs for direct navigation to numbered headings and paragraphs:
@@ -558,6 +571,18 @@ If you encounter issues with Table of Contents formatting or paragraph numbering
    - **Solution**: Update to v1.2.4 which implements automatic section ID generation
    - **Diagnostic**: Run the debug script and check for section IDs in the HTML output
    - **Fix**: Verify that the HTML contains proper id attributes with the pattern "section-X-Y-Z"
+
+5. **Character Overlap Issues**
+   - **Symptom**: Characters overlapping in paragraphs with indentation or numbering
+   - **Solution**: Update to v1.2.5 which fixes spacing and positioning for numbered elements
+   - **Diagnostic**: Inspect the HTML for proper padding and margin values
+   - **Fix**: Verify that the CSS contains proper box model properties for numbered elements
+
+6. **Roman Numeral Display Issues**
+   - **Symptom**: Roman numerals (I, II, V, VI, etc.) not displaying correctly in section headings
+   - **Solution**: Update to v1.2.5 which adds special handling for Roman numerals
+   - **Diagnostic**: Check the HTML for the roman-numeral-heading class
+   - **Fix**: Ensure the CSS contains specific rules for Roman numeral sections
 
 ### General Issues
 
