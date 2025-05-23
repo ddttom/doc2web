@@ -178,6 +178,7 @@ doc2web automatically generates section IDs for numbered headings based on their
 - `1.2.a Details` becomes `id="section-1-2-a"`
 
 This enables:
+
 - Direct linking to sections (e.g., `document.html#section-1-2-a`)
 - Smooth scrolling navigation
 - Accessibility improvements for screen readers
@@ -363,6 +364,7 @@ convertDocument('document.docx').catch(console.error);
   - Added comprehensive troubleshooting guidance for TOC issues
   - Updated PRD with detailed TOC implementation requirements
   - Enhanced code comments for TOC-related functions
+
 ### v1.2.2 (2025-05-23)
 
 - Enhanced TOC and paragraph numbering display:
