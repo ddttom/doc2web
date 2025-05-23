@@ -58,6 +58,7 @@
       - [4.8.1 CSS-Based Heading Numbering](#481-css-based-heading-numbering)
       - [4.8.2 TOC and Body Content Numbering Fixes](#482-toc-and-body-content-numbering-fixes)
       - [4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)](#483-enhanced-toc-and-paragraph-numbering-v122)
+      - [4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)](#484-comprehensive-toc-implementation-fixes-v123)
 
 ## 1. Product Overview
 
@@ -543,6 +544,41 @@ Several issues with the Table of Contents layout and body content numbering have
 These changes ensure that both the TOC and body content numbering now display correctly, maintaining the visual fidelity of the original DOCX document.
 
 #### 4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)
+#### 4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)
+
+The Table of Contents implementation has been further enhanced with comprehensive fixes to ensure consistent rendering across all browsers and document types:
+
+1. **CSS Specificity and Importance Improvements**:
+   - Added `!important` declarations to critical flex properties to ensure they override any conflicting styles
+   - Enhanced specificity of TOC-related selectors to prevent style conflicts
+   - Fixed CSS inheritance issues that could affect TOC layout
+   - Ensured consistent styling across different contexts and parent containers
+
+2. **DOM Structure Validation**:
+   - Implemented a comprehensive validation function that ensures all TOC entries have the complete three-part structure
+   - Added automatic restructuring for entries that are missing any components (text, dots, or page numbers)
+   - Ensured proper ARIA attributes for accessibility
+   - Added validation for entries both with and without page numbers
+
+3. **Leader Dots Implementation Enhancements**:
+   - Refined the background-image pattern for dots with specific values for consistent visibility
+   - Positioned dots closer to text baseline for better alignment
+   - Implemented consistent sizing (1px height, 6px spacing) for dots
+   - Added browser compatibility fallbacks for gradient approaches
+
+4. **Layout and Container Improvements**:
+   - Enhanced single-column layout enforcement with multiple CSS properties
+   - Added box-sizing and max-width properties to prevent overflow issues
+   - Implemented page-break-inside: avoid to keep TOC entries together when printing
+   - Fixed paragraph display with specific overrides for TOC entries that are paragraphs
+
+5. **Browser Compatibility Enhancements**:
+   - Added fallback styles for browsers that don't support gradient approaches
+   - Ensured consistent rendering across different browser engines
+   - Implemented defensive CSS to handle edge cases in older browsers
+   - Added print-specific styles for better TOC appearance in printed documents
+
+These comprehensive fixes ensure that the Table of Contents displays correctly with proper alignment, consistent dots, and right-aligned page numbers across all browsers and document types, regardless of the complexity of the original document structure.
 
 The implementation of TOC formatting and paragraph numbering has been significantly improved to enhance visual fidelity and user experience:
 

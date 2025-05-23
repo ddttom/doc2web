@@ -293,6 +293,24 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.3 (2025-05-23)
+
+- Comprehensive TOC implementation fixes:
+  - Added CSS specificity and importance improvements with `!important` declarations for critical flex properties
+  - Implemented DOM structure validation to ensure all TOC entries have the complete three-part structure
+  - Enhanced leader dots implementation with consistent sizing and better baseline alignment
+  - Improved layout and container handling with box-sizing and max-width properties
+  - Added browser compatibility fallbacks for gradient approaches
+  - Fixed paragraph display with specific overrides for TOC entries
+  - Added print-specific styles for better TOC appearance in printed documents
+- Improved debugging capabilities:
+  - Added detailed logging for TOC processing
+  - Enhanced validation for TOC entry structure
+  - Implemented more robust error handling for TOC-related operations
+- Documentation updates:
+  - Added comprehensive troubleshooting guidance for TOC issues
+  - Updated PRD with detailed TOC implementation requirements
+  - Enhanced code comments for TOC-related functions
 ### v1.2.2 (2025-05-23)
 
 - Enhanced TOC and paragraph numbering display:
