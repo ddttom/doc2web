@@ -293,6 +293,21 @@ convertDocument('document.docx').catch(console.error);
 
 ## Recent Fixes and Enhancements
 
+### v1.2.2 (2025-05-23)
+
+- Enhanced TOC and paragraph numbering display:
+  - Improved Table of Contents formatting with proper leader dots and right-aligned page numbers
+  - Enhanced paragraph numbering display that exactly matches the original document
+  - Fixed "ragged" appearance of TOC entries for a cleaner, more professional look
+  - Ensured proper alignment and spacing in hierarchical document elements
+  - Improved visual fidelity to original Word documents
+- Implemented advanced CSS techniques for document formatting:
+  - Used flex-based layout for TOC entries to ensure proper alignment
+  - Applied CSS ::before pseudo-elements for paragraph numbering
+  - Created leader dots using CSS background-image with radial gradients
+  - Positioned numbering elements with absolute positioning for exact placement
+- Added detailed troubleshooting guidance for TOC and numbering issues
+
 ### v1.2.1 (2025-05-22)
 
 - Fixed critical issues in the HTML generation pipeline:
@@ -470,6 +485,28 @@ If accessibility features aren't working correctly:
 1. Update to v1.2.1 which fixes issues in the accessibility processor
 2. Check that the enhanceAccessibility option is enabled
 3. Use the debug script to test the accessibility processor independently
+
+### TOC and Numbering Display Issues
+
+If you encounter issues with Table of Contents formatting or paragraph numbering display:
+
+1. **TOC Formatting Problems**
+   - **Symptom**: Missing leader dots or misaligned page numbers
+   - **Solution**: Update to v1.2.2 which implements a flex-based layout for TOC entries
+   - **Diagnostic**: Check the HTML structure for proper TOC entry elements with text, dots, and page number spans
+   - **Fix**: Verify that the CSS contains proper TOC styles with flex layout and background-image for leader dots
+
+2. **Paragraph Numbering Issues**
+   - **Symptom**: Missing numbers or incorrect formatting in numbered paragraphs
+   - **Solution**: Update to v1.2.2 which uses CSS ::before pseudo-elements for numbering
+   - **Diagnostic**: Inspect the HTML for data-numbering-id and data-numbering-level attributes
+   - **Fix**: Ensure the CSS contains proper counter-reset and counter-increment rules for numbering
+
+3. **Hierarchical Numbering Problems**
+   - **Symptom**: Incorrect hierarchical numbering (e.g., 1.1, 1.2, etc.)
+   - **Solution**: Update to v1.2.2 which refines the counter reset strategy
+   - **Diagnostic**: Run the debug script and examine the numbering definitions in debug-output/debug-info.json
+   - **Fix**: Check that the CSS properly implements the hierarchical counter structure
 
 ### General Issues
 

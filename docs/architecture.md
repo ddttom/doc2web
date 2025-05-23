@@ -438,43 +438,146 @@ The application generates CSS from the extracted style information:
 
 The application carefully processes TOC elements to maintain their structure and styling:
 
-1. **TOC Detection**
-   - Identify TOC entries based on style or content pattern
-   - Create a TOC container if not already present
-   - Group TOC entries by level
+#### 8.1.1 TOC Detection
 
-2. **TOC Structure**
-   - Create spans for text, dots, and page numbers
-   - Apply appropriate classes for styling
-   - Maintain hierarchical structure with proper indentation
+- Identify TOC entries based on style or content pattern
+- Create a TOC container if not already present
+- Group TOC entries by level
 
-3. **TOC Styling**
-   - Style the TOC container and heading
-   - Style TOC entries with proper indentation
-   - Create leader dots using CSS background images
-   - Align page numbers to the right
+#### 8.1.2 TOC Structure
+
+- Create spans for text, dots, and page numbers
+- Apply appropriate classes for styling
+- Maintain hierarchical structure with proper indentation
+
+#### 8.1.3 TOC Styling
+
+- Style the TOC container and heading
+- Style TOC entries with proper indentation
+- Create leader dots using CSS background images
+- Align page numbers to the right
+
+#### 8.1.4 Enhanced TOC Layout Implementation (v1.2.2)
+
+The TOC layout has been enhanced with a flex-based approach that ensures proper alignment and spacing:
+
+1. **Flex Container Structure**:
+   - Each TOC entry is a flex container with `display: flex`
+   - Text content has `flex-grow: 0` to maintain its natural size
+   - Dots section has `flex-grow: 1` to fill available space
+   - Page numbers have `flex-grow: 0` with `text-align: right`
+
+2. **Leader Dots Implementation**:
+   - Leader dots are created using CSS `background-image` with a radial gradient
+   - The pattern is precisely controlled to match Word's leader dot spacing
+   - This approach ensures consistent appearance across browsers
+   - The implementation uses a repeating pattern like:
+     ```css
+     .docx-toc-dots {
+       background-image: radial-gradient(circle, #000 1px, transparent 1px);
+       background-size: 8px 8px;
+       background-position: bottom;
+       background-repeat: repeat-x;
+     }
+     ```
+
+3. **Page Number Alignment**:
+   - Page numbers are right-aligned within their container
+   - This ensures consistent positioning regardless of page number length
+   - The alignment is maintained even with different font sizes
+
+4. **Column Layout Prevention**:
+   - Explicit `column-count: 1` is applied to the TOC container
+   - This prevents browsers from automatically creating multi-column layouts
+   - Ensures the TOC appears as a single column, matching Word's presentation
+
+5. **Vertical Stacking**:
+   - Enhanced display properties ensure proper vertical stacking of TOC entries
+   - Each entry is a block-level element with appropriate margins
+   - Hierarchical indentation is preserved through margin-left values
+
+This implementation ensures that the TOC in the HTML output closely resembles the appearance of the original Word document, providing a professional and polished look.
 
 ### 8.2 Hierarchical Lists
 
 The application processes hierarchical lists to maintain their structure and numbering:
 
-1. **List Detection**
-   - Identify list items based on numbering properties
-   - Group list items into logical lists
-   - Detect nested lists and their levels
+#### 8.2.1 List Detection
 
-2. **List Structure**
-   - Create ordered or unordered lists as appropriate
-   - Maintain proper nesting for hierarchical lists
-   - Create list items with proper attributes
-   - Apply exact numbering from DOCX definitions
+- Identify list items based on numbering properties
+- Group list items into logical lists
+- Detect nested lists and their levels
 
-3. **List Styling**
-   - Apply CSS counters for automatic numbering
-   - Style different list levels appropriately
-   - Handle special cases like different numbering formats
-   - Generate CSS that exactly matches DOCX numbering formats
-   - Support complex multi-level formats (e.g., "1.1.1", "Article 1.a")
+#### 8.2.2 List Structure
+
+- Create ordered or unordered lists as appropriate
+- Maintain proper nesting for hierarchical lists
+- Create list items with proper attributes
+- Apply exact numbering from DOCX definitions
+
+#### 8.2.3 List Styling
+
+- Apply CSS counters for automatic numbering
+- Style different list levels appropriately
+- Handle special cases like different numbering formats
+- Generate CSS that exactly matches DOCX numbering formats
+- Support complex multi-level formats (e.g., "1.1.1", "Article 1.a")
+
+#### 8.2.4 Enhanced Paragraph Numbering Implementation (v1.2.2)
+
+The paragraph numbering system has been enhanced to provide exact visual fidelity:
+
+1. **Data Attribute Approach**:
+   - Numbered elements receive `data-numbering-id`, `data-numbering-level`, and `data-format` attributes
+   - This approach separates content from presentation
+   - Prevents potential conflicts or duplicate numbering
+   - The HTML structure looks like:
+     ```html
+     <h1 data-numbering-id="2" data-numbering-level="0" data-format="%1.">Heading Text</h1>
+     ```
+
+2. **CSS ::before Implementation**:
+   - Numbers are displayed using CSS `::before` pseudo-elements
+   - Content is generated using CSS counters that match DOCX numbering definitions
+   - This ensures exact replication of Word's numbering formats
+   - The CSS implementation looks like:
+     ```css
+     [data-numbering-id="2"][data-numbering-level="0"] {
+       position: relative;
+       counter-increment: level1;
+     }
+     [data-numbering-id="2"][data-numbering-level="0"]::before {
+       content: counter(level1) ".";
+       position: absolute;
+       left: -24pt;
+       width: 24pt;
+       box-sizing: border-box;
+     }
+     ```
+
+3. **Positioning Technique**:
+   - The parent element has `position: relative`
+   - The `::before` pseudo-element uses `position: absolute`
+   - Left positioning is calculated based on indentation values from DOCX
+   - Width is explicitly set to ensure proper text flow
+   - This approach ensures exact positioning that matches Word's layout
+
+4. **Indentation and Spacing**:
+   - `marginLeft`, `paddingLeft`, and `textIndent` are calculated from DOCX properties
+   - These values ensure exact matching of Word's paragraph layout
+   - Hanging indents are properly implemented for numbered paragraphs
+   - The calculation takes into account:
+     - `levelDef.indentation.left`: The overall left indentation
+     - `levelDef.indentation.hanging`: The hanging indent amount
+     - `levelDef.indentation.firstLine`: The first line indent amount
+
+5. **Counter Reset Strategy**:
+   - Counter reset is applied at appropriate levels to maintain hierarchical structure
+   - Each level properly increments its own counter
+   - Hierarchical numbering strings are constructed using the appropriate format
+   - Level-specific styling ensures visual consistency with the original document
+
+This implementation ensures that numbered paragraphs in the HTML output exactly match the appearance of the original Word document, maintaining the document's structural integrity and professional formatting.
 
 ### 8.3 Language-Specific Elements
 
@@ -602,33 +705,77 @@ The application now includes a comprehensive diagnostic tool (debug-test.js) for
 
 ## 13. Recent Fixes and Improvements
 
-The application has been enhanced with several critical fixes:
+### 13.1 HTML Generator Improvements
 
-1. **HTML Generator (lib/html/html-generator.js)**
-   - Fixed content loss during DOM manipulation
-   - Added comprehensive error handling and logging
-   - Improved content preservation during processing
-   - Enhanced validation at each processing step
-   - Implemented better fallback mechanisms
-   - Fixed JSDOM serialization issues
+- Fixed content loss during DOM manipulation
+- Added comprehensive error handling and logging
+- Improved content preservation during processing
+- Enhanced validation at each processing step
+- Implemented better fallback mechanisms
+- Fixed JSDOM serialization issues
 
-2. **Main Application (doc2web.js)**
-   - Enhanced input file validation
-   - Improved error reporting with actionable messages
-   - Added better logging to help identify issues
-   - Implemented performance timing and summary statistics
+### 13.2 Main Application Enhancements
 
-3. **Accessibility Processor (lib/accessibility/wcag-processor.js)**
-   - Implemented safer DOM manipulation that preserves content
-   - Fixed the ARIA landmarks functionality
-   - Enhanced keyboard navigation features
-   - Added better error handling for accessibility enhancements
+- Enhanced input file validation
+- Improved error reporting with actionable messages
+- Added better logging to help identify issues
+- Implemented performance timing and summary statistics
 
-4. **Debug Script (debug-test.js)**
-   - Added comprehensive testing tool for diagnosing issues
-   - Implemented component-level testing
-   - Added detailed diagnostic output
-   - Created test file generation for inspection
+### 13.3 Accessibility Processor Fixes
+
+- Implemented safer DOM manipulation that preserves content
+- Fixed the ARIA landmarks functionality
+- Enhanced keyboard navigation features
+- Added better error handling for accessibility enhancements
+
+### 13.4 Debug Script Additions
+
+- Added comprehensive testing tool for diagnosing issues
+- Implemented component-level testing
+- Added detailed diagnostic output
+- Created test file generation for inspection
+
+### 13.5 Enhanced TOC and Paragraph Numbering (v1.2.2)
+
+The v1.2.2 release includes significant improvements to TOC formatting and paragraph numbering:
+
+1. **TOC Formatting Enhancements**:
+   - Implemented a flex-based layout for TOC entries that ensures proper alignment of text, dots, and page numbers
+   - Created leader dots using CSS background-image with radial gradients for precise control over appearance
+   - Applied right-alignment to page numbers for professional document appearance
+   - Fixed the "ragged" or multi-column appearance of the TOC by explicitly setting column-count: 1
+   - Enhanced the display properties to ensure proper vertical stacking of TOC entries
+
+2. **Paragraph Numbering Improvements**:
+   - Implemented CSS ::before pseudo-elements for displaying paragraph numbers
+   - Used data attributes to track numbering context without modifying document content
+   - Applied absolute positioning for precise placement of numbering elements
+   - Enhanced the CSS counter implementation to properly handle all numbering formats
+   - Fixed issues with missing or "zero" numbering in the body content
+   - Improved the hierarchical numbering string construction
+
+3. **Implementation Details**:
+   - **Flex-based TOC Layout**:
+     - Each TOC entry is a flex container with `display: flex`
+     - Text content has `flex-grow: 0` to maintain its natural size
+     - Dots section has `flex-grow: 1` to fill available space
+     - Page numbers have `flex-grow: 0` with `text-align: right`
+     - Leader dots are created using CSS `background-image` with a radial gradient pattern
+
+   - **CSS ::before Implementation for Numbering**:
+     - Numbered elements receive `data-numbering-id`, `data-numbering-level`, and `data-format` attributes
+     - Parent elements have `position: relative` for proper positioning context
+     - The `::before` pseudo-element uses `position: absolute` with precise left positioning
+     - Width is explicitly set to ensure proper text flow
+     - Content is generated using CSS counters that match DOCX numbering definitions
+
+   - **Counter Reset Strategy**:
+     - Counter reset is applied at appropriate levels to maintain hierarchical structure
+     - Each level properly increments its own counter
+     - Hierarchical numbering strings are constructed using the appropriate format
+     - Level-specific styling ensures visual consistency with the original document
+
+These enhancements ensure that the generated HTML closely resembles the original DOCX document's appearance, providing end users with a more accurate and professional representation of their content. The implementation is completely generic and content-agnostic, working with any document regardless of language or domain.
 
 ## 14. Conclusion
 
@@ -641,3 +788,5 @@ The application now features advanced numbering extraction and resolution capabi
 Additionally, the implementation includes comprehensive DOM serialization verification to ensure content preservation during HTML processing. This addresses potential issues with empty body content, browser-specific serialization differences, and structure integrity, providing fallback mechanisms and detailed logging for debugging purposes.
 
 The modular architecture and clear separation of concerns make the codebase maintainable and extensible, while the comprehensive error handling ensures reliable operation even with complex or problematic documents. The recent fixes have significantly improved the reliability and robustness of the application, particularly in handling complex documents with extensive DOM manipulation requirements.
+
+The v1.2.2 release further enhances the visual fidelity of the generated HTML output, with particular focus on TOC formatting and paragraph numbering. The flex-based layout for TOC entries and CSS ::before implementation for paragraph numbering ensure that the output closely matches the appearance of the original Word document, providing a professional and polished presentation.

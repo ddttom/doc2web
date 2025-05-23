@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.8  
-**Last Updated:** May 22, 2025  
+**Document Version:** 2.9  
+**Last Updated:** May 23, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -21,6 +21,7 @@
 | 2.6 | May 22, 2025 | Technical Team | Added HTML formatting for improved debugging and readability |
 | 2.7 | May 22, 2025 | Technical Team | Improved CSS-based numbering implementation for headings |
 | 2.8 | May 22, 2025 | Technical Team | Fixed TOC layout and body content numbering issues |
+| 2.9 | May 23, 2025 | Technical Team | Enhanced TOC formatting and paragraph numbering implementation (v1.2.2) |
 
 ## Table of Contents
 
@@ -56,6 +57,7 @@
     - [4.8 Recent Implementation Changes](#48-recent-implementation-changes)
       - [4.8.1 CSS-Based Heading Numbering](#481-css-based-heading-numbering)
       - [4.8.2 TOC and Body Content Numbering Fixes](#482-toc-and-body-content-numbering-fixes)
+      - [4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)](#483-enhanced-toc-and-paragraph-numbering-v122)
 
 ## 1. Product Overview
 
@@ -433,6 +435,9 @@ doc2web follows a modular architecture with these primary components:
 - **Document statistics must be calculated from document content when not available in metadata**
 - **HTML output must be properly formatted with indentation and line breaks for improved debugging**
 - **HTML formatting must preserve all content and structure while enhancing readability**
+- **TOC elements must have proper leader dots and right-aligned page numbers**
+- **TOC entries must maintain proper alignment and spacing using flex-based layout**
+- **Paragraph numbering must be implemented using CSS ::before pseudo-elements for exact positioning**
 
 ### 4.4 Document Analysis Rules
 
@@ -536,3 +541,45 @@ Several issues with the Table of Contents layout and body content numbering have
    - Fixed the interaction between level counters and formatting segments
 
 These changes ensure that both the TOC and body content numbering now display correctly, maintaining the visual fidelity of the original DOCX document.
+
+#### 4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)
+
+The implementation of TOC formatting and paragraph numbering has been significantly improved to enhance visual fidelity and user experience:
+
+1. **TOC Formatting Enhancements**:
+   - Implemented a flex-based layout for TOC entries that ensures proper alignment of text, dots, and page numbers
+   - Created leader dots using CSS background-image with radial gradients for precise control over appearance
+   - Applied right-alignment to page numbers for professional document appearance
+   - Fixed the "ragged" or multi-column appearance of the TOC by explicitly setting column-count: 1
+   - Enhanced the display properties to ensure proper vertical stacking of TOC entries
+
+2. **Paragraph Numbering Improvements**:
+   - Implemented CSS ::before pseudo-elements for displaying paragraph numbers
+   - Used data attributes to track numbering context without modifying document content
+   - Applied absolute positioning for precise placement of numbering elements
+   - Enhanced the CSS counter implementation to properly handle all numbering formats
+   - Fixed issues with missing or "zero" numbering in the body content
+   - Improved the hierarchical numbering string construction
+
+3. **Technical Implementation Details**:
+   - **Flex-based TOC Layout**:
+     - Each TOC entry is a flex container with `display: flex`
+     - Text content has `flex-grow: 0` to maintain its natural size
+     - Dots section has `flex-grow: 1` to fill available space
+     - Page numbers have `flex-grow: 0` with `text-align: right`
+     - Leader dots are created using CSS `background-image` with a radial gradient pattern
+
+   - **CSS ::before Implementation for Numbering**:
+     - Numbered elements receive `data-numbering-id`, `data-numbering-level`, and `data-format` attributes
+     - Parent elements have `position: relative` for proper positioning context
+     - The `::before` pseudo-element uses `position: absolute` with precise left positioning
+     - Width is explicitly set to ensure proper text flow
+     - Content is generated using CSS counters that match DOCX numbering definitions
+
+   - **Counter Reset Strategy**:
+     - Counter reset is applied at appropriate levels to maintain hierarchical structure
+     - Each level properly increments its own counter
+     - Hierarchical numbering strings are constructed using the appropriate format
+     - Level-specific styling ensures visual consistency with the original document
+
+These enhancements ensure that the generated HTML closely resembles the original DOCX document's appearance, providing end users with a more accurate and professional representation of their content. The implementation is completely generic and content-agnostic, working with any document regardless of language or domain.
