@@ -66,6 +66,17 @@ async function testDocxProcessing(docxPath) {
       console.log(`  <html>: ${hasHtml ? '✅' : '❌'}`);
       console.log(`  <body>: ${hasBody ? '✅' : '❌'}`);
       console.log(`  Content: ${hasContent ? '✅' : '❌'}`);
+      
+      // NEW: Check for section IDs in headings
+      const sectionIds = result.html.match(/id="section-[^"]+"/g) || [];
+      console.log(`Section IDs found: ${sectionIds.length}`);
+      
+      if (sectionIds.length > 0) {
+        console.log('Sample section IDs:');
+        sectionIds.slice(0, 5).forEach((id, index) => {
+          console.log(`  ${index + 1}. ${id}`);
+        });
+      }
     }
     
     // Show conversion messages if any
@@ -87,6 +98,11 @@ async function testDocxProcessing(docxPath) {
         console.log('Sample numbered items:');
         numberedItems.slice(0, 3).forEach((ctx, index) => {
           console.log(`  ${index + 1}. Level ${ctx.numberingLevel}: "${ctx.textContent?.substring(0, 50)}..."`);
+          
+          // NEW: Show section IDs from resolved numbering
+          if (ctx.resolvedNumbering && ctx.resolvedNumbering.sectionId) {
+            console.log(`     Section ID: ${ctx.resolvedNumbering.sectionId}`);
+          }
         });
       }
     }
@@ -215,7 +231,8 @@ async function debugMain() {
           messagesCount: pipelineResults.messages?.length || 0,
           hasMetadata: !!pipelineResults.metadata,
           hasTrackChanges: pipelineResults.trackChanges?.hasTrackedChanges || false,
-          numberingContextLength: pipelineResults.numberingContext?.length || 0
+          numberingContextLength: pipelineResults.numberingContext?.length || 0,
+          sectionIdsCount: (pipelineResults.html?.match(/id="section-[^"]+"/g) || []).length // NEW: Count section IDs
         },
         components: {
           paragraphStyles: Object.keys(componentResults.styleInfo?.styles?.paragraph || {}).length,

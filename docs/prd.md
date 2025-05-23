@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 2.9  
+**Document Version:** 3.0  
 **Last Updated:** May 23, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -22,6 +22,7 @@
 | 2.7 | May 22, 2025 | Technical Team | Improved CSS-based numbering implementation for headings |
 | 2.8 | May 22, 2025 | Technical Team | Fixed TOC layout and body content numbering issues |
 | 2.9 | May 23, 2025 | Technical Team | Enhanced TOC formatting and paragraph numbering implementation (v1.2.2) |
+| 3.0 | May 23, 2025 | Technical Team | Added section IDs for direct navigation to numbered headings (v1.2.4) |
 
 ## Table of Contents
 
@@ -59,6 +60,7 @@
       - [4.8.2 TOC and Body Content Numbering Fixes](#482-toc-and-body-content-numbering-fixes)
       - [4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)](#483-enhanced-toc-and-paragraph-numbering-v122)
       - [4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)](#484-comprehensive-toc-implementation-fixes-v123)
+      - [4.8.5 Section IDs for Navigation (v1.2.4)](#485-section-ids-for-navigation-v124)
 
 ## 1. Product Overview
 
@@ -81,6 +83,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **DOM Serialization**: Ensure proper preservation of document content during DOM manipulation
 - **Robust Error Handling**: Provide comprehensive error reporting and recovery mechanisms
 - **Content Validation**: Implement validation at key processing steps to ensure data integrity
+- **Section Navigation**: Generate section IDs for direct navigation to numbered headings and paragraphs
 
 ### 1.3 Project Scope
 
@@ -96,6 +99,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Implementing comprehensive error handling and validation**
 - **Providing diagnostic tools for troubleshooting conversion issues**
 - **Extracting and calculating document statistics for metadata**
+- **Generating section IDs for direct navigation to numbered headings and paragraphs**
 
 The scope explicitly excludes:
 
@@ -170,6 +174,7 @@ The scope explicitly excludes:
 - **Implement comprehensive error handling and validation**
 - **Provide detailed logging for troubleshooting conversion issues**
 - **Extract and calculate document statistics for metadata**
+- **Generate section IDs for direct navigation to numbered headings and paragraphs**
 
 #### 3.1.2 Style Preservation
 
@@ -188,6 +193,7 @@ The scope explicitly excludes:
 - **Parse run properties (font, size, color) for numbering text**
 - **Ensure content preservation during DOM manipulation and serialization**
 - **Implement fallback mechanisms for DOM manipulation errors**
+- **Generate section IDs based on hierarchical numbering structure**
 
 #### 3.1.3 Processing Capabilities
 
@@ -343,6 +349,7 @@ doc2web follows a modular architecture with these primary components:
      - **Resolves actual sequential numbers based on document position**
      - **Handles restart logic and level overrides**
      - **Tracks numbering sequences across the document**
+     - **Generates section IDs based on hierarchical numbering structure**
 
    - **Metadata Parser (lib/parsers/metadata-parser.js)**
      - Extracts document metadata from core.xml and app.xml
@@ -375,6 +382,7 @@ doc2web follows a modular architecture with these primary components:
      - **Creates level-specific styling for numbered elements**
      - **Supports hierarchical numbering with proper resets**
      - **Maintains visual fidelity to original DOCX formatting**
+     - **Adds section ID styling for navigation and highlighting**
 
    - **Content Processors (lib/html/content-processors.js)**
      - Processes headings, TOC, and lists
@@ -385,6 +393,7 @@ doc2web follows a modular architecture with these primary components:
      - **Creates structured lists based on DOCX numbering definitions**
      - **Maintains hierarchical relationships from original document**
      - **Ensures proper DOM manipulation to preserve content**
+     - **Applies section IDs to headings and numbered paragraphs**
 
 5. **User Interface (doc2web-run.js)**
    - Provides interactive command-line interface
@@ -439,6 +448,9 @@ doc2web follows a modular architecture with these primary components:
 - **TOC elements must have proper leader dots and right-aligned page numbers**
 - **TOC entries must maintain proper alignment and spacing using flex-based layout**
 - **Paragraph numbering must be implemented using CSS ::before pseudo-elements for exact positioning**
+- **Section IDs must be generated for all numbered headings and paragraphs**
+- **Section IDs must follow a consistent pattern (e.g., "section-1-2-a")**
+- **CSS must include styling for section navigation and highlighting**
 
 ### 4.4 Document Analysis Rules
 
@@ -453,6 +465,7 @@ doc2web follows a modular architecture with these primary components:
 - **Numbering formats must be converted to appropriate CSS counter styles**
 - **DOM serialization must be verified to ensure content preservation**
 - **Document structure must be validated at each processing step**
+- **Section IDs must be derived from numbering structure, not from text content**
 
 ### 4.5 API and Integration
 
@@ -544,6 +557,7 @@ Several issues with the Table of Contents layout and body content numbering have
 These changes ensure that both the TOC and body content numbering now display correctly, maintaining the visual fidelity of the original DOCX document.
 
 #### 4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)
+
 #### 4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)
 
 The Table of Contents implementation has been further enhanced with comprehensive fixes to ensure consistent rendering across all browsers and document types:
@@ -579,6 +593,55 @@ The Table of Contents implementation has been further enhanced with comprehensiv
    - Added print-specific styles for better TOC appearance in printed documents
 
 These comprehensive fixes ensure that the Table of Contents displays correctly with proper alignment, consistent dots, and right-aligned page numbers across all browsers and document types, regardless of the complexity of the original document structure.
+
+#### 4.8.5 Section IDs for Navigation (v1.2.4)
+
+The implementation of section IDs for direct navigation to numbered headings and paragraphs provides significant improvements to document navigation and accessibility:
+
+1. **Section ID Generation**:
+   - Automatically generates section IDs based on hierarchical numbering structure
+   - Creates IDs that match the exact numbering pattern (e.g., "section-1-2-a")
+   - Handles all numbering formats (decimal, alphabetic, roman numerals)
+   - Ensures IDs are valid HTML identifiers by removing invalid characters
+   - Maintains consistent ID pattern regardless of document language or content domain
+
+2. **Implementation Components**:
+   - **Numbering Resolver (lib/parsers/numbering-resolver.js)**:
+     - Added `generateSectionId` method to `NumberingSequenceTracker` class
+     - Enhanced `formatNumbering` method to include section ID in returned object
+     - Converts full numbering string to valid HTML ID format
+     - Handles special characters and formatting in numbering strings
+     - Ensures consistent ID generation across all document types
+
+   - **Content Processors (lib/html/content-processors.js)**:
+     - Updated `processHeadings` function to apply section IDs from resolved numbering
+     - Enhanced `ensureHeadingAccessibility` to preserve existing section IDs
+     - Extended `processNestedNumberedParagraphs` to apply section IDs to non-heading elements
+     - Maintains proper ID hierarchy matching document structure
+     - Preserves accessibility attributes while adding navigation capabilities
+
+   - **CSS Generator (lib/css/css-generator.js)**:
+     - Added section ID styling in `generateDOCXNumberingStyles` function
+     - Implemented scroll-margin-top for smooth scrolling to sections
+     - Added target highlighting in `generateUtilityStyles` function
+     - Created visual feedback for navigation to specific sections
+     - Ensured consistent styling across different browsers
+
+3. **Navigation Benefits**:
+   - Enables direct linking to specific sections via fragment identifiers (e.g., `#section-1-2-a`)
+   - Improves accessibility for screen readers through proper document structure
+   - Enhances TOC functionality with precise section targeting
+   - Provides visual feedback when navigating to sections
+   - Supports smooth scrolling to targeted sections
+
+4. **Technical Implementation Details**:
+   - Section IDs are derived directly from DOCX numbering definitions
+   - IDs match the exact hierarchical structure of the document
+   - Implementation is content-agnostic, working with any language or domain
+   - Diagnostic tools validate section ID generation
+   - Documentation provides clear usage examples
+
+This enhancement significantly improves document navigation and accessibility while maintaining the existing functionality and keeping the TOC implementation intact. The section IDs provide a direct mapping between the document's hierarchical structure and the HTML navigation system, enabling precise targeting of specific sections regardless of document complexity.
 
 The implementation of TOC formatting and paragraph numbering has been significantly improved to enhance visual fidelity and user experience:
 

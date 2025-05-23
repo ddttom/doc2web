@@ -17,6 +17,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Track changes visualization and handling**
 - **Exact DOCX numbering preservation through XML introspection**
 - **Reliable DOM serialization with content preservation**
+- **Section IDs for direct navigation to numbered headings and paragraphs**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -168,6 +169,22 @@ output/
 
 ## Enhanced Features
 
+### Section IDs and Navigation
+
+doc2web automatically generates section IDs for numbered headings based on their hierarchical position:
+
+- `1. Introduction` becomes `id="section-1"`
+- `1.2 Overview` becomes `id="section-1-2"`
+- `1.2.a Details` becomes `id="section-1-2-a"`
+
+This enables:
+- Direct linking to sections (e.g., `document.html#section-1-2-a`)
+- Smooth scrolling navigation
+- Accessibility improvements for screen readers
+- Visual highlighting of targeted sections
+
+Section IDs are derived directly from the DOCX numbering definitions, ensuring they match the exact hierarchical structure of the document regardless of language or content domain.
+
 ### DOCX Introspection for Exact Numbering
 
 doc2web now extracts exact numbering and formatting information directly from the DOCX XML structure:
@@ -292,6 +309,16 @@ convertDocument('document.docx').catch(console.error);
 ```
 
 ## Recent Fixes and Enhancements
+
+### v1.2.4 (2025-05-23)
+
+- Added section IDs for direct navigation to numbered headings and paragraphs:
+  - Implemented automatic generation of section IDs based on hierarchical numbering
+  - Added CSS styling for section navigation and highlighting
+  - Enhanced heading accessibility with proper ID attributes
+  - Improved TOC linking to section IDs
+  - Added diagnostic tools for section ID validation
+  - Updated documentation with section ID usage examples
 
 ### v1.2.3 (2025-05-23)
 
@@ -525,6 +552,12 @@ If you encounter issues with Table of Contents formatting or paragraph numbering
    - **Solution**: Update to v1.2.2 which refines the counter reset strategy
    - **Diagnostic**: Run the debug script and examine the numbering definitions in debug-output/debug-info.json
    - **Fix**: Check that the CSS properly implements the hierarchical counter structure
+
+4. **Section ID Issues**
+   - **Symptom**: Missing or incorrect section IDs for headings and numbered paragraphs
+   - **Solution**: Update to v1.2.4 which implements automatic section ID generation
+   - **Diagnostic**: Run the debug script and check for section IDs in the HTML output
+   - **Fix**: Verify that the HTML contains proper id attributes with the pattern "section-X-Y-Z"
 
 ### General Issues
 
