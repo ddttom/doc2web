@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 3.0  
+**Document Version:** 3.4  
 **Last Updated:** May 23, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -11,18 +11,9 @@
 | Version | Date | Author | Description of Changes |
 |---------|------|--------|------------------------|
 | 1.0 | May 16, 2025 | Initial Team | Original document |
-| 1.5 | May 19, 2025 | Technical Team | Enhanced TOC and list handling requirements |
 | 2.0 | May 20, 2025 | Technical Team | Added document introspection rules, removed content pattern matching |
-| 2.1 | May 20, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
-| 2.2 | May 22, 2025 | Technical Team | Added comprehensive DOCX numbering introspection requirements |
-| 2.3 | May 22, 2025 | Technical Team | Added DOM serialization requirements for numbering preservation |
-| 2.4 | May 22, 2025 | Technical Team | Added critical fixes for DOM manipulation, error handling, and validation |
-| 2.5 | May 22, 2025 | Technical Team | Added document statistics calculation and metadata improvements |
-| 2.6 | May 22, 2025 | Technical Team | Added HTML formatting for improved debugging and readability |
-| 2.7 | May 22, 2025 | Technical Team | Improved CSS-based numbering implementation for headings |
-| 2.8 | May 22, 2025 | Technical Team | Fixed TOC layout and body content numbering issues |
-| 2.9 | May 23, 2025 | Technical Team | Enhanced TOC formatting and paragraph numbering implementation (v1.2.2) |
-| 3.0 | May 23, 2025 | Technical Team | Added section IDs for direct navigation to numbered headings (v1.2.4) |
+| 3.0 | May 23, 2025 | Technical Team | Added section IDs for direct navigation to numbered headings |
+| 3.4 | May 23, 2025 | Technical Team | Added document header extraction and processing functionality |
 
 ## Table of Contents
 
@@ -55,14 +46,7 @@
     - [4.5 API and Integration](#45-api-and-integration)
     - [4.6 DOM Serialization Requirements](#46-dom-serialization-requirements)
     - [4.7 Error Handling and Validation](#47-error-handling-and-validation)
-    - [4.8 Recent Implementation Changes](#48-recent-implementation-changes)
-      - [4.8.1 CSS-Based Heading Numbering](#481-css-based-heading-numbering)
-      - [4.8.2 TOC and Body Content Numbering Fixes](#482-toc-and-body-content-numbering-fixes)
-      - [4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)](#483-enhanced-toc-and-paragraph-numbering-v122)
-      - [4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)](#484-comprehensive-toc-implementation-fixes-v123)
-      - [4.8.5 Section IDs for Navigation (v1.2.4)](#485-section-ids-for-navigation-v124)
-      - [4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)](#486-character-overlap-and-numbering-display-fixes-v125)
-      - [4.8.7 Paragraph Numbering and TOC Display Fix (v1.2.6)](#487-paragraph-numbering-and-toc-display-fix-v126)
+    - [4.8 Implementation Status](#48-implementation-status)
 
 ## 1. Product Overview
 
@@ -408,14 +392,12 @@ doc2web follows a modular architecture with these primary components:
    - Batch processing helpers (process-find.sh)
    - System compatibility checks
    - Error logging and reporting
-   - **Diagnostic tools (debug-test.js)**
+   - **Diagnostic tools (debug_test_script.js)**
 
 7. **Documentation**
    - `README.md`: Project overview and quick start guide
    - `docs/prd.md`: Product Requirements Document
-   - `docs/refactoring.md`: Detailed documentation of the refactoring process
-   - `docs/user-guide.md`: User guide for working with the refactored code
-   - `docs/troubleshooting_guide.md`: Guide for diagnosing and fixing issues
+   - `docs/architecture.md`: Technical architecture documentation
 
 ### 4.2 Dependencies
 
@@ -505,257 +487,15 @@ doc2web follows a modular architecture with these primary components:
 - **Implement safe DOM manipulation practices**
 - **Add validation for accessibility features**
 
-### 4.8 Recent Implementation Changes
+### 4.8 Implementation Status
 
-#### 4.8.1 CSS-Based Heading Numbering
+The application has undergone significant enhancements to improve document conversion accuracy and user experience. Key improvements include:
 
-The implementation of heading numbering has been improved to rely on CSS ::before pseudo-elements rather than directly inserting numbers into the HTML. This change affects two key files:
+- **CSS-Based Numbering**: Implemented precise numbering using CSS ::before pseudo-elements
+- **TOC Enhancement**: Fixed layout issues and improved visual fidelity
+- **Section Navigation**: Added section IDs for direct navigation to numbered headings
+- **DOM Serialization**: Enhanced content preservation during HTML processing
+- **Header Processing**: Added comprehensive document header extraction and processing
+- **Diagnostic Tools**: Enhanced debugging capabilities for troubleshooting
 
-1. **lib/html/content-processors.js (processHeadings function)**:
-   - The function `applyNumberingToHeading` was effectively removed by commenting out its primary logic of inserting a `<span>`.
-   - The `processHeadings` function now directly sets `data-numbering-id`, `data-numbering-level`, and `data-format` attributes on heading elements if `context.resolvedNumbering` (numbering information derived from DOCX) exists.
-   - This ensures that headings intended to be numbered via DOCX definitions will rely solely on the CSS ::before pseudo-element mechanism, driven by these data attributes, rather than having numbers inserted directly into the HTML. This prevents potential conflicts or duplicate numbering.
-   - `ensureHeadingAccessibility` is still called to manage IDs and focusability.
-
-2. **lib/css/css-generator.js (generateDOCXNumberingStyles function)**:
-   - The core logic for calculating `marginLeft`, `paddingLeft` (for the number area), and `textIndent` (for the text flow, especially handling hanging indents) based on `levelDef.indentation.left`, `levelDef.indentation.hanging`, and `levelDef.indentation.firstLine` is maintained and emphasized. These DOCX properties are crucial for accurate layout.
-   - CSS for `[data-num-id][data-num-level]` (the numbered element itself):
-     - `display: block;` is added to ensure consistent block-level behavior, which is important for p, h1-h6, and li that might receive these attributes.
-     - `position: relative;` is crucial for the absolute positioning of the ::before pseudo-element.
-     - `margin-left`, `padding-left`, and `text-indent` are applied based on the parsed DOCX values. Default to 0 if not specified to avoid unexpected browser defaults interfering.
-   - CSS for `::before` (the number/bullet):
-     - `content: ${getCSSCounterContent(levelDef, abstractNum.id, numberingDefs)};` generates the actual number string using CSS counters.
-     - `position: absolute;`
-     - `left: ${textIndent < 0 ? textIndent : 0}pt;`: This is a key adjustment. If there's a hanging indent (textIndent is negative), the number should start at that negative offset from the padding-left edge of the parent. If textIndent is zero or positive (standard first-line indent), the number starts at 0 (the padding edge).
-     - `width: ${paddingLeft > 0 ? paddingLeft : (levelDef.indentation?.hanging || 24)}pt;`: The width of the number container is explicitly set, typically to the hanging indent amount. A fallback width (e.g., 24pt) is provided if paddingLeft isn't available from a hanging indent (though it should be if textIndent is negative).
-     - `box-sizing: border-box;` is added to ensure the width includes any padding or border of the pseudo-element itself, which is good practice.
-   - The `generateEnhancedListStyles` function is simplified to primarily style the list containers (ol, ul) and basic li properties, assuming the numbering and precise indentation of li items (if they also get data-num-id attributes) will be handled by `generateDOCXNumberingStyles`.
-   - General improvements to default styles in `generateUtilityStyles` (e.g., centering images, better heading margins, basic print styles) and `generateTOCStyles` for robustness.
-   - The `getCSSCounterFormat` was ensured to be imported for use in `getCSSCounterContent`.
-
-#### 4.8.2 TOC and Body Content Numbering Fixes
-
-Several issues with the Table of Contents layout and body content numbering have been addressed:
-
-1. **TOC Layout Fixes**:
-   - Fixed the "ragged" or two-column appearance of the TOC by ensuring proper CSS styling in the `generateTOCStyles` function
-   - Added explicit `column-count: 1` to the `.docx-toc` selector to prevent unintended column layouts
-   - Improved the display and flex properties of TOC entries to ensure proper vertical stacking
-   - Enhanced TOC entry styling to maintain proper alignment of text, dots, and page numbers
-
-2. **Body Content Numbering Fixes**:
-   - Resolved issues with missing or "zero" numbering in the body content
-   - Fixed the hierarchical numbering string construction in the `buildHierarchicalNumbering` function
-   - Ensured proper counter initialization and incrementation in the CSS
-   - Improved the data attribute application in `processHeadings` and `processTOCEntry` functions
-   - Enhanced the CSS counter content generation in `getCSSCounterContent` to properly handle all numbering formats
-
-3. **CSS Counter Implementation**:
-   - Refined the counter reset strategy to ensure proper numbering hierarchy
-   - Improved the positioning and styling of numbering elements using ::before pseudo-elements
-   - Enhanced the handling of indentation and spacing for numbered elements
-   - Fixed the interaction between level counters and formatting segments
-
-These changes ensure that both the TOC and body content numbering now display correctly, maintaining the visual fidelity of the original DOCX document.
-
-#### 4.8.3 Enhanced TOC and Paragraph Numbering (v1.2.2)
-
-#### 4.8.4 Comprehensive TOC Implementation Fixes (v1.2.3)
-
-The Table of Contents implementation has been further enhanced with comprehensive fixes to ensure consistent rendering across all browsers and document types:
-
-1. **CSS Specificity and Importance Improvements**:
-   - Added `!important` declarations to critical flex properties to ensure they override any conflicting styles
-   - Enhanced specificity of TOC-related selectors to prevent style conflicts
-   - Fixed CSS inheritance issues that could affect TOC layout
-   - Ensured consistent styling across different contexts and parent containers
-
-2. **DOM Structure Validation**:
-   - Implemented a comprehensive validation function that ensures all TOC entries have the complete three-part structure
-   - Added automatic restructuring for entries that are missing any components (text, dots, or page numbers)
-   - Ensured proper ARIA attributes for accessibility
-   - Added validation for entries both with and without page numbers
-
-3. **Leader Dots Implementation Enhancements**:
-   - Refined the background-image pattern for dots with specific values for consistent visibility
-   - Positioned dots closer to text baseline for better alignment
-   - Implemented consistent sizing (1px height, 6px spacing) for dots
-   - Added browser compatibility fallbacks for gradient approaches
-
-4. **Layout and Container Improvements**:
-   - Enhanced single-column layout enforcement with multiple CSS properties
-   - Added box-sizing and max-width properties to prevent overflow issues
-   - Implemented page-break-inside: avoid to keep TOC entries together when printing
-   - Fixed paragraph display with specific overrides for TOC entries that are paragraphs
-
-5. **Browser Compatibility Enhancements**:
-   - Added fallback styles for browsers that don't support gradient approaches
-   - Ensured consistent rendering across different browser engines
-   - Implemented defensive CSS to handle edge cases in older browsers
-   - Added print-specific styles for better TOC appearance in printed documents
-
-These comprehensive fixes ensure that the Table of Contents displays correctly with proper alignment, consistent dots, and right-aligned page numbers across all browsers and document types, regardless of the complexity of the original document structure.
-
-#### 4.8.5 Section IDs for Navigation (v1.2.4)
-
-The implementation of section IDs for direct navigation to numbered headings and paragraphs provides significant improvements to document navigation and accessibility:
-
-1. **Section ID Generation**:
-   - Automatically generates section IDs based on hierarchical numbering structure
-   - Creates IDs that match the exact numbering pattern (e.g., "section-1-2-a")
-   - Handles all numbering formats (decimal, alphabetic, roman numerals)
-   - Ensures IDs are valid HTML identifiers by removing invalid characters
-   - Maintains consistent ID pattern regardless of document language or content domain
-
-2. **Implementation Components**:
-   - **Numbering Resolver (lib/parsers/numbering-resolver.js)**:
-     - Added `generateSectionId` method to `NumberingSequenceTracker` class
-     - Enhanced `formatNumbering` method to include section ID in returned object
-     - Converts full numbering string to valid HTML ID format
-     - Handles special characters and formatting in numbering strings
-     - Ensures consistent ID generation across all document types
-
-   - **Content Processors (lib/html/content-processors.js)**:
-     - Updated `processHeadings` function to apply section IDs from resolved numbering
-     - Enhanced `ensureHeadingAccessibility` to preserve existing section IDs
-     - Extended `processNestedNumberedParagraphs` to apply section IDs to non-heading elements
-     - Maintains proper ID hierarchy matching document structure
-     - Preserves accessibility attributes while adding navigation capabilities
-
-   - **CSS Generator (lib/css/css-generator.js)**:
-     - Added section ID styling in `generateDOCXNumberingStyles` function
-     - Implemented scroll-margin-top for smooth scrolling to sections
-     - Added target highlighting in `generateUtilityStyles` function
-     - Created visual feedback for navigation to specific sections
-     - Ensured consistent styling across different browsers
-
-3. **Navigation Benefits**:
-   - Enables direct linking to specific sections via fragment identifiers (e.g., `#section-1-2-a`)
-   - Improves accessibility for screen readers through proper document structure
-   - Enhances TOC functionality with precise section targeting
-   - Provides visual feedback when navigating to sections
-   - Supports smooth scrolling to targeted sections
-
-4. **Technical Implementation Details**:
-   - Section IDs are derived directly from DOCX numbering definitions
-   - IDs match the exact hierarchical structure of the document
-   - Implementation is content-agnostic, working with any language or domain
-   - Diagnostic tools validate section ID generation
-   - Documentation provides clear usage examples
-
-This enhancement significantly improves document navigation and accessibility while maintaining the existing functionality and keeping the TOC implementation intact. The section IDs provide a direct mapping between the document's hierarchical structure and the HTML navigation system, enabling precise targeting of specific sections regardless of document complexity.
-
-#### 4.8.6 Character Overlap and Numbering Display Fixes (v1.2.5)
-
-#### 4.8.7 Paragraph Numbering and TOC Display Fix (v1.2.6)
-
-The implementation of paragraph numbering and TOC display fixes addresses issues with missing paragraph numbers and subheader letters in the TOC and throughout the document:
-
-1. **Heading Numbering Display Fixes**:
-   - Fixed the issue where heading numbers were not displaying in the document
-   - Added code to populate the `<span class="heading-number">` element with the actual numbering content
-   - Ensured that heading numbers display correctly for all heading levels
-   - Maintained proper spacing between heading numbers and content
-   - Preserved accessibility attributes for screen readers
-
-2. **TOC Numbering Display Fixes**:
-   - Fixed the issue where TOC entries were missing their paragraph numbers and subheader letters
-   - Added code to prepend the numbering directly to the text content of TOC entries
-   - Improved the anchor creation logic to handle entries with section IDs from numbering
-   - Enhanced the TOC entry structure to maintain proper alignment with numbering
-   - Ensured consistent display of numbering across all TOC levels
-
-3. **Implementation Details**:
-   - **Heading Number Population**:
-     - Modified `processHeadings` function to add the actual numbering content to the heading-number span
-     - Used `context.resolvedNumbering.fullNumbering` to get the complete numbering string
-     - Maintained the existing HTML structure while adding the missing content
-   
-   - **TOC Entry Enhancement**:
-     - Updated `processTOCEntry` function to add numbering to TOC entry text
-     - Improved anchor creation to use section IDs for better navigation
-     - Enhanced the TOC entry structure to handle numbering properly
-     - Maintained compatibility with existing TOC styling
-
-4. **Diagnostic Tools**:
-   - Added a debug test script to verify numbering display
-   - Implemented validation for heading and TOC numbering
-   - Added logging for numbering-related operations
-   - Provided tools to test the fix without rebuilding the entire document
-
-These fixes ensure that paragraph numbers and subheader letters display correctly in both the TOC and throughout the document, improving the visual fidelity and usability of the generated HTML output.
-
-The implementation of character overlap and numbering display fixes addresses issues with paragraph numbers or letters from IDs not displaying correctly and characters overlapping:
-
-1. **CSS Spacing and Positioning Improvements**:
-   - Increased padding and width for numbering elements to prevent overlap with text
-   - Added proper box-sizing and overflow handling to prevent text from overflowing
-   - Added specific CSS rules for Roman numerals to ensure proper spacing
-   - Improved whitespace handling with `white-space: nowrap` for numbering elements
-   - Enhanced spacing between numbering and paragraph content
-
-2. **Section ID Display Enhancements**:
-   - Improved handling of Roman numerals in section IDs
-   - Added special CSS rules for Roman numeral sections
-   - Enhanced spacing for section headings with numbering
-   - Fixed character overlap in section IDs with proper padding
-
-3. **Box Model Fixes**:
-   - Added `overflow-wrap: break-word` and `word-wrap: break-word` to prevent text overflow
-   - Added extra padding for elements with Roman numerals
-   - Fixed line wrapping issues with indented paragraphs
-   - Implemented consistent box model across all numbered elements
-
-4. **Numbering Display Improvements**:
-   - Enhanced the `buildDisplayNumbering` method to add proper spacing between numbering segments
-   - Added special handling for Roman numerals to ensure they display correctly
-   - Fixed spacing issues between numbering and content
-   - Improved handling of complex numbering formats
-
-5. **HTML Structure Improvements**:
-   - Added wrapper elements for heading numbers to help with styling
-   - Added new CSS classes for Roman numeral sections and headings
-   - Applied inline styles for critical spacing properties
-   - Enhanced the structure of numbered elements for better display
-
-These fixes ensure that paragraph numbers and section IDs display correctly without character overlap, improving the readability and visual fidelity of the generated HTML output. The implementation is content-agnostic and works with all numbering formats, including Roman numerals, letters, and decimal numbers.
-
-The implementation of TOC formatting and paragraph numbering has been significantly improved to enhance visual fidelity and user experience:
-
-1. **TOC Formatting Enhancements**:
-   - Implemented a flex-based layout for TOC entries that ensures proper alignment of text, dots, and page numbers
-   - Created leader dots using CSS background-image with radial gradients for precise control over appearance
-   - Applied right-alignment to page numbers for professional document appearance
-   - Fixed the "ragged" or multi-column appearance of the TOC by explicitly setting column-count: 1
-   - Enhanced the display properties to ensure proper vertical stacking of TOC entries
-
-2. **Paragraph Numbering Improvements**:
-   - Implemented CSS ::before pseudo-elements for displaying paragraph numbers
-   - Used data attributes to track numbering context without modifying document content
-   - Applied absolute positioning for precise placement of numbering elements
-   - Enhanced the CSS counter implementation to properly handle all numbering formats
-   - Fixed issues with missing or "zero" numbering in the body content
-   - Improved the hierarchical numbering string construction
-
-3. **Technical Implementation Details**:
-   - **Flex-based TOC Layout**:
-     - Each TOC entry is a flex container with `display: flex`
-     - Text content has `flex-grow: 0` to maintain its natural size
-     - Dots section has `flex-grow: 1` to fill available space
-     - Page numbers have `flex-grow: 0` with `text-align: right`
-     - Leader dots are created using CSS `background-image` with a radial gradient pattern
-
-   - **CSS ::before Implementation for Numbering**:
-     - Numbered elements receive `data-numbering-id`, `data-numbering-level`, and `data-format` attributes
-     - Parent elements have `position: relative` for proper positioning context
-     - The `::before` pseudo-element uses `position: absolute` with precise left positioning
-     - Width is explicitly set to ensure proper text flow
-     - Content is generated using CSS counters that match DOCX numbering definitions
-
-   - **Counter Reset Strategy**:
-     - Counter reset is applied at appropriate levels to maintain hierarchical structure
-     - Each level properly increments its own counter
-     - Hierarchical numbering strings are constructed using the appropriate format
-     - Level-specific styling ensures visual consistency with the original document
-
-These enhancements ensure that the generated HTML closely resembles the original DOCX document's appearance, providing end users with a more accurate and professional representation of their content. The implementation is completely generic and content-agnostic, working with any document regardless of language or domain.
+For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).

@@ -29,6 +29,7 @@ doc2web/
 │   │   ├── numbering-resolver.js # Numbering sequence resolution
 │   │   ├── document-parser.js   # Document structure parsing
 │   │   ├── metadata-parser.js   # Document metadata parsing
+│   │   ├── header-parser.js     # Document header extraction
 │   │   └── track-changes-parser.js # Track changes extraction
 │   ├── html/              # HTML processing modules
 │   │   ├── html-generator.js    # Main HTML generation
@@ -86,6 +87,13 @@ The application extracts and processes the following XML files from the DOCX arc
 7. **docProps/app.xml**
    - Contains application-specific metadata
    - Includes application name, company, revision count, etc.
+
+8. **word/header1.xml, word/header2.xml, word/header3.xml**
+   - Contains document header content for different page types
+   - header1.xml: Default header content
+   - header2.xml: First page header content
+   - header3.xml: Even page header content
+   - Includes paragraphs, runs, images, and formatting within headers
 
 ### 3.2 XML Namespaces
 
@@ -779,6 +787,90 @@ The v1.2.2 release includes significant improvements to TOC formatting and parag
      - Level-specific styling ensures visual consistency with the original document
 
 These enhancements ensure that the generated HTML closely resembles the original DOCX document's appearance, providing end users with a more accurate and professional representation of their content. The implementation is completely generic and content-agnostic, working with any document regardless of language or domain.
+
+### 13.6 TOC Duplicate Numbering Fix
+
+Fixed a critical issue where Table of Contents entries displayed duplicate numbering by implementing a CSS-only approach:
+
+1. **Problem Identification**:
+   - TOC entries were showing duplicate numbering (e.g., "1. 1. Consent Agenda:" instead of "1. Consent Agenda:")
+   - Root cause: Two sources of numbering were being applied simultaneously
+   - CSS `::before` pseudo-elements from DOCX numbering styles were generating numbering
+   - Manual JavaScript numbering addition in `processTOCEntry` function was also adding numbering
+
+2. **CSS-Only Solution**:
+   - **Removed Manual JavaScript Numbering** in [`lib/html/content-processors.js`](lib/html/content-processors.js:410):
+     - Commented out lines 410-416 that manually added numbering to TOC entry text content
+     - Preserved essential data attribute setting for CSS targeting
+     - Maintained existing TOC entry structure and accessibility features
+
+   - **Enhanced CSS for TOC Numbering** in [`lib/css/css-generator.js`](lib/css/css-generator.js:640):
+     - Added TOC-specific CSS adjustments for numbered entries within flex layout
+     - Implemented relative positioning for `::before` pseudo-elements in TOC context
+     - Ensured proper spacing and display within the existing flex-based TOC layout
+
+3. **Technical Implementation**:
+   - **Single Source of Truth**: TOC entries now rely solely on CSS `::before` pseudo-elements
+   - **Consistent Approach**: Uses the same numbering system as headings and paragraphs
+   - **Flex Layout Compatibility**: CSS adjustments ensure proper positioning within TOC's flex layout
+   - **Data-Driven**: Numbering controlled by data attributes (`data-num-id`, `data-abstract-num`, `data-num-level`, `data-format`)
+
+4. **Benefits**:
+   - **Performance**: CSS rendering is more efficient than DOM manipulation
+   - **Consistency**: Single source of truth for numbering display across the entire document
+   - **Maintainability**: Eliminates potential conflicts between multiple numbering sources
+   - **Accessibility**: CSS-generated content properly handled by screen readers
+
+5. **Results**:
+   - TOC entries display single numbering: "1. Consent Agenda:" instead of "1. 1. Consent Agenda:"
+   - Numbering format matches the original DOCX document exactly
+   - TOC navigation links continue to work correctly
+   - Maintains visual fidelity and professional appearance
+
+This fix ensures that Table of Contents entries display correctly with single, accurate numbering while maintaining all existing functionality and improving the overall user experience.
+
+### 13.7 Document Header Extraction and Processing (v1.2.8)
+
+Enhanced the application with comprehensive document header extraction and processing functionality:
+
+1. **Header Parser Implementation**:
+   - Created comprehensive header parser ([`lib/parsers/header-parser.js`](lib/parsers/header-parser.js:1)) for extracting header content from DOCX files
+   - Implemented multiple extraction strategies:
+     - **Strategy 1**: Extracts from actual header XML files (`header1.xml`, `header2.xml`, `header3.xml`)
+     - **Strategy 2**: Falls back to analyzing document content for header-like material at the top
+   - Identifies different header types: `first`, `even`, `default`, and `document`
+   - Preserves original formatting and includes graphics/images from headers
+   - Uses DOCX introspection to analyze paragraph styles, formatting, and content
+
+2. **HTML Integration**:
+   - **`insertHeaderBeforeTOC()`** - Inserts extracted header content before the Table of Contents
+   - **`processHeaderForHtml()`** - Converts header paragraphs to properly formatted HTML elements
+   - Creates semantic `<header>` container with `role="banner"` for accessibility
+   - Preserves original formatting through inline styles and CSS classes
+   - Maintains document structure by placing headers at the logical top of content
+
+3. **CSS Styling**:
+   - **`generateHeaderStyles()`** - Generates comprehensive CSS for header elements
+   - Responsive design with mobile-friendly breakpoints
+   - Print-specific styles for proper document printing
+   - Header type-specific styling (first page, even pages, default)
+   - Proper image sizing and layout within headers
+   - Accessibility-compliant focus and contrast handling
+
+4. **Technical Implementation**:
+   - **DOCX Introspection**: Analyzes actual Word document structure including header XML files, paragraph styles, formatting properties, and image elements
+   - **Intelligent Content Detection**: Uses scoring algorithms to identify header content based on document position, formatting characteristics, style names, and presence of images
+   - **Formatting Preservation**: Maintains original document appearance through inline CSS, CSS classes, data attributes, and proper font/color/alignment handling
+   - **Accessibility & Standards**: Implements proper HTML semantics with semantic `<header>` elements, ARIA roles, screen reader support, and keyboard navigation
+
+5. **Benefits**:
+   - **Enhanced Document Structure**: Headers provide proper document hierarchy and context
+   - **Visual Fidelity**: Preserves original Word document appearance including graphics
+   - **Accessibility**: Improves document navigation and screen reader compatibility
+   - **Professional Presentation**: Headers add polish and context to converted documents
+   - **Content-Agnostic**: Works with any document regardless of language or domain
+
+This enhancement significantly improves the visual fidelity and professional appearance of converted documents by extracting and preserving document headers with their original formatting and graphics, placing them appropriately before the Table of Contents in the HTML output.
 
 ## 14. Conclusion
 

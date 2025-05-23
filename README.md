@@ -18,6 +18,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Exact DOCX numbering preservation through XML introspection**
 - **Reliable DOM serialization with content preservation**
 - **Section IDs for direct navigation to numbered headings and paragraphs**
+- **Document header extraction and processing with formatting preservation**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -25,58 +26,7 @@ The app must deeply inspect the docx and obtain css and formatting styles, font 
 
 ## Project Structure
 
-The codebase has been refactored for better organization and maintainability:
-
-```bash
-doc2web/
-├── .gitignore
-├── README.md
-├── doc2web-install.sh
-├── doc2web-run.js
-├── doc2web.js
-├── debug-test.js           # Diagnostic tool for troubleshooting
-├── docs/
-│   ├── prd.md                  # Product Requirements Document
-│   ├── refactoring.md          # Detailed refactoring documentation
-│   ├── user-guide.md           # User guide for the refactored code
-│   └── architecture.md         # Technical architecture documentation
-├── init-doc2web.sh
-├── input/
-├── lib/                        # Refactored library code
-│   ├── index.js                # Main entry point
-│   ├── xml/                    # XML parsing utilities
-│   │   └── xpath-utils.js      # XPath utilities for XML processing
-│   ├── parsers/                # DOCX parsing modules
-│   │   ├── style-parser.js     # Style parsing functions
-│   │   ├── theme-parser.js     # Theme parsing functions
-│   │   ├── toc-parser.js       # TOC parsing functions
-│   │   ├── numbering-parser.js # Numbering definition parsing
-│   │   ├── numbering-resolver.js # Numbering resolution engine
-│   │   ├── document-parser.js  # Document structure parsing
-│   │   ├── metadata-parser.js  # Document metadata parsing
-│   │   └── track-changes-parser.js # Track changes extraction
-│   ├── html/                   # HTML processing modules
-│   │   ├── html-generator.js   # Main HTML generation
-│   │   ├── structure-processor.js # HTML structure handling
-│   │   ├── content-processors.js  # Content element processing
-│   │   └── element-processors.js  # HTML element processing
-│   ├── css/                    # CSS generation modules
-│   │   ├── css-generator.js    # CSS generation functions
-│   │   └── style-mapper.js     # Style mapping functions
-│   ├── accessibility/          # Accessibility enhancement modules
-│   │   └── wcag-processor.js   # WCAG 2.1 compliance processor
-│   └── utils/                  # Utility functions
-│       ├── unit-converter.js   # Unit conversion utilities
-│       └── common-utils.js     # Common utility functions
-├── markdownify.js
-├── node_modules/
-├── output/
-├── package-lock.json
-├── package.json
-├── process-find.sh
-├── style-extractor.js          # Backward compatibility wrapper
-└── docx-style-parser.js        # Backward compatibility wrapper
-```
+The codebase follows a modular architecture with organized library modules. For detailed technical architecture information, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Getting Started
 
@@ -186,33 +136,53 @@ This enables:
 
 Section IDs are derived directly from the DOCX numbering definitions, ensuring they match the exact hierarchical structure of the document regardless of language or content domain.
 
-### DOCX Introspection for Exact Numbering
+### Document Header Extraction and Processing
 
-doc2web now extracts exact numbering and formatting information directly from the DOCX XML structure:
+doc2web automatically extracts and processes document headers from DOCX files, placing them before the Table of Contents in the HTML output:
 
-- Parses complete numbering definitions from `numbering.xml`
-- Extracts level text formats (e.g., "%1.", "%1.%2.", "(%1)")
-- Captures indentation, alignment, and formatting for each level
-- Resolves actual sequential numbers based on document position
-- Handles restart logic and level overrides
-- Generates CSS counters that precisely match DOCX numbering
-- Maintains hierarchical relationships from the original document
+#### Header Extraction Strategies
 
-This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
+1. **Header XML Files**: Extracts content from actual Word header files (`header1.xml`, `header2.xml`, `header3.xml`)
+2. **Document Analysis**: Falls back to analyzing document content for header-like material at the beginning
+3. **Header Types**: Supports different header types (first page, even pages, default headers)
 
-### DOM Serialization and Content Preservation
+#### Features
 
-doc2web now implements comprehensive DOM serialization verification to ensure content preservation during HTML processing:
+- **Formatting Preservation**: Maintains original fonts, sizes, colors, alignment, and styling
+- **Graphics Inclusion**: Preserves images and graphics within headers
+- **Responsive Design**: Headers adapt to different screen sizes and print media
+- **Accessibility**: Proper semantic HTML with ARIA roles for screen readers
+- **Content Detection**: Uses intelligent scoring to identify header content based on:
+  - Document position and formatting characteristics
+  - Style names and paragraph properties
+  - Presence of images or special formatting
 
-- Verifies document body content before serialization
-- Implements fallback mechanisms for empty body issues
-- Preserves all document structure during DOM manipulation
-- Logs serialization metrics for debugging purposes
-- Handles browser-specific DOM serialization differences
-- Ensures proper nesting and hierarchical relationships
-- Implements error handling for serialization failures
+#### Technical Implementation
 
-This ensures that all document content is properly preserved during the conversion process, preventing content loss or corruption that can occur during complex DOM manipulations.
+- **DOCX Introspection**: Analyzes actual Word document XML structure
+- **Style Preservation**: Converts DOCX formatting to equivalent CSS
+- **Semantic HTML**: Creates proper `<header>` elements with accessibility attributes
+- **CSS Generation**: Generates responsive styles for different header types
+- **Content-Agnostic**: Works with any document regardless of language or domain
+
+#### Recent Fixes (v1.2.8)
+
+- **Correct Placement**: Headers now appear at the very beginning of the HTML document, before the TOC and any other content
+- **Page Numbering Filter**: Automatically filters out page numbering text like "Page 1 of 5", "Page xx of xx", etc.
+- **Clean Content**: Only meaningful header content is displayed, excluding automatic page numbering
+- **Professional Structure**: Document order is now: Header → TOC → Document Content
+
+This ensures that document headers appear correctly in the converted HTML, maintaining the professional appearance and context of the original Word document.
+
+### Technical Features
+
+doc2web implements advanced DOCX introspection and content preservation:
+
+- **Exact Numbering**: Extracts precise numbering definitions from DOCX XML structure
+- **Content Preservation**: Comprehensive DOM serialization with fallback mechanisms
+- **Structure Fidelity**: Maintains hierarchical relationships from original documents
+
+For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
 
 ### Accessibility Compliance (WCAG 2.1 Level AA)
 
@@ -287,209 +257,52 @@ const result = await extractAndApplyStyles('document.docx', null, options);
 const { extractAndApplyStyles } = require('./lib');
 
 async function convertDocument(docxPath) {
-  // Default options
-  const options = {
-    enhanceAccessibility: true,
-    preserveMetadata: true,
-    trackChangesMode: 'show',
-    showAuthor: true,
-    showDate: true,
-    verifyDomSerialization: true,
-    logSerializationMetrics: false,
-    enableSerializationFallbacks: true
-  };
-
-  const result = await extractAndApplyStyles(docxPath, null, options);
-  console.log('HTML generated:', result.html);
-  console.log('CSS generated:', result.styles);
-  console.log('Metadata extracted:', result.metadata);
-  console.log('Track changes detected:', result.trackChanges.hasTrackedChanges);
+  const result = await extractAndApplyStyles(docxPath);
+  console.log('Conversion completed:', result.html ? 'Success' : 'Failed');
 }
 
 convertDocument('document.docx').catch(console.error);
 ```
 
+For detailed API options and configuration, see [`docs/architecture.md`](docs/architecture.md).
+
 ## Recent Fixes and Enhancements
 
-### v1.2.6 (2025-05-23)
+### Recent Updates
 
-- Fixed missing paragraph numbers and subheader letters in TOC and document:
-  - Resolved issue where heading numbers were not displaying in the document
-  - Fixed missing paragraph numbers and subheader letters in the Table of Contents
-  - Added code to populate the heading-number span with actual numbering content
-  - Enhanced TOC entry processing to include numbering in the text content
-  - Improved anchor creation for better navigation between TOC and document sections
-  - Added debug test script to verify numbering display without rebuilding documents
-  - Maintained accessibility attributes for screen readers
-  - Ensured consistent display of numbering across all heading levels and TOC entries
+**v1.2.8 (2025-05-23)**
 
-### v1.2.5 (2025-05-23)
+- Added comprehensive document header extraction and processing
+- Fixed TOC duplicate numbering issue using CSS-only approach
+- Enhanced page numbering filtering for cleaner header content
 
-- Fixed character overlap and numbering display issues:
-  - Resolved issues with paragraph numbers or letters from IDs not displaying correctly
-  - Fixed character overlap in paragraphs with indentation
-  - Improved spacing and positioning for numbered elements
-  - Added special handling for Roman numerals to ensure proper display
-  - Enhanced box model handling to prevent content overflow
-  - Improved spacing between numbering and paragraph content
-  - Fixed line wrapping issues with indented paragraphs
-  - Added specific CSS rules for Roman numeral sections
-  - Implemented consistent box model across all numbered elements
+**v1.2.7 (2025-05-23)**
 
-### v1.2.4 (2025-05-23)
+- Enhanced document parser to extract page margins and settings
+- Improved document layout fidelity
 
-- Added section IDs for direct navigation to numbered headings and paragraphs:
-  - Implemented automatic generation of section IDs based on hierarchical numbering
-  - Added CSS styling for section navigation and highlighting
-  - Enhanced heading accessibility with proper ID attributes
-  - Improved TOC linking to section IDs
-  - Added diagnostic tools for section ID validation
-  - Updated documentation with section ID usage examples
+**v1.2.6 (2025-05-23)**
 
-### v1.2.3 (2025-05-23)
+- Fixed missing paragraph numbers and subheader letters in TOC and document
+- Enhanced numbering display across all heading levels
 
-- Comprehensive TOC implementation fixes:
-  - Added CSS specificity and importance improvements with `!important` declarations for critical flex properties
-  - Implemented DOM structure validation to ensure all TOC entries have the complete three-part structure
-  - Enhanced leader dots implementation with consistent sizing and better baseline alignment
-  - Improved layout and container handling with box-sizing and max-width properties
-  - Added browser compatibility fallbacks for gradient approaches
-  - Fixed paragraph display with specific overrides for TOC entries
-  - Added print-specific styles for better TOC appearance in printed documents
-- Improved debugging capabilities:
-  - Added detailed logging for TOC processing
-  - Enhanced validation for TOC entry structure
-  - Implemented more robust error handling for TOC-related operations
-- Documentation updates:
-  - Added comprehensive troubleshooting guidance for TOC issues
-  - Updated PRD with detailed TOC implementation requirements
-  - Enhanced code comments for TOC-related functions
+**v1.2.5 (2025-05-23)**
 
-### v1.2.2 (2025-05-23)
+- Fixed character overlap and numbering display issues
+- Added special handling for Roman numerals
 
-- Enhanced TOC and paragraph numbering display:
-  - Improved Table of Contents formatting with proper leader dots and right-aligned page numbers
-  - Enhanced paragraph numbering display that exactly matches the original document
-  - Fixed "ragged" appearance of TOC entries for a cleaner, more professional look
-  - Ensured proper alignment and spacing in hierarchical document elements
-  - Improved visual fidelity to original Word documents
-- Implemented advanced CSS techniques for document formatting:
-  - Used flex-based layout for TOC entries to ensure proper alignment
-  - Applied CSS ::before pseudo-elements for paragraph numbering
-  - Created leader dots using CSS background-image with radial gradients
-  - Positioned numbering elements with absolute positioning for exact placement
-- Added detailed troubleshooting guidance for TOC and numbering issues
+**v1.2.4 (2025-05-23)**
 
-### v1.2.1 (2025-05-22)
+- Added section IDs for direct navigation to numbered headings
+- Enhanced accessibility and navigation capabilities
 
-- Fixed critical issues in the HTML generation pipeline:
-  - Fixed content loss during DOM manipulation that was causing incomplete HTML output
-  - Improved error handling with detailed, actionable error messages
-  - Fixed DOM serialization problems that were causing content corruption
-  - Re-enabled ARIA landmarks functionality that was disabled due to DOM manipulation errors
-  - Added comprehensive validation at key processing steps
-- Enhanced main application (doc2web.js):
-  - Added better input file validation to prevent processing invalid files
-  - Improved error reporting with context-specific messages
-  - Enhanced logging to help identify conversion issues
-  - Added performance timing and summary statistics
-- Fixed accessibility processor (lib/accessibility/wcag-processor.js):
-  - Implemented safer DOM manipulation that preserves content
-  - Fixed ARIA landmarks functionality
-  - Enhanced keyboard navigation features
-- Added diagnostic tool (debug-test.js):
-  - Provides comprehensive testing for diagnosing issues
-  - Tests each component individually
-  - Generates detailed diagnostic output
-  - Creates test files for inspection
-- Improved CSS-based heading numbering implementation:
-  - Modified content-processors.js to use data attributes instead of direct HTML manipulation
-  - Enhanced css-generator.js to generate precise CSS ::before pseudo-elements for numbering
-  - Improved handling of indentation, margins, and text flow based on DOCX properties
-  - Ensured proper positioning of numbering elements with absolute positioning
-  - Prevented potential conflicts or duplicate numbering in headings
-  - Fixed TOC display issues by explicitly preventing multi-column layout
-  - Improved visual fidelity to original Word document numbering
+**v1.2.0-1.2.3 (2025-05-22/23)**
 
-### v1.2.0 (2025-05-22)
+- Comprehensive DOCX introspection for exact numbering preservation
+- Enhanced TOC implementation with improved visual fidelity
+- Fixed critical DOM serialization and content preservation issues
 
-- Added comprehensive DOCX introspection for exact numbering:
-  - Implemented enhanced numbering parser to extract complete definitions from numbering.xml
-  - Created numbering resolution engine to calculate actual sequential numbers
-  - Enhanced content processors to apply DOCX-derived numbering to HTML elements
-  - Improved style parser to integrate numbering context into style extraction
-  - Enhanced HTML generator to maintain numbering context through conversion
-  - Added CSS generator support for DOCX numbering formats
-  - Ensured content-agnostic processing that works with any language or domain
-- Implemented reliable DOM serialization with content preservation:
-  - Added verification of document body content before serialization
-  - Implemented fallback mechanisms for empty body issues
-  - Added serialization metrics logging for debugging purposes
-  - Enhanced error handling for serialization failures
-  - Ensured proper content preservation during DOM manipulation
-  - Added support for handling browser-specific serialization differences
-
-### v1.1.0 (2025-05-21)
-
-- Added support for WCAG 2.1 Level AA accessibility compliance
-- Implemented document metadata preservation
-- Added track changes support with multiple viewing modes
-- Enhanced API with configuration options for new features
-
-### v1.0.7 (2025-05-20)
-
-- Refactored codebase for better organization and maintainability:
-  - Split large files into smaller, focused modules
-  - Improved code organization by logical function groups
-  - Enhanced documentation with comprehensive comments
-  - Maintained backward compatibility with existing code
-  - Fixed circular dependencies and improved error handling
-  - Added detailed documentation for the refactored code
-
-### v1.0.6 (2025-05-20)
-
-- Enhanced DOCX style extraction and processing:
-  - Improved parsing of Table of Contents (TOC) styles with better leader line handling
-  - Added robust numbering definition extraction for complex hierarchical lists
-  - Implemented comprehensive document structure analysis
-  - Enhanced error handling for XML parsing and style extraction
-  - Improved CSS generation for TOC and list styling
-  - Added better detection and styling of special document sections
-
-### v1.0.5 (2025-05-19)
-
-- Fixed hierarchical list numbering in document conversion:
-  - Properly maintains outline numbering structure (1., a., b., c., 2., etc.)
-  - Correctly nests sub-items within parent items in HTML output
-  - Preserves the original document's hierarchical list structure
-
-### v1.0.4 (2025-05-19)
-
-- Enhanced TOC and index handling:
-  - Automatically detects table of contents and index elements in DOCX files
-  - Properly decorates these elements in the output with appropriate styling
-  - Prevents unnecessary content duplication in web output
-
-### v1.0.3 (2025-05-16)
-
-- Refactored CSS handling to improve separation of concerns:
-  - Moved all CSS from inline `<style>` tags to external CSS files
-  - Updated HTML files to use `<link>` tags to reference external CSS
-  - Improved file organization and reduced HTML file size
-  - Added 20px margin to body element for better readability
-
-### v1.0.2 (2025-05-16)
-
-- Enhanced `markdownify.js` to fix markdown linting issues in generated files:
-  - Fixed hard tabs, trailing spaces, and trailing punctuation in headings
-  - Ensured proper spacing around list markers and correct ordered list numbering
-  - Added proper blank lines around headings
-
-### v1.0.1 (2025-05-16)
-
-- Fixed an issue in `docx-style-parser.js` where undefined border values could cause errors
-- Improved XML namespace handling for better compatibility with different DOCX file formats
-- Added proper error handling for XPath queries to prevent crashes during style extraction
+For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Troubleshooting
 
