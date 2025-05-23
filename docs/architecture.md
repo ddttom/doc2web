@@ -472,6 +472,7 @@ The TOC layout has been enhanced with a flex-based approach that ensures proper 
    - The pattern is precisely controlled to match Word's leader dot spacing
    - This approach ensures consistent appearance across browsers
    - The implementation uses a repeating pattern like:
+
      ```css
      .docx-toc-dots {
        background-image: radial-gradient(circle, #000 1px, transparent 1px);
@@ -532,6 +533,7 @@ The paragraph numbering system has been enhanced to provide exact visual fidelit
    - This approach separates content from presentation
    - Prevents potential conflicts or duplicate numbering
    - The HTML structure looks like:
+
      ```html
      <h1 data-numbering-id="2" data-numbering-level="0" data-format="%1.">Heading Text</h1>
      ```
@@ -541,6 +543,7 @@ The paragraph numbering system has been enhanced to provide exact visual fidelit
    - Content is generated using CSS counters that match DOCX numbering definitions
    - This ensures exact replication of Word's numbering formats
    - The CSS implementation looks like:
+
      ```css
      [data-numbering-id="2"][data-numbering-level="0"] {
        position: relative;
