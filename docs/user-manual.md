@@ -17,8 +17,9 @@
 13. [Track Changes Support](#track-changes-support)
 14. [DOCX Introspection](#docx-introspection)
 15. [API Usage](#api-usage)
-16. [Troubleshooting](#troubleshooting)
-17. [FAQ](#faq)
+16. [Architecture Overview](#architecture-overview)
+17. [Troubleshooting](#troubleshooting)
+18. [FAQ](#faq)
 
 ## Introduction
 
@@ -40,6 +41,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Preserves document metadata (title, author, creation date, etc.)
 - Supports track changes visualization and handling
 - **Extracts exact numbering and formatting from DOCX XML structure**
+- **Modular architecture for improved maintainability and extensibility**
 
 ## Installation
 
@@ -160,15 +162,15 @@ node doc2web.js <input> [options]
   - Path to a directory
   - Path to a text file containing a list of files
 
-|   - `--accessibility=<level>`: Set accessibility compliance level ('A', 'AA', or 'AAA', default: 'AA')
-|   - `--preserve-metadata`: Enable metadata preservation (default: enabled)
-|   - `--no-metadata`: Disable metadata preservation
-|   - `--track-changes=<mode>`: Set track changes mode ('show', 'hide', 'accept', or 'reject', default: 'show')
-|   - `--show-author`: Show change author information (default: enabled)
-|   - `--show-date`: Show change date information (default: enabled)
 - Options:
   - `--html-only`: Skip markdown generation
   - `--list`: Treat the input file as a list of files
+  - `--accessibility=<level>`: Set accessibility compliance level ('A', 'AA', or 'AAA', default: 'AA')
+  - `--preserve-metadata`: Enable metadata preservation (default: enabled)
+  - `--no-metadata`: Disable metadata preservation
+  - `--track-changes=<mode>`: Set track changes mode ('show', 'hide', 'accept', or 'reject', default: 'show')
+  - `--show-author`: Show change author information (default: enabled)
+  - `--show-date`: Show change date information (default: enabled)
 
 ### process-find.sh
 
@@ -415,43 +417,6 @@ doc2web now uses comprehensive DOCX introspection to extract exact numbering and
 - **Complex Hierarchy Support**: Handles multi-level numbering with proper nesting
 - **Visual Fidelity**: Generated HTML closely matches original DOCX appearance
 
-### Example
-
-Original DOCX Content:
-```
-1. Consent Agenda:
-   a. Approval of Board Meeting Minutes
-   b. RSSAC Co-Chair Appointments
-2. Strategic Plan Discussion
-```
-
-Generated HTML (with DOCX introspection):
-```html
-<h1 class="docx-heading1" data-numbering-id="1" data-numbering-level="0">
-  <span class="heading-number">1. </span>Consent Agenda:
-</h1>
-<ol class="docx-numbered-list" data-numbering-id="1">
-  <li data-numbering-level="1" data-format="lowerLetter">Approval of Board Meeting Minutes</li>
-  <li data-numbering-level="1" data-format="lowerLetter">RSSAC Co-Chair Appointments</li>
-</ol>
-<h1 class="docx-heading1" data-numbering-id="1" data-numbering-level="0">
-  <span class="heading-number">2. </span>Strategic Plan Discussion
-</h1>
-```
-
-Generated CSS:
-```css
-[data-num-id="1"][data-num-level="0"]::before {
-  content: counter(docx-counter-1-0, decimal) ". ";
-  font-weight: bold;
-}
-
-[data-num-id="1"][data-num-level="1"]::before {
-  content: counter(docx-counter-1-1, lower-alpha) ". ";
-  margin-left: 36pt;
-}
-```
-
 ## API Usage
 
 For developers who want to integrate doc2web into their own applications, the tool provides a JavaScript API:
@@ -497,46 +462,37 @@ async function convertDocument(docxPath) {
 convertDocument('document.docx').catch(console.error);
 ```
 
-### Integration Example
+## Architecture Overview
 
-```javascript
-const { extractAndApplyStyles } = require('./lib');
-const fs = require('fs').promises;
-const path = require('path');
+doc2web features a modular architecture designed for maintainability and extensibility:
 
-async function processDocuments(inputDir, outputDir) {
-  // Create output directory if it doesn't exist
-  await fs.mkdir(outputDir, { recursive: true });
-  
-  // Get all DOCX files in the input directory
-  const files = await fs.readdir(inputDir);
-  const docxFiles = files.filter(file => file.endsWith('.docx'));
-  
-  // Process each file
-  for (const file of docxFiles) {
-    const inputPath = path.join(inputDir, file);
-    const baseName = path.basename(file, '.docx');
-    const outputHtmlPath = path.join(outputDir, `${baseName}.html`);
-    const outputCssPath = path.join(outputDir, `${baseName}.css`);
-    
-    // Convert the document
-    const result = await extractAndApplyStyles(inputPath);
-    
-    // Write the output files
-    await fs.writeFile(outputHtmlPath, result.html);
-    await fs.writeFile(outputCssPath, result.styles);
-    
-    console.log(`Processed: ${file}`);
-  }
-}
+### Modular Design (v1.3.0)
 
-// Example usage
-processDocuments('./input', './output')
-  .then(() => console.log('All documents processed'))
-  .catch(console.error);
-```
+The application has been refactored into focused, single-responsibility modules:
 
-The enhanced list handling ensures that complex document structures are accurately preserved in both HTML and Markdown output.
+#### CSS Generation Modules (`lib/css/generators/`)
+- **base-styles.js**: Document defaults and font utilities
+- **paragraph-styles.js**: Word-like paragraph formatting
+- **character-styles.js**: Inline text styling
+- **table-styles.js**: Table layout and borders
+- **numbering-styles.js**: CSS counters and hierarchical numbering
+- **toc-styles.js**: Table of Contents with flex layout
+- **utility-styles.js**: General utility classes
+- **specialized-styles.js**: Accessibility and track changes styles
+
+#### HTML Processing Modules (`lib/html/`)
+- **generators/**: Style mapping, image processing, HTML formatting
+- **processors/**: Heading, TOC, and numbering processors
+- **Main orchestrator**: Coordinates all HTML generation
+
+#### Benefits of Modular Architecture
+- **Improved Maintainability**: Each module has a focused purpose
+- **Better Testing**: Components can be tested in isolation
+- **Enhanced Readability**: Smaller, focused files
+- **API Preservation**: Backward compatibility maintained
+- **Scalability**: Easy to add new features
+
+For detailed technical information, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Multilingual Support
 
@@ -648,25 +604,6 @@ For very large documents that cause memory issues:
 NODE_OPTIONS=--max-old-space-size=4096 node doc2web.js large-document.docx
 ```
 
-#### TOC and List Structure Issues
-
-If you notice problems with Table of Contents formatting or hierarchical list structures:
-
-1. Ensure you're using the latest version (v1.2.0 or later)
-2. Check that the original document has a properly formatted TOC
-3. For complex lists, make sure the document uses Word's built-in list formatting rather than manual numbering
-4. Verify that the document's TOC was generated using Word's automatic TOC feature
-5. Check that leader lines and page numbers are properly formatted in the original document
-
-#### Numbering Format Issues
-
-If you encounter issues with complex numbering formats:
-
-1. Ensure you're using v1.2.0 or later, which includes comprehensive DOCX introspection
-2. Verify that the document uses Word's built-in numbering features rather than manual numbering
-3. Check that the document doesn't contain corrupted numbering definitions
-4. For documents with extremely complex numbering, try simplifying the structure in Word before conversion
-
 ### Error Messages
 
 - **"Error: File not found"**: Check the file path and ensure the file exists.
@@ -698,10 +635,10 @@ A: Not yet, all outputs go to the `./output` directory.
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
 
 **Q: How does doc2web handle Table of Contents and Index sections?**  
-A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. The tool preserves TOC leader lines with dots connecting entries to page numbers, maintains right-aligned page numbers, and applies proper indentation for different TOC levels through advanced DOM manipulation.
+A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats.
 
 **Q: How does doc2web handle hierarchical lists?**  
-A: With the new DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting. This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
+A: With the new DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.
@@ -717,11 +654,8 @@ A: Yes, it should work with any standard DOCX files, including those created by 
 **Q: Is doc2web available as an npm package?**  
 A: Not yet, but you can use it directly from the source code.
 
-**Q: How does doc2web extract style information from DOCX files?**  
-A: It uses a combination of JSZip to unpack the DOCX file, xmldom and xpath to parse the XML content, and custom logic to extract and apply styles, TOC formatting, and list structures. The enhanced DOCX introspection extracts exact numbering and formatting information directly from the DOCX XML structure, ensuring precise preservation of document formatting.
-
-**Q: How does the new DOCX introspection feature work?**  
-A: The DOCX introspection feature extracts complete numbering definitions from numbering.xml, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting. This ensures that complex numbered lists and headings appear exactly as they do in the original document, regardless of language or content domain.
+**Q: How does the modular architecture benefit users?**  
+A: The modular architecture improves maintainability, makes the code easier to understand, and allows for better testing and debugging. While users don't directly interact with the modules, they benefit from more reliable and maintainable software.
 
 ---
 

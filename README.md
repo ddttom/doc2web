@@ -26,7 +26,26 @@ The app must deeply inspect the docx and obtain css and formatting styles, font 
 
 ## Project Structure
 
-The codebase follows a modular architecture with organized library modules. For detailed technical architecture information, see [`docs/architecture.md`](docs/architecture.md).
+The codebase follows a modular architecture with organized library modules:
+
+```bash
+doc2web/
+├── doc2web.js             # Main entry point and orchestrator
+├── markdownify.js         # HTML to Markdown converter
+├── lib/                   # Modular library code
+│   ├── index.js           # Main entry point that re-exports public API
+│   ├── xml/               # XML parsing utilities
+│   ├── parsers/           # DOCX parsing modules
+│   ├── html/              # HTML processing modules
+│   │   ├── generators/    # HTML generation utilities
+│   │   └── processors/    # Content processing modules
+│   ├── css/               # CSS generation modules
+│   │   └── generators/    # CSS generation utilities
+│   ├── accessibility/     # Accessibility enhancement modules
+│   └── utils/             # Utility functions
+```
+
+For detailed technical architecture information, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Getting Started
 
@@ -181,6 +200,7 @@ doc2web implements advanced DOCX introspection and content preservation:
 - **Exact Numbering**: Extracts precise numbering definitions from DOCX XML structure
 - **Content Preservation**: Comprehensive DOM serialization with fallback mechanisms
 - **Structure Fidelity**: Maintains hierarchical relationships from original documents
+- **Modular Architecture**: Clean, focused modules for improved maintainability
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
 
@@ -269,6 +289,13 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 ## Recent Fixes and Enhancements
 
 ### Recent Updates
+
+**v1.3.0 (2025-05-26)**
+
+- **Modular Refactoring**: Split large files into focused, maintainable modules
+- **Enhanced Architecture**: Improved code organization with clear separation of concerns
+- **API Preservation**: Maintained backward compatibility while improving internal structure
+- **Better Maintainability**: Smaller, focused modules for easier development and testing
 
 **v1.2.8 (2025-05-23)**
 

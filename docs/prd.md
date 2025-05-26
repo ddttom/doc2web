@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 3.4  
-**Last Updated:** May 23, 2025  
+**Document Version:** 3.5  
+**Last Updated:** May 26, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -14,6 +14,7 @@
 | 2.0 | May 20, 2025 | Technical Team | Added document introspection rules, removed content pattern matching |
 | 3.0 | May 23, 2025 | Technical Team | Added section IDs for direct navigation to numbered headings |
 | 3.4 | May 23, 2025 | Technical Team | Added document header extraction and processing functionality |
+| 3.5 | May 26, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
 
 ## Table of Contents
 
@@ -70,6 +71,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Robust Error Handling**: Provide comprehensive error reporting and recovery mechanisms
 - **Content Validation**: Implement validation at key processing steps to ensure data integrity
 - **Section Navigation**: Generate section IDs for direct navigation to numbered headings and paragraphs
+- **Modular Architecture**: Maintain clean, focused modules for improved maintainability and extensibility
 
 ### 1.3 Project Scope
 
@@ -86,6 +88,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Providing diagnostic tools for troubleshooting conversion issues**
 - **Extracting and calculating document statistics for metadata**
 - **Generating section IDs for direct navigation to numbered headings and paragraphs**
+- **Maintaining modular, focused codebase with clear separation of concerns**
 
 The scope explicitly excludes:
 
@@ -299,14 +302,34 @@ doc2web follows a modular architecture with these primary components:
        - `metadata-parser.js`: Extracts and processes document metadata, calculates document statistics
 
      - **HTML Processing (lib/html/)**
-       - `html-generator.js`: Main module for generating HTML from DOCX
-       - `structure-processor.js`: Ensures proper HTML document structure
-       - `content-processors.js`: Processes headings, TOC, and lists
-       - `element-processors.js`: Processes tables, images, and language elements
+       - **Main Generator (lib/html/html-generator.js)**: Orchestrates HTML conversion and processing
+       - **Generators (lib/html/generators/)**:
+         - `style-mapping.js`: Style mapping for mammoth conversion
+         - `image-processing.js`: Image extraction and processing utilities
+         - `html-formatting.js`: HTML formatting and indentation
+         - `html-processing.js`: Main HTML processing and content manipulation
+       - **Processors (lib/html/processors/)**:
+         - `heading-processor.js`: Heading processing, numbering, and accessibility
+         - `toc-processor.js`: Table of Contents detection, structuring, and linking
+         - `numbering-processor.js`: Numbering and list processing utilities
+       - **Legacy Modules**:
+         - `structure-processor.js`: Ensures proper HTML document structure
+         - `content-processors.js`: Orchestrates all content processing (now delegates to processors)
+         - `element-processors.js`: Processes tables, images, and language elements
 
      - **CSS Generation (lib/css/)**
-       - `css-generator.js`: Generates CSS from extracted style information
-       - `style-mapper.js`: Maps DOCX styles to CSS classes
+       - **Main Generator (lib/css/css-generator.js)**: Orchestrates all style generation
+       - **Generators (lib/css/generators/)**:
+         - `base-styles.js`: Base document styles, font utilities, border styles, and fallback CSS
+         - `paragraph-styles.js`: Paragraph style generation with Word-like indentation
+         - `character-styles.js`: Character and inline text styles
+         - `table-styles.js`: Table styling and border handling
+         - `numbering-styles.js`: DOCX numbering and list styles with CSS counters
+         - `toc-styles.js`: Table of Contents styling with flex layout
+         - `utility-styles.js`: Utility classes, section navigation, and heading styles
+         - `specialized-styles.js`: Accessibility, track changes, and header styles
+       - **Legacy Module**:
+         - `style-mapper.js`: Maps DOCX styles to CSS classes
 
      - **Utilities (lib/utils/)**
        - `unit-converter.js`: Converts between different units (twips, points)
@@ -371,7 +394,8 @@ doc2web follows a modular architecture with these primary components:
      - **Adds section ID styling for navigation and highlighting**
 
    - **Content Processors (lib/html/content-processors.js)**
-     - Processes headings, TOC, and lists
+     - Orchestrates all content processing by delegating to specialized processors
+     - Processes headings, TOC, and lists through focused modules
      - Detects and styles TOC and index elements
      - Handles special document sections with appropriate formatting
      - **Matches HTML elements to DOCX paragraph contexts**
@@ -497,5 +521,6 @@ The application has undergone significant enhancements to improve document conve
 - **DOM Serialization**: Enhanced content preservation during HTML processing
 - **Header Processing**: Added comprehensive document header extraction and processing
 - **Diagnostic Tools**: Enhanced debugging capabilities for troubleshooting
+- **Modular Refactoring**: Split large files into focused, maintainable modules while preserving API compatibility
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
