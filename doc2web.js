@@ -171,7 +171,7 @@ async function processDocxFile(filePath, options) {
       enhanceAccessibility: true,
       preserveMetadata: true,
       trackChangesMode: 'show'
-    });
+    }, outputPaths.directory);
     
     console.log(`Conversion completed. HTML length: ${result.html.length}, CSS length: ${result.styles.length}`);
     

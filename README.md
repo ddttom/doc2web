@@ -168,21 +168,26 @@ doc2web automatically extracts and processes document headers from DOCX files, p
 #### Features
 
 - **Formatting Preservation**: Maintains original fonts, sizes, colors, alignment, and styling
-- **Graphics Inclusion**: Preserves images and graphics within headers
+- **Graphics Inclusion**: Preserves images and graphics within headers with proper positioning
+- **Image Positioning**: Honors original DOCX image positioning including inline placement, margins, and transform offsets
 - **Responsive Design**: Headers adapt to different screen sizes and print media
 - **Accessibility**: Proper semantic HTML with ARIA roles for screen readers
 - **Content Detection**: Uses intelligent scoring to identify header content based on:
   - Document position and formatting characteristics
   - Style names and paragraph properties
-  - Presence of images or special formatting
+  - Presence of images or special formatting</search>
+</search_and_replace>
 
 #### Technical Implementation
 
-- **DOCX Introspection**: Analyzes actual Word document XML structure
+- **DOCX Introspection**: Analyzes actual Word document XML structure including image positioning data
 - **Style Preservation**: Converts DOCX formatting to equivalent CSS
-- **Semantic HTML**: Creates proper `<header>` elements with accessibility attributes
-- **CSS Generation**: Generates responsive styles for different header types
-- **Content-Agnostic**: Works with any document regardless of language or domain
+- **Image Processing**: Extracts images from DOCX archives and processes positioning information from XML
+- **Positioning Fidelity**: Honors inline vs anchored positioning, distance attributes, and transform offsets
+- **Semantic HTML**: Creates proper `<header>` elements with accessibility attributes and image containers
+- **CSS Generation**: Generates responsive styles for different header types and image positioning
+- **Content-Agnostic**: Works with any document regardless of language or domain</search>
+</search_and_replace>
 
 #### Recent Fixes (v1.2.8)
 
@@ -192,6 +197,52 @@ doc2web automatically extracts and processes document headers from DOCX files, p
 - **Professional Structure**: Document order is now: Header → TOC → Document Content
 
 This ensures that document headers appear correctly in the converted HTML, maintaining the professional appearance and context of the original Word document.
+
+### Hanging Margins and Text Indentation
+
+doc2web now properly handles hanging margins (also known as hanging indents) from DOCX documents, replicating Microsoft Word's text formatting behavior:
+
+#### Features
+
+- **TOC Hanging Indents**: Table of Contents entries display with proper hanging margins where long entries wrap with subsequent lines indented under the first line of text
+- **Numbered Content Hanging Margins**: Numbered headings and paragraphs display with proper hanging indents where the number appears at the left margin and text content is indented
+- **DOCX XML Introspection**: Extracts precise hanging indent measurements from DOCX XML structure
+- **CSS Implementation**: Converts DOCX hanging indents to appropriate CSS using `text-indent` and `padding-left` properties
+- **Enhanced Text Wrapping**: Comprehensive word wrapping support with `overflow-wrap`, `word-wrap`, and `hyphens` for proper line breaking
+
+#### Technical Implementation
+
+- **Block Layout for TOC**: Uses block layout instead of flex for proper hanging indent behavior
+- **Negative Text Indent**: Implements hanging indents using negative `text-indent` values with corresponding `padding-left`
+- **Number Positioning**: Positions numbers using CSS `::before` pseudo-elements with precise `left` positioning
+- **Adaptive Logic**: Automatically adjusts hanging indent values when DOCX values are too small for proper display
+- **Clean Display**: Optional removal of TOC dots and page numbers for cleaner appearance while maintaining hanging indents
+
+#### Example CSS Output
+
+```css
+/* TOC entries with hanging indents */
+.docx-toc-entry {
+  text-indent: -1.5em;
+  padding-left: 1.5em;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+  hyphens: auto;
+}
+
+/* Numbered content with hanging margins */
+.docx-numbering-level-0 {
+  text-indent: -36pt;
+  padding-left: 36pt;
+}
+
+.docx-numbering-level-0::before {
+  left: -36pt;
+  position: absolute;
+}
+```
+
+This implementation ensures that converted HTML documents maintain the same professional text formatting and readability as the original Word documents.
 
 ### Technical Features
 
@@ -289,6 +340,17 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 ## Recent Fixes and Enhancements
 
 ### Recent Updates
+
+**v1.3.1 (2025-05-31)**
+
+- **Hanging Margins Fix**: Fixed hanging indent implementation for both TOC entries and main content
+- **TOC Layout Improvements**: Converted TOC from flex to block layout for proper text wrapping with hanging indents
+- **Enhanced Text Wrapping**: Added comprehensive word wrapping support with `overflow-wrap`, `word-wrap`, and `hyphens`
+- **Clean TOC Display**: Removed dots and page numbers from TOC for cleaner appearance while maintaining hanging indents
+- **Numbering Alignment**: Fixed hanging indent logic to ensure proper negative text-indent values for numbered content
+- **Header Image Extraction**: Implemented comprehensive header image extraction and positioning functionality
+- **Image Positioning**: Added DOCX XML introspection to extract and honor image positioning information from original documents
+- **Semantic HTML**: Enhanced image output with proper container structure and accessibility attributes
 
 **v1.3.0 (2025-05-26)**
 
@@ -437,6 +499,14 @@ If you encounter issues with Table of Contents formatting or paragraph numbering
    - **Solution**: Update to v1.2.5 which adds special handling for Roman numerals
    - **Diagnostic**: Check the HTML for the roman-numeral-heading class
    - **Fix**: Ensure the CSS contains specific rules for Roman numeral sections
+
+7. **Hanging Margins and Text Indentation Issues**
+   - **Symptom**: TOC entries truncating instead of wrapping with hanging indents, or numbered content not displaying proper hanging margins
+   - **Solution**: Update to v1.3.1 which fixes hanging indent implementation for both TOC and main content
+   - **Diagnostic**: Check the HTML for proper `text-indent` and `padding-left` CSS properties
+   - **Fix**: Verify that TOC uses block layout and numbered content has proper negative text-indent values
+   - **TOC Specific**: Ensure TOC entries use `text-indent: -1.5em` and `padding-left: 1.5em` with block display
+   - **Numbered Content**: Verify numbered elements have adequate hanging indents (typically `-36pt` text-indent with `36pt` padding-left)
 
 ### General Issues
 

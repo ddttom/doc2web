@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 3.5  
-**Last Updated:** May 26, 2025  
+**Document Version:** 3.7  
+**Last Updated:** May 31, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -15,6 +15,8 @@
 | 3.0 | May 23, 2025 | Technical Team | Added section IDs for direct navigation to numbered headings |
 | 3.4 | May 23, 2025 | Technical Team | Added document header extraction and processing functionality |
 | 3.5 | May 26, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
+| 3.6 | May 31, 2025 | Technical Team | Added hanging margins implementation for TOC and numbered content |
+| 3.7 | May 31, 2025 | Technical Team | Added header image extraction and positioning functionality |
 
 ## Table of Contents
 
@@ -72,6 +74,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Content Validation**: Implement validation at key processing steps to ensure data integrity
 - **Section Navigation**: Generate section IDs for direct navigation to numbered headings and paragraphs
 - **Modular Architecture**: Maintain clean, focused modules for improved maintainability and extensibility
+- **Hanging Margins**: Implement proper hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
+- **Header Image Processing**: Extract and display header images with proper positioning that honors the original DOCX layout
 
 ### 1.3 Project Scope
 
@@ -89,6 +93,8 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Extracting and calculating document statistics for metadata**
 - **Generating section IDs for direct navigation to numbered headings and paragraphs**
 - **Maintaining modular, focused codebase with clear separation of concerns**
+- **Implementing proper hanging indent behavior for TOC entries and numbered content**
+- **Extracting and positioning header images with fidelity to original DOCX layout**
 
 The scope explicitly excludes:
 
@@ -164,6 +170,8 @@ The scope explicitly excludes:
 - **Provide detailed logging for troubleshooting conversion issues**
 - **Extract and calculate document statistics for metadata**
 - **Generate section IDs for direct navigation to numbered headings and paragraphs**
+- **Implement proper hanging indent behavior for TOC entries and numbered content**
+- **Extract and position header images with fidelity to original DOCX positioning**
 
 #### 3.1.2 Style Preservation
 
@@ -183,6 +191,7 @@ The scope explicitly excludes:
 - **Ensure content preservation during DOM manipulation and serialization**
 - **Implement fallback mechanisms for DOM manipulation errors**
 - **Generate section IDs based on hierarchical numbering structure**
+- **Implement proper hanging indent behavior using CSS text-indent and padding-left properties**
 
 #### 3.1.3 Processing Capabilities
 
@@ -321,11 +330,11 @@ doc2web follows a modular architecture with these primary components:
        - **Main Generator (lib/css/css-generator.js)**: Orchestrates all style generation
        - **Generators (lib/css/generators/)**:
          - `base-styles.js`: Base document styles, font utilities, border styles, and fallback CSS
-         - `paragraph-styles.js`: Paragraph style generation with Word-like indentation
+         - `paragraph-styles.js`: Paragraph style generation with Word-like indentation and enhanced text wrapping
          - `character-styles.js`: Character and inline text styles
          - `table-styles.js`: Table styling and border handling
-         - `numbering-styles.js`: DOCX numbering and list styles with CSS counters
-         - `toc-styles.js`: Table of Contents styling with flex layout
+         - `numbering-styles.js`: DOCX numbering and list styles with CSS counters and hanging indent implementation
+         - `toc-styles.js`: Table of Contents styling with block layout, hanging indents, and optional dots/page numbers
          - `utility-styles.js`: Utility classes, section navigation, and heading styles
          - `specialized-styles.js`: Accessibility, track changes, and header styles
        - **Legacy Module**:
@@ -453,9 +462,10 @@ doc2web follows a modular architecture with these primary components:
 - **Document statistics must be calculated from document content when not available in metadata**
 - **HTML output must be properly formatted with indentation and line breaks for improved debugging**
 - **HTML formatting must preserve all content and structure while enhancing readability**
-- **TOC elements must have proper leader dots and right-aligned page numbers**
-- **TOC entries must maintain proper alignment and spacing using flex-based layout**
+- **TOC elements must have proper hanging indents with optional leader dots and page numbers**
+- **TOC entries must maintain proper alignment and spacing using block layout for hanging indents**
 - **Paragraph numbering must be implemented using CSS ::before pseudo-elements for exact positioning**
+- **Hanging indents must be implemented using negative text-indent with compensating padding-left**
 - **Section IDs must be generated for all numbered headings and paragraphs**
 - **Section IDs must follow a consistent pattern (e.g., "section-1-2-a")**
 - **CSS must include styling for section navigation and highlighting**
@@ -522,5 +532,7 @@ The application has undergone significant enhancements to improve document conve
 - **Header Processing**: Added comprehensive document header extraction and processing
 - **Diagnostic Tools**: Enhanced debugging capabilities for troubleshooting
 - **Modular Refactoring**: Split large files into focused, maintainable modules while preserving API compatibility
+- **Hanging Margins Implementation**: Fixed hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
+- **Header Image Processing**: Implemented comprehensive header image extraction and positioning functionality with DOCX XML introspection
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
