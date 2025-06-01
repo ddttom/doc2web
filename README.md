@@ -19,6 +19,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Reliable DOM serialization with content preservation**
 - **Section IDs for direct navigation to numbered headings and paragraphs**
 - **Document header extraction and processing with formatting preservation**
+- **Enhanced table formatting with professional styling and semantic structure**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -244,6 +245,56 @@ doc2web now properly handles hanging margins (also known as hanging indents) fro
 
 This implementation ensures that converted HTML documents maintain the same professional text formatting and readability as the original Word documents.
 
+### Enhanced Table Formatting
+
+doc2web now provides comprehensive table formatting improvements that significantly enhance the presentation and accessibility of tables from DOCX documents:
+
+#### Features
+
+- **Professional Styling**: Clean borders, consistent padding, and alternating row colors for improved readability
+- **Semantic HTML Structure**: Proper `<thead>` and `<tbody>` sections with `<th>` elements for headers
+- **Accessibility Enhancements**: Header cells with `scope="col"` attributes and proper table captions
+- **Responsive Design**: Tables adapt to different screen sizes with horizontal scrolling on mobile devices
+- **Hover Effects**: Visual feedback when hovering over table rows for better user interaction
+
+#### Technical Implementation
+
+- **Automatic Header Detection**: Intelligently converts the first row to proper table headers based on content patterns
+- **Default Styling**: Comprehensive CSS for `docx-table-default` class with professional appearance
+- **Responsive Wrapper**: `table-responsive` class provides horizontal scrolling on small screens
+- **Border Styling**: Clean 1pt borders with proper collapse behavior for professional appearance
+- **Cell Formatting**: Consistent padding and text alignment for optimal readability
+
+#### Example CSS Output
+
+```css
+/* Professional table styling */
+.docx-table-default {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1em 0;
+}
+
+.docx-table-default th,
+.docx-table-default td {
+  padding: 8pt 12pt;
+  border: 1pt solid #d0d0d0;
+  text-align: left;
+  vertical-align: top;
+}
+
+.docx-table-default th {
+  background-color: #f8f9fa;
+  font-weight: bold;
+}
+
+.docx-table-default tbody tr:nth-child(even) {
+  background-color: #f8f9fa;
+}
+```
+
+This enhancement ensures that tables from DOCX documents are properly formatted with modern web standards while maintaining accessibility and professional appearance.
+
 ### Technical Features
 
 doc2web implements advanced DOCX introspection and content preservation:
@@ -351,6 +402,7 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 - **Header Image Extraction**: Implemented comprehensive header image extraction and positioning functionality
 - **Image Positioning**: Added DOCX XML introspection to extract and honor image positioning information from original documents
 - **Semantic HTML**: Enhanced image output with proper container structure and accessibility attributes
+- **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
 
 **v1.3.0 (2025-05-26)**
 

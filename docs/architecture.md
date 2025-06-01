@@ -231,7 +231,89 @@ The implementation extracts precise hanging indent measurements from DOCX XML st
 4. **Accessibility**: Maintains proper document structure and reading flow
 5. **Content Agnostic**: Works with any document regardless of language or content domain
 
-## 6. Header Image Extraction and Positioning (v1.3.1)
+## 6. HTML Formatting Enhancement (v1.3.1)
+
+### 6.1 Overview
+
+The HTML formatting enhancement significantly improves the readability and debuggability of generated HTML output by implementing proper indentation and line breaks. This addresses the previous issue where HTML was generated as essentially one long line, making it difficult to read and debug.
+
+### 6.2 Technical Implementation
+
+#### 6.2.1 Enhanced HTML Formatting (`lib/html/generators/html-formatting.js`)
+
+**Problem**: HTML output was generated without proper formatting, appearing as one long line with no indentation or structure.
+
+**Solution**:
+
+- **Preprocessing**: Added `preprocessHtml()` function that breaks up HTML into proper lines before formatting
+- **Enhanced Tag Detection**: Improved regex patterns for detecting opening and closing tags
+- **Comprehensive Block Elements**: Expanded the block elements set to include `html`, `head`, `body`, `script`, `style`, and other structural elements
+- **Improved Indentation Logic**: Better handling of self-closing tags and nested structures
+- **Line Break Insertion**: Automatically inserts line breaks after closing tags and before opening tags
+
+#### 6.2.2 Key Features
+
+**Preprocessing Logic**:
+```javascript
+function preprocessHtml(html) {
+  // Normalize self-closing tags
+  html = html.replace(/<([^>]+?)([^\s/])\/>/g, "<$1$2 />");
+  
+  // Add line breaks after closing tags
+  html = html.replace(/<\/([^>]+)>/g, "</$1>\n");
+  
+  // Add line breaks before opening tags
+  html = html.replace(/(?<!>)\s*<([^/!][^>]*?)>/g, "\n<$1>");
+  
+  // Special handling for block elements and self-closing tags
+  // ...
+}
+```
+
+**Indentation Logic**:
+```javascript
+function formatHtml(html) {
+  // Process each line with proper indentation
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // Handle closing tags (decrease indent)
+    if (closingTagMatch) {
+      if (blockElements.has(tagName) && indentLevel > 0) {
+        indentLevel--;
+      }
+    }
+    
+    // Add line with current indentation
+    formattedLines.push(" ".repeat(indentLevel * indentSize) + line);
+    
+    // Handle opening tags (increase indent)
+    if (openingTagMatch && blockElements.has(tagName) && !isSelfClosing) {
+      indentLevel++;
+    }
+  }
+}
+```
+
+### 6.3 Benefits
+
+1. **Improved Readability**: HTML output is now properly formatted with clear structure and indentation
+2. **Better Debugging**: Developers can easily read and debug the generated HTML
+3. **Professional Output**: Generated HTML follows web development best practices
+4. **Maintained Functionality**: All existing features and content are preserved
+5. **Enhanced Maintainability**: Formatted HTML is easier to inspect and validate
+
+### 6.4 Integration with Existing Architecture
+
+The HTML formatting enhancement demonstrates the benefits of the modular architecture:
+
+- **Focused Implementation**: Formatting logic is contained within `html-formatting.js`
+- **Clean Separation**: HTML preprocessing and formatting are clearly separated
+- **Preserved API**: Existing `formatHtml()` function signature is maintained
+- **Enhanced Functionality**: New `preprocessHtml()` function provides additional capabilities
+
+## 7. Header Image Extraction and Positioning (v1.3.1)</search>
+</search_and_replace>
 
 ### 6.1 Overview
 
@@ -319,10 +401,10 @@ The header image functionality demonstrates the benefits of the modular architec
 
 The doc2web application now features a robust, modular architecture that provides excellent maintainability while preserving all existing functionality. The refactoring into focused, single-responsibility modules makes the codebase much more approachable for developers while maintaining the same powerful conversion capabilities.
 
-The recent hanging margins implementation and header image extraction functionality (v1.3.1) demonstrate the benefits of this modular architecture:
+The recent hanging margins implementation, header image extraction functionality, and HTML formatting enhancement (v1.3.1) demonstrate the benefits of this modular architecture:
 
-- **Focused Changes**: Hanging indent fixes and image processing were implemented in specific modules without affecting other functionality
-- **Clear Separation**: TOC styling, numbering styles, text wrapping, and image positioning were enhanced independently
+- **Focused Changes**: Hanging indent fixes, image processing, and HTML formatting were implemented in specific modules without affecting other functionality
+- **Clear Separation**: TOC styling, numbering styles, text wrapping, image positioning, and HTML formatting were enhanced independently
 - **Maintainable Code**: Each module could be modified and tested in isolation
 - **Preserved Functionality**: All existing features remained intact while adding new capabilities
 
@@ -335,4 +417,4 @@ The modular design ensures that:
 - Code quality and organization continue to improve
 - Complex features like hanging margins and header image processing can be implemented systematically across multiple modules
 
-This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The hanging margins implementation and header image extraction functionality showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning and visual fidelity.
+This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The hanging margins implementation, header image extraction functionality, and HTML formatting enhancement showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning, visual fidelity, and professional HTML output quality.

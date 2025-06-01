@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 3.7  
-**Last Updated:** May 31, 2025  
+**Document Version:** 3.9  
+**Last Updated:** June 1, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -17,6 +17,8 @@
 | 3.5 | May 26, 2025 | Technical Team | Updated architecture to reflect modular refactoring |
 | 3.6 | May 31, 2025 | Technical Team | Added hanging margins implementation for TOC and numbered content |
 | 3.7 | May 31, 2025 | Technical Team | Added header image extraction and positioning functionality |
+| 3.8 | June 1, 2025 | Technical Team | Enhanced HTML formatting with proper indentation and line breaks |
+| 3.9 | June 1, 2025 | Technical Team | Improved table formatting with enhanced styling and semantic structure |
 
 ## Table of Contents
 
@@ -76,6 +78,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Modular Architecture**: Maintain clean, focused modules for improved maintainability and extensibility
 - **Hanging Margins**: Implement proper hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
 - **Header Image Processing**: Extract and display header images with proper positioning that honors the original DOCX layout
+- **HTML Formatting**: Generate properly formatted HTML with indentation and line breaks for improved readability and debugging
+- **Table Formatting**: Enhance table presentation with professional styling, semantic structure, and accessibility features
 
 ### 1.3 Project Scope
 
@@ -95,6 +99,8 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Maintaining modular, focused codebase with clear separation of concerns**
 - **Implementing proper hanging indent behavior for TOC entries and numbered content**
 - **Extracting and positioning header images with fidelity to original DOCX layout**
+- **Generating properly formatted HTML with indentation and line breaks for improved readability and debugging**
+- **Enhancing table presentation with professional styling, semantic structure, and accessibility features**
 
 The scope explicitly excludes:
 
@@ -172,6 +178,8 @@ The scope explicitly excludes:
 - **Generate section IDs for direct navigation to numbered headings and paragraphs**
 - **Implement proper hanging indent behavior for TOC entries and numbered content**
 - **Extract and position header images with fidelity to original DOCX positioning**
+- **Generate properly formatted HTML with indentation and line breaks for improved readability and debugging**
+- **Enhance table presentation with professional styling, semantic structure, and accessibility features**
 
 #### 3.1.2 Style Preservation
 
@@ -534,5 +542,7 @@ The application has undergone significant enhancements to improve document conve
 - **Modular Refactoring**: Split large files into focused, maintainable modules while preserving API compatibility
 - **Hanging Margins Implementation**: Fixed hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
 - **Header Image Processing**: Implemented comprehensive header image extraction and positioning functionality with DOCX XML introspection
+- **HTML Formatting Enhancement**: Enhanced HTML output with proper indentation and line breaks for improved readability and debugging
+- **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).

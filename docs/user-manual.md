@@ -42,6 +42,8 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - Supports track changes visualization and handling
 - **Extracts exact numbering and formatting from DOCX XML structure**
 - **Modular architecture for improved maintainability and extensibility**
+- **Generates properly formatted HTML with indentation and line breaks for improved readability and debugging**
+- **Enhanced table formatting with professional styling, semantic structure, and accessibility features**
 
 ## Installation
 
@@ -205,6 +207,8 @@ For each processed DOCX file, doc2web generates:
 - Closely resembles the original document appearance
 - Includes references to images
 - Can be viewed directly in a browser
+- **Properly formatted with indentation and line breaks for improved readability and debugging**
+- **Professional HTML structure following web development best practices**
 
 ### CSS File (.css)
 
@@ -247,6 +251,18 @@ doc2web preserves the following elements and provides special handling for navig
 - Blockquotes
 - Code blocks
 - Horizontal rules
+
+### Enhanced Table Formatting
+
+doc2web now provides comprehensive table formatting improvements:
+
+- **Professional Styling**: Clean borders, consistent padding, and alternating row colors
+- **Semantic Structure**: Proper `<thead>` and `<tbody>` sections with `<th>` elements for headers
+- **Accessibility Features**: Header cells with `scope="col"` attributes and table captions
+- **Responsive Design**: Tables adapt to different screen sizes with horizontal scrolling
+- **Hover Effects**: Visual feedback when hovering over table rows
+- **Automatic Header Detection**: Intelligently converts first row to proper table headers
+- **Modern CSS**: Professional appearance with borders, padding, and visual hierarchy
 
 ### Table of Contents and Index Handling
 
@@ -481,9 +497,9 @@ The application has been refactored into focused, single-responsibility modules:
 - **specialized-styles.js**: Accessibility and track changes styles
 
 #### HTML Processing Modules (`lib/html/`)
-- **generators/**: Style mapping, image processing, HTML formatting
+- **generators/**: Style mapping, image processing, HTML formatting with proper indentation
 - **processors/**: Heading, TOC, and numbering processors
-- **Main orchestrator**: Coordinates all HTML generation
+- **Main orchestrator**: Coordinates all HTML generation with enhanced formatting
 
 #### Benefits of Modular Architecture
 - **Improved Maintainability**: Each module has a focused purpose
@@ -656,6 +672,12 @@ A: Not yet, but you can use it directly from the source code.
 
 **Q: How does the modular architecture benefit users?**  
 A: The modular architecture improves maintainability, makes the code easier to understand, and allows for better testing and debugging. While users don't directly interact with the modules, they benefit from more reliable and maintainable software.
+
+**Q: Is the generated HTML properly formatted for debugging?**  
+A: Yes, doc2web now generates properly formatted HTML with indentation and line breaks, making it easy to read, debug, and inspect. The HTML follows web development best practices while preserving all document content and structure.
+
+**Q: How does doc2web handle table formatting from DOCX documents?**  
+A: doc2web now provides comprehensive table formatting with professional styling, semantic HTML structure, and accessibility features. Tables automatically get proper `<thead>` and `<tbody>` sections, header detection, responsive design, and modern CSS styling with borders, padding, and hover effects.
 
 ---
 
