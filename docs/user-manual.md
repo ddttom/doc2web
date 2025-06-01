@@ -19,7 +19,7 @@
 15. [API Usage](#api-usage)
 16. [Architecture Overview](#architecture-overview)
 17. [Troubleshooting](#troubleshooting)
-18. [FAQ](#faq)
+18. [FAQ](#faq) 
 
 ## Introduction
 
