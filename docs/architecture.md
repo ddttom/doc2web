@@ -231,6 +231,90 @@ The implementation extracts precise hanging indent measurements from DOCX XML st
 4. **Accessibility**: Maintains proper document structure and reading flow
 5. **Content Agnostic**: Works with any document regardless of language or content domain
 
+## 5. Header Image Extraction and Positioning (v1.3.1)
+
+### 5.1 Overview
+
+The header image extraction functionality enables doc2web to extract images from DOCX header files and display them in the HTML output with proper positioning that honors the original document layout.
+
+### 5.2 Technical Implementation
+
+#### 5.2.1 Image Detection and Extraction (`lib/parsers/header-parser.js`)
+
+**DOCX XML Introspection**: The system analyzes DOCX header XML files to detect and extract image information:
+
+1. **Image Element Detection**: Searches for `w:drawing` and `w:pict` elements in header paragraphs
+2. **Relationship Resolution**: Parses relationship files (`word/_rels/header*.xml.rels`) to map image IDs to file paths
+3. **Image Extraction**: Uses JSZip 3.0 async API to extract image data from the DOCX archive
+4. **File System Operations**: Saves images to the output directory with sanitized filenames
+
+#### 5.2.2 Positioning Information Extraction
+
+**Comprehensive Positioning Data**: The system extracts detailed positioning information from DOCX XML:
+
+```javascript
+// Positioning data structure
+{
+  wrapType: 'inline',           // inline vs anchored positioning
+  xOffset: '0',                 // horizontal transform offset
+  yOffset: '0',                 // vertical transform offset
+  distT: '0',                   // top margin distance
+  distB: '0',                   // bottom margin distance
+  distL: '0',                   // left margin distance
+  distR: '0',                   // right margin distance
+  horizontal: null,             // alignment (center, left, right)
+  vertical: null                // vertical alignment
+}
+```
+
+#### 5.2.3 HTML Generation with Positioning
+
+**Semantic HTML Structure**: Creates proper HTML structure with positioning applied:
+
+```html
+<div class="docx-header-paragraph">
+  <div class="docx-image-container">
+    <img src="./images/image_name.png" 
+         alt="Image Alt Text" 
+         class="docx-header-image"
+         style="width: 156px; height: 120px; max-width: 100%;">
+  </div>
+</div>
+```
+
+**CSS Positioning Logic**:
+
+1. **Inline Images**: Applied margins and transforms based on DOCX distance attributes
+2. **Anchored Images**: Applied absolute positioning with proper offset calculations
+3. **Paragraph Alignment**: Applied text-align to container for center/left/right alignment
+4. **EMU Conversion**: Proper conversion from DOCX units (1 EMU = 1/914400 inch = 96 pixels)
+
+### 5.3 Key Features
+
+1. **Position Fidelity**: Honors original DOCX image positioning including inline placement, margins, and transform offsets
+2. **Multiple Header Support**: Processes images from different header types (first page, even pages, default)
+3. **Relationship Resolution**: Correctly resolves image references through DOCX relationship files
+4. **Async Processing**: Uses modern async/await patterns for efficient image extraction
+5. **Error Handling**: Comprehensive error handling for missing files and processing failures
+6. **Semantic HTML**: Creates accessible HTML structure with proper image containers
+
+### 5.4 Integration with Modular Architecture
+
+The header image functionality demonstrates the benefits of the modular architecture:
+
+- **Focused Implementation**: Image processing logic is contained within `header-parser.js`
+- **Clean Separation**: Image extraction, positioning, and HTML generation are clearly separated
+- **Reusable Components**: Image processing utilities can be reused for other image types
+- **Maintainable Code**: Each aspect of image processing can be tested and modified independently
+
+### 5.5 Benefits
+
+1. **Visual Fidelity**: Maintains the exact appearance of header images from the original DOCX
+2. **Professional Output**: Preserves corporate logos and header graphics with proper positioning
+3. **Responsive Design**: Images adapt to different screen sizes while maintaining proportions
+4. **Accessibility**: Proper alt text and semantic HTML structure for screen readers
+5. **Content Preservation**: Ensures no header content is lost during conversion
+
 ## 6. HTML Formatting Enhancement (v1.3.1)
 
 ### 6.1 Overview
@@ -254,6 +338,7 @@ The HTML formatting enhancement significantly improves the readability and debug
 #### 6.2.2 Key Features
 
 **Preprocessing Logic**:
+
 ```javascript
 function preprocessHtml(html) {
   // Normalize self-closing tags
@@ -271,6 +356,7 @@ function preprocessHtml(html) {
 ```
 
 **Indentation Logic**:
+
 ```javascript
 function formatHtml(html) {
   // Process each line with proper indentation
@@ -311,91 +397,6 @@ The HTML formatting enhancement demonstrates the benefits of the modular archite
 - **Clean Separation**: HTML preprocessing and formatting are clearly separated
 - **Preserved API**: Existing `formatHtml()` function signature is maintained
 - **Enhanced Functionality**: New `preprocessHtml()` function provides additional capabilities
-
-## 7. Header Image Extraction and Positioning (v1.3.1)</search>
-</search_and_replace>
-
-### 6.1 Overview
-
-The header image extraction functionality enables doc2web to extract images from DOCX header files and display them in the HTML output with proper positioning that honors the original document layout.
-
-### 6.2 Technical Implementation
-
-#### 6.2.1 Image Detection and Extraction (`lib/parsers/header-parser.js`)
-
-**DOCX XML Introspection**: The system analyzes DOCX header XML files to detect and extract image information:
-
-1. **Image Element Detection**: Searches for `w:drawing` and `w:pict` elements in header paragraphs
-2. **Relationship Resolution**: Parses relationship files (`word/_rels/header*.xml.rels`) to map image IDs to file paths
-3. **Image Extraction**: Uses JSZip 3.0 async API to extract image data from the DOCX archive
-4. **File System Operations**: Saves images to the output directory with sanitized filenames
-
-#### 6.2.2 Positioning Information Extraction
-
-**Comprehensive Positioning Data**: The system extracts detailed positioning information from DOCX XML:
-
-```javascript
-// Positioning data structure
-{
-  wrapType: 'inline',           // inline vs anchored positioning
-  xOffset: '0',                 // horizontal transform offset
-  yOffset: '0',                 // vertical transform offset
-  distT: '0',                   // top margin distance
-  distB: '0',                   // bottom margin distance
-  distL: '0',                   // left margin distance
-  distR: '0',                   // right margin distance
-  horizontal: null,             // alignment (center, left, right)
-  vertical: null                // vertical alignment
-}
-```
-
-#### 6.2.3 HTML Generation with Positioning
-
-**Semantic HTML Structure**: Creates proper HTML structure with positioning applied:
-
-```html
-<div class="docx-header-paragraph">
-  <div class="docx-image-container">
-    <img src="./images/image_name.png" 
-         alt="Image Alt Text" 
-         class="docx-header-image"
-         style="width: 156px; height: 120px; max-width: 100%;">
-  </div>
-</div>
-```
-
-**CSS Positioning Logic**:
-
-1. **Inline Images**: Applied margins and transforms based on DOCX distance attributes
-2. **Anchored Images**: Applied absolute positioning with proper offset calculations
-3. **Paragraph Alignment**: Applied text-align to container for center/left/right alignment
-4. **EMU Conversion**: Proper conversion from DOCX units (1 EMU = 1/914400 inch = 96 pixels)
-
-### 6.3 Key Features
-
-1. **Position Fidelity**: Honors original DOCX image positioning including inline placement, margins, and transform offsets
-2. **Multiple Header Support**: Processes images from different header types (first page, even pages, default)
-3. **Relationship Resolution**: Correctly resolves image references through DOCX relationship files
-4. **Async Processing**: Uses modern async/await patterns for efficient image extraction
-5. **Error Handling**: Comprehensive error handling for missing files and processing failures
-6. **Semantic HTML**: Creates accessible HTML structure with proper image containers
-
-### 6.4 Integration with Modular Architecture
-
-The header image functionality demonstrates the benefits of the modular architecture:
-
-- **Focused Implementation**: Image processing logic is contained within `header-parser.js`
-- **Clean Separation**: Image extraction, positioning, and HTML generation are clearly separated
-- **Reusable Components**: Image processing utilities can be reused for other image types
-- **Maintainable Code**: Each aspect of image processing can be tested and modified independently
-
-### 6.5 Benefits
-
-1. **Visual Fidelity**: Maintains the exact appearance of header images from the original DOCX
-2. **Professional Output**: Preserves corporate logos and header graphics with proper positioning
-3. **Responsive Design**: Images adapt to different screen sizes while maintaining proportions
-4. **Accessibility**: Proper alt text and semantic HTML structure for screen readers
-5. **Content Preservation**: Ensures no header content is lost during conversion
 
 ## 7. Conclusion
 
