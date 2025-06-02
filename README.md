@@ -21,6 +21,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Document header extraction and processing with formatting preservation**
 - **Enhanced table formatting with professional styling and semantic structure**
 - **Hanging indentation fix with CSS rule conflict resolution for proper display of numbered content**
+- **TOC page number removal for web-appropriate navigation**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -401,6 +402,12 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 
 ### Recent Updates
 
+**v1.3.3 (2025-06-02)**
+
+- **HTML Formatting Optimization**: Optimized HTML output by removing all whitespace between elements while preserving newlines for improved file size and performance
+- **Compact Output**: Reduced HTML file size by eliminating unnecessary indentation spaces while maintaining readability through preserved line breaks
+- **Performance Enhancement**: Streamlined HTML formatting process for faster generation and smaller output files
+
 **v1.3.2 (2025-06-02)**
 
 - **Hanging Indentation Fix**: Resolved CSS rule conflicts causing margin compounding in numbered elements
@@ -408,6 +415,7 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 - **Margin Reset Implementation**: Applied margin resets to prevent CSS rule conflicts and ensure proper hanging indentation
 - **Format-Specific Adjustments**: Implemented different hanging indent values for various numbering formats
 - **Improved Display Fidelity**: Fixed hanging indentation to match Microsoft Word's behavior for numbered content
+- **TOC Page Number Removal**: Implemented targeted removal of page numbers from Table of Contents entries for web-appropriate navigation
 
 **v1.3.1 (2025-05-31)**
 

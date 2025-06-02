@@ -47,6 +47,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Bullet point enhancement with proper display and indentation from DOCX documents**
 - **Italic formatting fix with comprehensive style mapping and validation to ensure proper conversion from DOCX to HTML**
 - **Hanging indentation fix with CSS rule conflict resolution to ensure proper display of numbered headings and paragraphs**
+- **TOC page number removal for web-appropriate navigation where page numbers are irrelevant**
 
 ## Installation
 
@@ -285,8 +286,11 @@ doc2web intelligently detects and handles navigation elements:
 - Applies appropriate indentation for different TOC levels
 - Preserves TOC structure through advanced DOM manipulation
 - Ensures visual fidelity to the original document's TOC appearance
+- **Automatically removes page numbers from TOC entries** since page numbers are irrelevant for web-based navigation
+- **Targeted processing** that only scans TOC sections rather than the entire document for efficient operation
+- **Smart boundary detection** to identify where TOC sections end and main content begins
 
-This feature prevents unnecessary duplication of navigation elements in web formats while maintaining their visual structure, improving readability and organization.
+This feature prevents unnecessary duplication of navigation elements in web formats while maintaining their visual structure, improving readability and organization. The automatic removal of page numbers makes the TOC more appropriate for web consumption where users navigate via hyperlinks rather than page references.
 
 ### Hierarchical List Handling
 
@@ -661,7 +665,7 @@ A: Not yet, all outputs go to the `./output` directory.
 A: The HTML output attempts to preserve styling, but complex layouts may differ slightly.
 
 **Q: How does doc2web handle Table of Contents and Index sections?**  
-A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats.
+A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. Additionally, page numbers are automatically removed from TOC entries since they are irrelevant for web-based navigation where users click hyperlinks instead of referencing page numbers.
 
 **Q: How does doc2web handle hierarchical lists?**  
 A: With the new DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting.

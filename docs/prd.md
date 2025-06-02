@@ -22,6 +22,8 @@
 | 4.0 | June 2, 2025 | Technical Team | Fixed bullet point display and indentation issues with enhanced CSS specificity |
 | 4.1 | June 2, 2025 | Technical Team | Fixed italic formatting conversion from DOCX to HTML with enhanced mammoth.js configuration |
 | 4.2 | June 2, 2025 | Technical Team | Fixed hanging indentation for numbered headings and paragraphs with enhanced CSS specificity and margin reset |
+| 4.3 | June 2, 2025 | Technical Team | Added TOC page number removal functionality for web-appropriate navigation |
+| 4.4 | June 2, 2025 | Technical Team | Optimized HTML formatting to remove whitespace between elements while preserving newlines for compact output |
 
 ## Table of Contents
 
@@ -81,11 +83,12 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Modular Architecture**: Maintain clean, focused modules for improved maintainability and extensibility
 - **Hanging Margins**: Implement proper hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
 - **Header Image Processing**: Extract and display header images with proper positioning that honors the original DOCX layout
-- **HTML Formatting**: Generate properly formatted HTML with indentation and line breaks for improved readability and debugging
+- **HTML Formatting**: Generate compact HTML output with optimized whitespace removal while preserving newlines for improved file size and performance
 - **Table Formatting**: Enhance table presentation with professional styling, semantic structure, and accessibility features
 - **Bullet Point Enhancement**: Ensure proper display and indentation of bullet points from DOCX documents with high CSS specificity
 - **Italic Formatting Fix**: Ensure proper conversion of italic text from DOCX to HTML with comprehensive style mapping and validation
 - **Hanging Indentation Fix**: Resolve CSS rule conflicts and implement proper hanging indentation for numbered headings and paragraphs with enhanced specificity
+- **TOC Page Number Removal**: Remove page numbers from Table of Contents entries since they are irrelevant for web-based navigation
 
 ### 1.3 Project Scope
 
@@ -187,11 +190,12 @@ The scope explicitly excludes:
 - **Generate section IDs for direct navigation to numbered headings and paragraphs**
 - **Implement proper hanging indent behavior for TOC entries and numbered content**
 - **Extract and position header images with fidelity to original DOCX positioning**
-- **Generate properly formatted HTML with indentation and line breaks for improved readability and debugging**
+- **Generate compact HTML output with optimized whitespace removal while preserving newlines for improved file size and performance**
 - **Enhance table presentation with professional styling, semantic structure, and accessibility features**
 - **Ensure proper bullet point display and indentation from DOCX documents with enhanced CSS specificity**
 - **Ensure proper italic text conversion from DOCX to HTML with comprehensive style mapping and validation**
 - **Fix hanging indentation display issues for numbered headings and paragraphs with CSS rule conflict resolution and enhanced specificity**
+- **Remove page numbers from Table of Contents entries for web-appropriate navigation**
 
 #### 3.1.2 Style Preservation
 
@@ -275,8 +279,8 @@ The scope explicitly excludes:
 - **CSS files should contain generated styles appropriate for the document**
 - **Document statistics (pages, words, characters, paragraphs, lines) must be accurately calculated and included in metadata**
 - **Document statistics must be calculated from document content when not available in metadata**
-- **HTML output must be properly formatted with indentation and line breaks for improved debugging**
-- **HTML formatting must preserve all content and structure while enhancing readability**
+- **HTML output must be compact with optimized whitespace removal while preserving newlines for improved file size**
+- **HTML formatting must preserve all content and structure while optimizing for performance**
 
 #### 3.2.4 Document Analysis and Style Extraction
 
@@ -482,8 +486,8 @@ doc2web follows a modular architecture with these primary components:
 - **CSS files should contain generated styles appropriate for the document**
 - **Document statistics (pages, words, characters, paragraphs, lines) must be accurately calculated and included in metadata**
 - **Document statistics must be calculated from document content when not available in metadata**
-- **HTML output must be properly formatted with indentation and line breaks for improved debugging**
-- **HTML formatting must preserve all content and structure while enhancing readability**
+- **HTML output must be compact with optimized whitespace removal while preserving newlines for improved file size**
+- **HTML formatting must preserve all content and structure while optimizing for performance**
 - **TOC elements must have proper hanging indents with optional leader dots and page numbers**
 - **TOC entries must maintain proper alignment and spacing using block layout for hanging indents**
 - **Paragraph numbering must be implemented using CSS ::before pseudo-elements for exact positioning**
@@ -558,9 +562,10 @@ The application has undergone significant enhancements to improve document conve
 - **Modular Refactoring**: Split large files into focused, maintainable modules while preserving API compatibility
 - **Hanging Margins Implementation**: Fixed hanging indent behavior for TOC entries and numbered content to replicate Microsoft Word formatting
 - **Header Image Processing**: Implemented comprehensive header image extraction and positioning functionality with DOCX XML introspection
-- **HTML Formatting Enhancement**: Enhanced HTML output with proper indentation and line breaks for improved readability and debugging
+- **HTML Formatting Optimization**: Optimized HTML output with compact whitespace removal while preserving newlines for improved file size and performance
 - **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
 - **Bullet Point Enhancement**: Fixed bullet point display and indentation issues with enhanced CSS specificity and container margins
 - **Italic Formatting Fix**: Fixed italic text conversion from DOCX to HTML with enhanced mammoth.js configuration and comprehensive style mapping
+- **TOC Page Number Removal**: Implemented targeted removal of page numbers from Table of Contents entries for web-appropriate navigation
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
