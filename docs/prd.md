@@ -21,6 +21,7 @@
 | 3.9 | June 1, 2025 | Technical Team | Improved table formatting with enhanced styling and semantic structure |
 | 4.0 | June 2, 2025 | Technical Team | Fixed bullet point display and indentation issues with enhanced CSS specificity |
 | 4.1 | June 2, 2025 | Technical Team | Fixed italic formatting conversion from DOCX to HTML with enhanced mammoth.js configuration |
+| 4.2 | June 2, 2025 | Technical Team | Fixed hanging indentation for numbered headings and paragraphs with enhanced CSS specificity and margin reset |
 
 ## Table of Contents
 
@@ -84,6 +85,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Table Formatting**: Enhance table presentation with professional styling, semantic structure, and accessibility features
 - **Bullet Point Enhancement**: Ensure proper display and indentation of bullet points from DOCX documents with high CSS specificity
 - **Italic Formatting Fix**: Ensure proper conversion of italic text from DOCX to HTML with comprehensive style mapping and validation
+- **Hanging Indentation Fix**: Resolve CSS rule conflicts and implement proper hanging indentation for numbered headings and paragraphs with enhanced specificity
 
 ### 1.3 Project Scope
 
@@ -107,6 +109,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Enhancing table presentation with professional styling, semantic structure, and accessibility features**
 - **Ensuring proper bullet point display and indentation with enhanced CSS specificity to override inline styles**
 - **Ensuring proper italic text conversion from DOCX to HTML with comprehensive style mapping and validation**
+- **Fixing hanging indentation display issues for numbered headings and paragraphs with CSS rule conflict resolution**
 
 The scope explicitly excludes:
 
@@ -188,6 +191,7 @@ The scope explicitly excludes:
 - **Enhance table presentation with professional styling, semantic structure, and accessibility features**
 - **Ensure proper bullet point display and indentation from DOCX documents with enhanced CSS specificity**
 - **Ensure proper italic text conversion from DOCX to HTML with comprehensive style mapping and validation**
+- **Fix hanging indentation display issues for numbered headings and paragraphs with CSS rule conflict resolution and enhanced specificity**
 
 #### 3.1.2 Style Preservation
 
@@ -208,6 +212,8 @@ The scope explicitly excludes:
 - **Implement fallback mechanisms for DOM manipulation errors**
 - **Generate section IDs based on hierarchical numbering structure**
 - **Implement proper hanging indent behavior using CSS text-indent and padding-left properties**
+- **Resolve CSS rule conflicts that cause margin compounding in numbered elements**
+- **Use !important declarations to override conflicting numbering styles and ensure proper hanging indentation**
 
 #### 3.1.3 Processing Capabilities
 
@@ -482,6 +488,8 @@ doc2web follows a modular architecture with these primary components:
 - **TOC entries must maintain proper alignment and spacing using block layout for hanging indents**
 - **Paragraph numbering must be implemented using CSS ::before pseudo-elements for exact positioning**
 - **Hanging indents must be implemented using negative text-indent with compensating padding-left**
+- **CSS rule conflicts must be resolved using !important declarations to prevent margin compounding**
+- **Margin resets must be applied to numbered elements to ensure proper hanging indentation display**
 - **Section IDs must be generated for all numbered headings and paragraphs**
 - **Section IDs must follow a consistent pattern (e.g., "section-1-2-a")**
 - **CSS must include styling for section navigation and highlighting**

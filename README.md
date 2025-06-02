@@ -20,6 +20,7 @@ This tool extracts content from DOCX files while maintaining:
 - **Section IDs for direct navigation to numbered headings and paragraphs**
 - **Document header extraction and processing with formatting preservation**
 - **Enhanced table formatting with professional styling and semantic structure**
+- **Hanging indentation fix with CSS rule conflict resolution for proper display of numbered content**
 
 The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
 The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
@@ -245,6 +246,14 @@ doc2web now properly handles hanging margins (also known as hanging indents) fro
 
 This implementation ensures that converted HTML documents maintain the same professional text formatting and readability as the original Word documents.
 
+#### Recent Hanging Indentation Fix (v4.2)
+
+- **CSS Rule Conflict Resolution**: Fixed margin compounding issues where multiple CSS selectors were applying conflicting margins to numbered elements
+- **Enhanced CSS Specificity**: Added `!important` declarations to override existing numbering styles and ensure proper hanging indentation
+- **Margin Reset Implementation**: Applied `margin-left: 0pt !important` to reset margins and prevent CSS rule conflicts
+- **Format-Specific Adjustments**: Implemented different hanging indent values for various numbering formats (letters: -24pt, Roman numerals: -30pt)
+- **Improved Display Fidelity**: Numbered items now display with proper hanging indentation matching Microsoft Word's behavior
+
 ### Enhanced Table Formatting
 
 doc2web now provides comprehensive table formatting improvements that significantly enhance the presentation and accessibility of tables from DOCX documents:
@@ -391,6 +400,14 @@ For detailed API options and configuration, see [`docs/architecture.md`](docs/ar
 ## Recent Fixes and Enhancements
 
 ### Recent Updates
+
+**v1.3.2 (2025-06-02)**
+
+- **Hanging Indentation Fix**: Resolved CSS rule conflicts causing margin compounding in numbered elements
+- **Enhanced CSS Specificity**: Added `!important` declarations to override conflicting numbering styles
+- **Margin Reset Implementation**: Applied margin resets to prevent CSS rule conflicts and ensure proper hanging indentation
+- **Format-Specific Adjustments**: Implemented different hanging indent values for various numbering formats
+- **Improved Display Fidelity**: Fixed hanging indentation to match Microsoft Word's behavior for numbered content
 
 **v1.3.1 (2025-05-31)**
 

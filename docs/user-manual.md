@@ -46,6 +46,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Enhanced table formatting with professional styling, semantic structure, and accessibility features**
 - **Bullet point enhancement with proper display and indentation from DOCX documents**
 - **Italic formatting fix with comprehensive style mapping and validation to ensure proper conversion from DOCX to HTML**
+- **Hanging indentation fix with CSS rule conflict resolution to ensure proper display of numbered headings and paragraphs**
 
 ## Installation
 
@@ -223,6 +224,7 @@ For each processed DOCX file, doc2web generates:
 - **Contains CSS counters that exactly match DOCX numbering definitions**
 - **Includes enhanced bullet point styles with high CSS specificity for proper display and indentation**
 - **Contains comprehensive italic formatting styles with fallback rules and enhanced specificity**
+- **Includes hanging indentation fixes with !important declarations to resolve CSS rule conflicts and ensure proper display**
 
 ### Images Folder
 
@@ -301,6 +303,7 @@ doc2web provides advanced handling of hierarchical lists:
 - **Maintains hierarchical relationships from original document**
 - **Generates CSS counters that precisely match DOCX numbering**
 - **Ensures proper bullet point display with enhanced CSS specificity to override inline styles**
+- **Fixes hanging indentation display issues with CSS rule conflict resolution and margin reset techniques**
 
 ## Accessibility Features
 
