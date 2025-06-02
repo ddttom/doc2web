@@ -20,6 +20,7 @@
 | 3.8 | June 1, 2025 | Technical Team | Enhanced HTML formatting with proper indentation and line breaks |
 | 3.9 | June 1, 2025 | Technical Team | Improved table formatting with enhanced styling and semantic structure |
 | 4.0 | June 2, 2025 | Technical Team | Fixed bullet point display and indentation issues with enhanced CSS specificity |
+| 4.1 | June 2, 2025 | Technical Team | Fixed italic formatting conversion from DOCX to HTML with enhanced mammoth.js configuration |
 
 ## Table of Contents
 
@@ -82,6 +83,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **HTML Formatting**: Generate properly formatted HTML with indentation and line breaks for improved readability and debugging
 - **Table Formatting**: Enhance table presentation with professional styling, semantic structure, and accessibility features
 - **Bullet Point Enhancement**: Ensure proper display and indentation of bullet points from DOCX documents with high CSS specificity
+- **Italic Formatting Fix**: Ensure proper conversion of italic text from DOCX to HTML with comprehensive style mapping and validation
 
 ### 1.3 Project Scope
 
@@ -104,6 +106,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Generating properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhancing table presentation with professional styling, semantic structure, and accessibility features**
 - **Ensuring proper bullet point display and indentation with enhanced CSS specificity to override inline styles**
+- **Ensuring proper italic text conversion from DOCX to HTML with comprehensive style mapping and validation**
 
 The scope explicitly excludes:
 
@@ -184,6 +187,7 @@ The scope explicitly excludes:
 - **Generate properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhance table presentation with professional styling, semantic structure, and accessibility features**
 - **Ensure proper bullet point display and indentation from DOCX documents with enhanced CSS specificity**
+- **Ensure proper italic text conversion from DOCX to HTML with comprehensive style mapping and validation**
 
 #### 3.1.2 Style Preservation
 
@@ -549,5 +553,6 @@ The application has undergone significant enhancements to improve document conve
 - **HTML Formatting Enhancement**: Enhanced HTML output with proper indentation and line breaks for improved readability and debugging
 - **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
 - **Bullet Point Enhancement**: Fixed bullet point display and indentation issues with enhanced CSS specificity and container margins
+- **Italic Formatting Fix**: Fixed italic text conversion from DOCX to HTML with enhanced mammoth.js configuration and comprehensive style mapping
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).

@@ -420,11 +420,177 @@ The modular design ensures that:
 
 This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The hanging margins implementation, header image extraction functionality, HTML formatting enhancement, and bullet point enhancement showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning, visual fidelity, and professional HTML output quality.
 
-## 8. Bullet Point Enhancement (v1.3.2)
+## 8. Italic Formatting Fix (v1.3.3)
 
 ### 8.1 Overview
 
-The bullet point enhancement addresses critical issues with bullet point display and indentation in HTML output from DOCX documents. This implementation ensures that bullet points from DOCX documents appear correctly with proper visual hierarchy and indentation.
+The italic formatting fix addresses a critical issue where italic text from DOCX files was not being converted to HTML with proper italic formatting. This implementation ensures that all types of italic formatting (direct formatting, character styles, and mixed formatting) are properly preserved during the conversion process.
+
+### 8.2 Technical Implementation
+
+#### 8.2.1 Root Cause Analysis
+
+**Problem Identification**: The italic formatting issue was caused by the mammoth.js configuration where `includeDefaultStyleMap: false` was preventing basic formatting like italics from being converted, despite having proper style mappings in place.
+
+#### 8.2.2 Multi-Phase Solution
+
+**Phase 1: Mammoth.js Configuration Fix**
+- Changed `includeDefaultStyleMap: false` to `includeDefaultStyleMap: true` in [`lib/html/html-generator.js`](lib/html/html-generator.js)
+- Added default style map to all fallback conversions
+- Added debug logging for mammoth conversion
+
+**Phase 2: Enhanced Style Mappings**
+- Added comprehensive italic mappings in [`lib/html/generators/style-mapping.js`](lib/html/generators/style-mapping.js)
+- Added support for character style italics
+- Added debug logging to track italic mapping application
+
+**Phase 3: Improved CSS Generation**
+- Enhanced [`lib/css/generators/character-styles.js`](lib/css/generators/character-styles.js) with `!important` specificity
+- Added fallback CSS rules to ensure em tags are always styled as italic
+
+**Phase 4: Added Validation**
+- Created `preserveItalicFormatting()` function in [`lib/html/generators/html-processing.js`](lib/html/generators/html-processing.js)
+- Added validation before HTML serialization to ensure italic elements are preserved
+
+#### 8.2.3 Enhanced Mammoth Configuration (`lib/html/html-generator.js`)
+
+**Before**:
+```javascript
+const result = await mammoth.convertToHtml({
+  path: docxPath,
+  styleMap: styleMap,
+  transformDocument: transformDocument,
+  includeDefaultStyleMap: false, // ← This was the problem
+  ...imageOptions,
+});
+```
+
+**After**:
+```javascript
+// First try with custom style map AND default mappings for basic formatting
+const result = await mammoth.convertToHtml({
+  path: docxPath,
+  styleMap: styleMap,
+  transformDocument: transformDocument,
+  includeDefaultStyleMap: true, // Enable default mappings for basic formatting like italics
+  ...imageOptions,
+});
+
+console.log('Mammoth conversion completed with default style map enabled');
+```
+
+#### 8.2.4 Enhanced Style Mappings (`lib/html/generators/style-mapping.js`)
+
+**Added Comprehensive Italic Mappings**:
+```javascript
+// Enhanced italic mappings for better coverage
+styleMap.push("r[italic=true] => em");
+styleMap.push("r[font-style='italic'] => em");
+
+// Character style italic mappings
+Object.entries(styleInfo.styles?.character || {}).forEach(([id, style]) => {
+  if (style.italic) {
+    const safeClassName = id.toLowerCase().replace(/[^a-z0-9-_]/g, "-");
+    styleMap.push(`r[style-name='${style.name}'] => em.docx-c-${safeClassName}`);
+  }
+});
+
+// Debug logging for italic mappings
+const italicMappings = styleMap.filter(map => 
+  map.includes('italic') || map.includes('=> em')
+);
+if (italicMappings.length > 0) {
+  console.log('Applied italic style mappings:', italicMappings);
+}
+```
+
+#### 8.2.5 Enhanced CSS Generation (`lib/css/generators/character-styles.js`)
+
+**Improved CSS Specificity**:
+```javascript
+${style.italic ? "font-style: italic !important;" : ""}
+```
+
+**Added Fallback Rules**:
+```css
+/* Fallback italic styles */
+em, .italic, [style*="font-style: italic"] {
+  font-style: italic !important;
+}
+
+/* Ensure em tags are always italic */
+em {
+  font-style: italic !important;
+}
+```
+
+#### 8.2.6 Italic Preservation Validation (`lib/html/generators/html-processing.js`)
+
+**New Validation Function**:
+```javascript
+function preserveItalicFormatting(document) {
+  try {
+    // Find all em tags and ensure they have proper styling
+    const emTags = document.querySelectorAll('em');
+    console.log(`Found ${emTags.length} italic elements in HTML`);
+    
+    // Validate italic elements have proper styling
+    emTags.forEach(em => {
+      if (!em.style.fontStyle && !em.className.includes('italic')) {
+        em.style.fontStyle = 'italic';
+      }
+    });
+    
+    // Find elements with italic classes and ensure they're preserved
+    const italicElements = document.querySelectorAll('.italic, [class*="italic"]');
+    italicElements.forEach(el => {
+      if (!el.style.fontStyle) {
+        el.style.fontStyle = 'italic';
+      }
+    });
+    
+    // Find elements with inline italic styles and preserve them
+    const inlineItalicElements = document.querySelectorAll('[style*="font-style: italic"]');
+    console.log(`Found ${inlineItalicElements.length} elements with inline italic styles`);
+    
+  } catch (error) {
+    console.error('Error preserving italic formatting:', error);
+  }
+}
+```
+
+### 8.3 Key Features
+
+1. **Comprehensive Coverage**: Handles direct formatting, character styles, and mixed formatting
+2. **Robust Validation**: Ensures italic elements are preserved throughout the processing pipeline
+3. **Debug Information**: Provides console logging for troubleshooting italic conversion issues
+4. **Fallback Mechanisms**: Multiple layers of protection to ensure italic formatting is preserved
+5. **Visual Fidelity**: Maintains proper italic appearance from original DOCX documents
+
+### 8.4 Integration with Modular Architecture
+
+The italic formatting fix demonstrates the benefits of the modular architecture:
+
+- **Focused Implementation**: Changes were contained within specific modules without affecting other functionality
+- **Clean Separation**: Mammoth configuration, style mapping, CSS generation, and HTML processing remained cleanly separated
+- **Preserved Functionality**: All existing features remained intact while fixing italic formatting issues
+- **Maintainable Code**: The enhancement could be implemented and tested independently
+
+### 8.5 Benefits
+
+1. **Proper Italic Display**: Italic text from DOCX files now appears correctly in HTML output
+2. **Complete Coverage**: Both direct formatting and character style italics are preserved
+3. **Mixed Formatting Support**: Bold + italic combinations work correctly
+4. **Cross-Document Compatibility**: Solution works across different DOCX document structures
+5. **Enhanced Readability**: Improved document presentation and user experience
+6. **Content Preservation**: Ensures no italic formatting is lost during conversion
+
+## 9. Bullet Point Enhancement (v1.3.2)
+
+### 9.1 Overview
+
+The bullet point enhancement addresses critical issues with bullet point display and indentation in HTML output from DOCX documents. This implementation ensures that bullet points from DOCX documents appear correctly with proper visual hierarchy and indentation.</search>
+</search_and_replace>
 
 ### 8.2 Technical Implementation
 
@@ -503,10 +669,33 @@ The bullet point enhancement demonstrates the benefits of the modular architectu
 - **Preserved Functionality**: All existing features remained intact while fixing bullet point issues
 - **Maintainable Code**: The enhancement could be implemented and tested independently
 
-### 8.5 Benefits
+### 9.5 Benefits
 
 1. **Proper Display**: Bullet points now appear correctly in HTML output
 2. **Visual Hierarchy**: Proper indentation creates clear document structure
 3. **Cross-Document Compatibility**: Solution works across different DOCX document structures
 4. **Enhanced Readability**: Improved document presentation and user experience
 5. **Content Preservation**: Ensures no bullet point content is lost during conversion
+
+## 10. Conclusion
+
+The doc2web application now features a robust, modular architecture that provides excellent maintainability while preserving all existing functionality. The refactoring into focused, single-responsibility modules makes the codebase much more approachable for developers while maintaining the same powerful conversion capabilities.
+
+The recent enhancements including hanging margins implementation, header image extraction functionality, HTML formatting enhancement, bullet point enhancement, and italic formatting fix (v1.3.1-v1.3.3) demonstrate the benefits of this modular architecture:
+
+- **Focused Changes**: Each enhancement was implemented in specific modules without affecting other functionality
+- **Clear Separation**: TOC styling, numbering styles, text wrapping, image positioning, HTML formatting, bullet point display, and italic formatting were enhanced independently
+- **Maintainable Code**: Each module could be modified and tested in isolation
+- **Preserved Functionality**: All existing features remained intact while adding new capabilities
+
+The modular design ensures that:
+
+- New features can be added without affecting existing code
+- Individual components can be tested and debugged in isolation
+- The codebase remains maintainable as it grows
+- API compatibility is preserved for existing users
+- Code quality and organization continue to improve
+- Complex features like hanging margins, header image processing, HTML formatting, bullet points, and italic formatting can be implemented systematically across multiple modules
+
+This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The comprehensive enhancements showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning, visual fidelity, professional HTML output quality, and complete text formatting preservation.</search>
+</search_and_replace>

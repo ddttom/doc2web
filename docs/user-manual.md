@@ -45,6 +45,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Generates properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhanced table formatting with professional styling, semantic structure, and accessibility features**
 - **Bullet point enhancement with proper display and indentation from DOCX documents**
+- **Italic formatting fix with comprehensive style mapping and validation to ensure proper conversion from DOCX to HTML**
 
 ## Installation
 
@@ -221,6 +222,7 @@ For each processed DOCX file, doc2web generates:
 - Preserves indentation and formatting for different list levels
 - **Contains CSS counters that exactly match DOCX numbering definitions**
 - **Includes enhanced bullet point styles with high CSS specificity for proper display and indentation**
+- **Contains comprehensive italic formatting styles with fallback rules and enhanced specificity**
 
 ### Images Folder
 
@@ -241,11 +243,12 @@ doc2web preserves the following elements and provides special handling for navig
 
 ### Text Formatting
 
-- Bold, italic, underline
+- Bold, italic, underline (with comprehensive italic formatting preservation from DOCX)
 - Strikethrough
 - Superscript and subscript
 - Font styles and sizes (in HTML output)
 - Text colors (in HTML output)
+- Mixed formatting combinations (bold + italic, underline + italic, etc.)
 
 ### Advanced Elements
 
@@ -495,6 +498,7 @@ The application has been refactored into focused, single-responsibility modules:
 - **character-styles.js**: Inline text styling
 - **table-styles.js**: Table layout and borders
 - **numbering-styles.js**: CSS counters, hierarchical numbering, and bullet point display with enhanced CSS specificity
+- **character-styles.js**: Inline text styling including comprehensive italic formatting with fallback rules
 - **toc-styles.js**: Table of Contents with flex layout
 - **utility-styles.js**: General utility classes
 - **specialized-styles.js**: Accessibility and track changes styles
@@ -681,6 +685,9 @@ A: Yes, doc2web now generates properly formatted HTML with indentation and line 
 
 **Q: How does doc2web handle table formatting from DOCX documents?**  
 A: doc2web now provides comprehensive table formatting with professional styling, semantic HTML structure, and accessibility features. Tables automatically get proper `<thead>` and `<tbody>` sections, header detection, responsive design, and modern CSS styling with borders, padding, and hover effects.
+
+**Q: Does doc2web properly convert italic text from DOCX documents?**  
+A: Yes, doc2web now includes a comprehensive italic formatting fix that ensures all types of italic text (direct formatting, character styles, and mixed formatting) are properly converted from DOCX to HTML. The fix includes enhanced mammoth.js configuration, comprehensive style mapping, and validation to ensure italic formatting is preserved throughout the conversion process.
 
 ---
 
