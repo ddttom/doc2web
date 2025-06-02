@@ -83,7 +83,7 @@ The refactored architecture provides several key benefits:
 - **paragraph-styles.js**: Word-like paragraph indentation and formatting with enhanced text wrapping
 - **character-styles.js**: Inline text styling and character formatting
 - **table-styles.js**: Table layout, borders, and cell styling
-- **numbering-styles.js**: CSS counters, hierarchical numbering, and hanging indent implementation
+- **numbering-styles.js**: CSS counters, hierarchical numbering, hanging indent implementation, and bullet point display with enhanced CSS specificity
 - **toc-styles.js**: Table of Contents with block layout, hanging indents, and optional dots/page numbers
 - **utility-styles.js**: General utility classes and section navigation
 - **specialized-styles.js**: Accessibility, track changes, and header styles

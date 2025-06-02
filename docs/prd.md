@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 3.9  
-**Last Updated:** June 1, 2025  
+**Document Version:** 4.0  
+**Last Updated:** June 2, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -19,6 +19,7 @@
 | 3.7 | May 31, 2025 | Technical Team | Added header image extraction and positioning functionality |
 | 3.8 | June 1, 2025 | Technical Team | Enhanced HTML formatting with proper indentation and line breaks |
 | 3.9 | June 1, 2025 | Technical Team | Improved table formatting with enhanced styling and semantic structure |
+| 4.0 | June 2, 2025 | Technical Team | Fixed bullet point display and indentation issues with enhanced CSS specificity |
 
 ## Table of Contents
 
@@ -80,6 +81,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - **Header Image Processing**: Extract and display header images with proper positioning that honors the original DOCX layout
 - **HTML Formatting**: Generate properly formatted HTML with indentation and line breaks for improved readability and debugging
 - **Table Formatting**: Enhance table presentation with professional styling, semantic structure, and accessibility features
+- **Bullet Point Enhancement**: Ensure proper display and indentation of bullet points from DOCX documents with high CSS specificity
 
 ### 1.3 Project Scope
 
@@ -101,6 +103,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - **Extracting and positioning header images with fidelity to original DOCX layout**
 - **Generating properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhancing table presentation with professional styling, semantic structure, and accessibility features**
+- **Ensuring proper bullet point display and indentation with enhanced CSS specificity to override inline styles**
 
 The scope explicitly excludes:
 
@@ -180,6 +183,7 @@ The scope explicitly excludes:
 - **Extract and position header images with fidelity to original DOCX positioning**
 - **Generate properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhance table presentation with professional styling, semantic structure, and accessibility features**
+- **Ensure proper bullet point display and indentation from DOCX documents with enhanced CSS specificity**
 
 #### 3.1.2 Style Preservation
 
@@ -544,5 +548,6 @@ The application has undergone significant enhancements to improve document conve
 - **Header Image Processing**: Implemented comprehensive header image extraction and positioning functionality with DOCX XML introspection
 - **HTML Formatting Enhancement**: Enhanced HTML output with proper indentation and line breaks for improved readability and debugging
 - **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
+- **Bullet Point Enhancement**: Fixed bullet point display and indentation issues with enhanced CSS specificity and container margins
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
