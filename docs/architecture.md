@@ -418,4 +418,95 @@ The modular design ensures that:
 - Code quality and organization continue to improve
 - Complex features like hanging margins and header image processing can be implemented systematically across multiple modules
 
-This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The hanging margins implementation, header image extraction functionality, and HTML formatting enhancement showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning, visual fidelity, and professional HTML output quality.
+This architecture provides a solid foundation for future enhancements while maintaining the application's core strengths in DOCX conversion, style preservation, and content fidelity. The hanging margins implementation, header image extraction functionality, HTML formatting enhancement, and bullet point enhancement showcase how the modular structure enables sophisticated document formatting features that closely replicate Microsoft Word's behavior, including precise positioning, visual fidelity, and professional HTML output quality.
+
+## 8. Bullet Point Enhancement (v1.3.2)
+
+### 8.1 Overview
+
+The bullet point enhancement addresses critical issues with bullet point display and indentation in HTML output from DOCX documents. This implementation ensures that bullet points from DOCX documents appear correctly with proper visual hierarchy and indentation.
+
+### 8.2 Technical Implementation
+
+#### 8.2.1 Root Cause Analysis
+
+**Problem Identification**: The bullet point issues were caused by multiple factors:
+
+1. **Syntax Error**: Invalid `</search>` text in CSS generation code breaking template literals
+2. **CSS Counter Conflicts**: CSS counter-based numbering generating duplicate numbers/letters
+3. **CSS Specificity Issues**: Inline styles overriding CSS rules despite `!important` declarations
+
+#### 8.2.2 Multi-Phase Solution
+
+**Phase 1: CSS Generation Fix**
+- Removed syntax errors that were breaking CSS template literals
+- Ensured proper CSS generation for bullet points with selectors like `li[data-format="bullet"]::before`
+
+**Phase 2: Numbering Duplication Resolution**
+- Removed CSS counter generation that was duplicating existing DOCX numbering
+- Preserved structural CSS for positioning and indentation
+- Maintained working bullet point functionality
+
+**Phase 3: Enhanced CSS Specificity**
+- Implemented high-specificity selectors with `!important` declarations
+- Added container-level indentation with `ul.docx-bullet-list` margins
+- Used multiple targeting strategies for maximum compatibility
+
+#### 8.2.3 Enhanced CSS Implementation (`lib/css/generators/numbering-styles.js`)
+
+**High-Specificity Selectors**:
+
+```css
+ul.docx-bullet-list li.docx-list-item,
+ul.docx-bullet-list li[data-format="bullet"],
+li.docx-list-item[data-format="bullet"] {
+  position: relative !important;
+  padding-left: 20pt !important;
+  margin-left: 0 !important;
+}
+```
+
+**Container-Level Indentation**:
+
+```css
+ul.docx-bullet-list {
+  margin: 0 0 0 20pt !important;
+  position: relative !important;
+}
+```
+
+**Bullet Character Positioning**:
+
+```css
+ul.docx-bullet-list li[data-format="bullet"]::before {
+  content: "•" !important;
+  position: absolute !important;
+  left: 0 !important;
+  width: 15pt !important;
+}
+```
+
+### 8.3 Key Features
+
+1. **Robust CSS Selectors**: Multiple targeting strategies ensure compatibility across different HTML structures
+2. **Container Indentation**: Proper margin application at the list container level
+3. **High CSS Specificity**: Overrides inline styles and conflicting CSS rules
+4. **Fallback Mechanisms**: Multiple CSS selectors provide redundancy for maximum compatibility
+5. **Visual Fidelity**: Maintains proper bullet point appearance and indentation from original DOCX
+
+### 8.4 Integration with Modular Architecture
+
+The bullet point enhancement demonstrates the benefits of the modular architecture:
+
+- **Focused Implementation**: All bullet point logic is contained within `numbering-styles.js`
+- **Clean Separation**: CSS generation, HTML processing, and content manipulation remain cleanly separated
+- **Preserved Functionality**: All existing features remained intact while fixing bullet point issues
+- **Maintainable Code**: The enhancement could be implemented and tested independently
+
+### 8.5 Benefits
+
+1. **Proper Display**: Bullet points now appear correctly in HTML output
+2. **Visual Hierarchy**: Proper indentation creates clear document structure
+3. **Cross-Document Compatibility**: Solution works across different DOCX document structures
+4. **Enhanced Readability**: Improved document presentation and user experience
+5. **Content Preservation**: Ensures no bullet point content is lost during conversion

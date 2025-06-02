@@ -44,6 +44,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Modular architecture for improved maintainability and extensibility**
 - **Generates properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhanced table formatting with professional styling, semantic structure, and accessibility features**
+- **Bullet point enhancement with proper display and indentation from DOCX documents**
 
 ## Installation
 
@@ -219,6 +220,7 @@ For each processed DOCX file, doc2web generates:
 - Contains detailed styling for leader lines and page number alignment
 - Preserves indentation and formatting for different list levels
 - **Contains CSS counters that exactly match DOCX numbering definitions**
+- **Includes enhanced bullet point styles with high CSS specificity for proper display and indentation**
 
 ### Images Folder
 
@@ -295,6 +297,7 @@ doc2web provides advanced handling of hierarchical lists:
 - **Resolves actual sequential numbers based on document position**
 - **Maintains hierarchical relationships from original document**
 - **Generates CSS counters that precisely match DOCX numbering**
+- **Ensures proper bullet point display with enhanced CSS specificity to override inline styles**
 
 ## Accessibility Features
 
@@ -491,7 +494,7 @@ The application has been refactored into focused, single-responsibility modules:
 - **paragraph-styles.js**: Word-like paragraph formatting
 - **character-styles.js**: Inline text styling
 - **table-styles.js**: Table layout and borders
-- **numbering-styles.js**: CSS counters and hierarchical numbering
+- **numbering-styles.js**: CSS counters, hierarchical numbering, and bullet point display with enhanced CSS specificity
 - **toc-styles.js**: Table of Contents with flex layout
 - **utility-styles.js**: General utility classes
 - **specialized-styles.js**: Accessibility and track changes styles
