@@ -56,13 +56,22 @@ function processNestedNumberedParagraphs(
       });
 
       if (context && context.resolvedNumbering && context.abstractNumId) {
+        console.log('Applying numbering attributes:', {
+          tagName: el.tagName,
+          textContent: el.textContent?.substring(0, 50) + '...',
+          abstractNumId: context.abstractNumId,
+          numberingLevel: context.numberingLevel,
+          numberingId: context.numberingId
+        });
+        
         // Set basic numbering attributes
         el.setAttribute("data-num-id", context.numberingId || ""); // Keep concrete numId if available
         el.setAttribute("data-abstract-num", context.abstractNumId);
         el.setAttribute(
           "data-num-level",
           context.numberingLevel?.toString() || ""
-        );
+        );</search>
+</search_and_replace>
         
         // Add format attribute for CSS targeting
         const format = context.resolvedNumbering.format || "";
