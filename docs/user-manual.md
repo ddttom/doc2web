@@ -6,20 +6,21 @@
 2. [Installation](#installation)
 3. [Basic Usage](#basic-usage)
 4. [Advanced Features](#advanced-features)
-5. [Command Reference](#command-reference)
-6. [Output Files](#output-files)
-7. [Formatting Features](#formatting-features)
-8. [Accessibility Features](#accessibility-features)
-9. [Metadata Preservation](#metadata-preservation)
-10. [Track Changes Support](#track-changes-support)
-11. [DOCX Introspection](#docx-introspection)
-12. [API Usage](#api-usage)
-13. [Architecture Overview](#architecture-overview)
-14. [Multilingual Support](#multilingual-support)
-15. [Batch Processing](#batch-processing)
-16. [Interactive Mode](#interactive-mode)
-17. [Troubleshooting](#troubleshooting)
-18. [FAQ](#faq)
+5. [Table of Contents Navigation](#table-of-contents-navigation)
+6. [Command Reference](#command-reference)
+7. [Output Files](#output-files)
+8. [Formatting Features](#formatting-features)
+9. [Accessibility Features](#accessibility-features)
+10. [Metadata Preservation](#metadata-preservation)
+11. [Track Changes Support](#track-changes-support)
+12. [DOCX Introspection](#docx-introspection)
+13. [API Usage](#api-usage)
+14. [Architecture Overview](#architecture-overview)
+15. [Multilingual Support](#multilingual-support)
+16. [Batch Processing](#batch-processing)
+17. [Interactive Mode](#interactive-mode)
+18. [Troubleshooting](#troubleshooting)
+19. [FAQ](#faq)
 
 ## Introduction
 
@@ -47,6 +48,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Comprehensive text formatting preservation including italic, bold, and mixed formatting**
 - **Advanced CSS generation with rule conflict resolution for proper display**
 - **TOC page number removal for web-appropriate navigation where page numbers are irrelevant**
+- **Clickable TOC navigation with intelligent section linking and accessibility compliance**
 
 ## Installation
 
@@ -231,6 +233,46 @@ For each processed DOCX file, doc2web generates:
 - Contains all images extracted from the document
 - Images are referenced from both Markdown and HTML
 
+## Table of Contents Navigation
+
+doc2web automatically converts Table of Contents sections into interactive navigation elements with the following features:
+
+### Automatic TOC Detection and Processing
+
+- **Smart Recognition**: Automatically identifies Table of Contents sections in DOCX documents
+- **Page Number Removal**: Removes page numbers from TOC entries as they are irrelevant for web navigation
+- **Semantic Marking**: Adds CSS classes and data attributes to TOC entries for reliable identification
+
+### Intelligent Section Linking
+
+- **Hierarchical Matching**: Uses multiple strategies to match TOC entries to document sections:
+  - Section ID matching (e.g., `section-1`, `section-1-a`)
+  - Text content comparison
+  - Numbering pattern recognition
+  - Fallback matching for edge cases
+- **Context-Aware**: Understands parent-child relationships in hierarchical documents
+- **Generic Implementation**: Works with any language or content domain without hardcoded patterns
+
+### User Experience Features
+
+- **Clickable Navigation**: All TOC entries become clickable links to their corresponding sections
+- **Smooth Scrolling**: Animated scrolling to target sections for better user experience
+- **Visual Feedback**: Hover and focus states provide clear interaction cues
+- **Target Highlighting**: Briefly highlights the target section when navigated to
+
+### Accessibility Compliance
+
+- **WCAG 2.1 Level AA**: Fully compliant with web accessibility standards
+- **ARIA Attributes**: Proper semantic markup for screen readers
+- **Keyboard Navigation**: Full keyboard accessibility support
+- **Focus Management**: Proper focus handling for assistive technologies
+
+### Technical Implementation
+
+- **Post-Processing**: TOC linking occurs after all HTML generation is complete
+- **Multi-Strategy Matching**: Robust algorithm handles various document structures
+- **Performance Optimized**: Efficient processing with minimal impact on conversion time
+- **Error Resilient**: Graceful handling of malformed or unusual TOC structures
 ## Formatting Features
 
 doc2web preserves the following elements and provides special handling for navigation elements:

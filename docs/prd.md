@@ -1,7 +1,7 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 4.4  
-**Last Updated:** June 2, 2025  
+**Document Version:** 4.5  
+**Last Updated:** June 3, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
 **Approved By:** [Pending]  
@@ -24,6 +24,7 @@
 | 4.2 | June 2, 2025 | Technical Team | Fixed hanging indentation for numbered headings and paragraphs with enhanced CSS specificity and margin reset |
 | 4.3 | June 2, 2025 | Technical Team | Added TOC page number removal functionality for web-appropriate navigation |
 | 4.4 | June 2, 2025 | Technical Team | Optimized HTML formatting to remove whitespace between elements while preserving newlines for compact output |
+| 4.5 | June 3, 2025 | Technical Team | Added TOC linking functionality with hierarchical navigation from TOC entries to document sections |
 
 ## Table of Contents
 
@@ -87,6 +88,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Enhance table presentation with professional styling and accessibility
 - Ensure proper text formatting conversion including italic, bold, and mixed styles
 - Remove page numbers from Table of Contents entries for web-appropriate navigation
+- Implement clickable TOC navigation with hierarchical section mapping and accessibility compliance
 
 ### 1.3 Project Scope
 
@@ -109,6 +111,7 @@ doc2web is focused on the conversion of DOCX documents to HTML and Markdown form
 - Generating properly formatted HTML with optimized output
 - Enhancing table presentation with professional styling and accessibility features
 - Ensuring proper text formatting conversion with comprehensive style mapping
+- Implementing clickable TOC navigation with hierarchical section mapping and accessibility compliance
 
 The scope explicitly excludes:
 
@@ -175,6 +178,7 @@ The scope explicitly excludes:
 - Process documents with mixed language content
 - Support right-to-left text and international characters
 - Automatically detect and properly decorate table of contents and index elements
+- Generate clickable navigation links from TOC entries to corresponding document sections
 - Maintain hierarchical list structures with proper nesting and numbering
 - Analyze document structure to identify special sections and formatting patterns
 - Extract exact numbering formats from DOCX XML structure
@@ -190,6 +194,7 @@ The scope explicitly excludes:
 - Enhance table presentation with professional styling and accessibility features
 - Ensure proper text formatting conversion with comprehensive style mapping
 - Remove page numbers from Table of Contents entries for web-appropriate navigation
+- Implement clickable TOC navigation with hierarchical section mapping and accessibility compliance
 
 #### Style Preservation
 

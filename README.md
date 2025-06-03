@@ -10,7 +10,7 @@ This tool extracts content from DOCX files while maintaining:
 - Images and tables
 - Styles and layout
 - Unicode and multilingual content
-- Table of Contents (TOC) with proper styling
+- Table of Contents (TOC) with clickable navigation links
 - Hierarchical list numbering and structure
 - WCAG 2.1 Level AA accessibility compliance
 - Document metadata preservation
@@ -133,6 +133,15 @@ doc2web automatically generates section IDs for numbered headings based on their
 - `1.2.a Details` becomes `id="section-1-2-a"`
 
 This enables direct linking to sections, smooth scrolling navigation, and accessibility improvements.
+
+### Table of Contents Navigation
+
+doc2web automatically converts Table of Contents entries into clickable navigation links:
+
+- **Automatic Detection**: Identifies TOC sections in DOCX documents and removes page numbers for web use
+- **Smart Linking**: Intelligently matches TOC entries to corresponding document sections using hierarchical patterns
+- **Accessibility Compliant**: WCAG 2.1 Level AA compliant navigation with proper ARIA attributes and keyboard support
+- **Visual Enhancement**: Hover and focus states with smooth scrolling to target sections
 
 ### Document Header Processing
 
