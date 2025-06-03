@@ -12,20 +12,13 @@ This tool extracts content from DOCX files while maintaining:
 - Unicode and multilingual content
 - Table of Contents (TOC) with proper styling
 - Hierarchical list numbering and structure
-- **WCAG 2.1 Level AA accessibility compliance**
-- **Document metadata preservation**
-- **Track changes visualization and handling**
-- **Exact DOCX numbering preservation through XML introspection**
-- **Reliable DOM serialization with content preservation**
-- **Section IDs for direct navigation to numbered headings and paragraphs**
-- **Document header extraction and processing with formatting preservation**
-- **Enhanced table formatting with professional styling and semantic structure**
-- **Hanging indentation fix with CSS rule conflict resolution for proper display of numbered content**
-- **TOC page number removal for web-appropriate navigation**
+- WCAG 2.1 Level AA accessibility compliance
+- Document metadata preservation
+- Track changes visualization and handling
+- Exact DOCX numbering preservation through XML introspection
+- Section IDs for direct navigation to numbered headings and paragraphs
 
-The app must not make any assumptions from test documents, the app must treat created css and html as ephemeral, they will be destroyed on every run.
-The css and HTML are individual to each document created, they will be named after the docx input, with folder pattern matched.
-The app must deeply inspect the docx and obtain css and formatting styles, font sizes, item prefixes etc. Nothing will be hard coded with the app. All generated CSS will be in an external stylesheet.
+The app treats generated CSS and HTML as ephemeral - they are regenerated for each document based on its unique structure. All styling is extracted from the DOCX XML structure, not hardcoded patterns.
 
 ## Project Structure
 
@@ -110,16 +103,6 @@ find . -name "*.docx" > docx-files.txt
 ./process-find.sh docx-files.txt
 ```
 
-### Diagnostic Testing
-
-For troubleshooting conversion issues:
-
-```bash
-node debug-test.js path/to/document.docx
-```
-
-This will create a debug-output/ directory with test files and diagnostic information.
-
 ## Output
 
 All processed files are stored in the `./output` directory, preserving the original directory structure:
@@ -139,7 +122,7 @@ output/
 - `--html-only`: Generate only HTML output, skip markdown
 - `--list`: Treat the input file as a list of files to process
 
-## Enhanced Features
+## Key Features
 
 ### Section IDs and Navigation
 
@@ -149,239 +132,59 @@ doc2web automatically generates section IDs for numbered headings based on their
 - `1.2 Overview` becomes `id="section-1-2"`
 - `1.2.a Details` becomes `id="section-1-2-a"`
 
-This enables:
+This enables direct linking to sections, smooth scrolling navigation, and accessibility improvements.
 
-- Direct linking to sections (e.g., `document.html#section-1-2-a`)
-- Smooth scrolling navigation
-- Accessibility improvements for screen readers
-- Visual highlighting of targeted sections
+### Document Header Processing
 
-Section IDs are derived directly from the DOCX numbering definitions, ensuring they match the exact hierarchical structure of the document regardless of language or content domain.
+Automatically extracts and processes document headers from DOCX files:
 
-### Document Header Extraction and Processing
-
-doc2web automatically extracts and processes document headers from DOCX files, placing them before the Table of Contents in the HTML output:
-
-#### Header Extraction Strategies
-
-1. **Header XML Files**: Extracts content from actual Word header files (`header1.xml`, `header2.xml`, `header3.xml`)
-2. **Document Analysis**: Falls back to analyzing document content for header-like material at the beginning
-3. **Header Types**: Supports different header types (first page, even pages, default headers)
-
-#### Features
-
+- **Header Extraction**: Extracts content from Word header files and document analysis
 - **Formatting Preservation**: Maintains original fonts, sizes, colors, alignment, and styling
 - **Graphics Inclusion**: Preserves images and graphics within headers with proper positioning
-- **Image Positioning**: Honors original DOCX image positioning including inline placement, margins, and transform offsets
 - **Responsive Design**: Headers adapt to different screen sizes and print media
 - **Accessibility**: Proper semantic HTML with ARIA roles for screen readers
-- **Content Detection**: Uses intelligent scoring to identify header content based on:
-  - Document position and formatting characteristics
-  - Style names and paragraph properties
-  - Presence of images or special formatting</search>
-</search_and_replace>
-
-#### Technical Implementation
-
-- **DOCX Introspection**: Analyzes actual Word document XML structure including image positioning data
-- **Style Preservation**: Converts DOCX formatting to equivalent CSS
-- **Image Processing**: Extracts images from DOCX archives and processes positioning information from XML
-- **Positioning Fidelity**: Honors inline vs anchored positioning, distance attributes, and transform offsets
-- **Semantic HTML**: Creates proper `<header>` elements with accessibility attributes and image containers
-- **CSS Generation**: Generates responsive styles for different header types and image positioning
-- **Content-Agnostic**: Works with any document regardless of language or domain</search>
-</search_and_replace>
-
-#### Recent Fixes (v1.2.8)
-
-- **Correct Placement**: Headers now appear at the very beginning of the HTML document, before the TOC and any other content
-- **Page Numbering Filter**: Automatically filters out page numbering text like "Page 1 of 5", "Page xx of xx", etc.
-- **Clean Content**: Only meaningful header content is displayed, excluding automatic page numbering
-- **Professional Structure**: Document order is now: Header → TOC → Document Content
-
-This ensures that document headers appear correctly in the converted HTML, maintaining the professional appearance and context of the original Word document.
-
-### Hanging Margins and Text Indentation
-
-doc2web now properly handles hanging margins (also known as hanging indents) from DOCX documents, replicating Microsoft Word's text formatting behavior:
-
-#### Features
-
-- **TOC Hanging Indents**: Table of Contents entries display with proper hanging margins where long entries wrap with subsequent lines indented under the first line of text
-- **Numbered Content Hanging Margins**: Numbered headings and paragraphs display with proper hanging indents where the number appears at the left margin and text content is indented
-- **DOCX XML Introspection**: Extracts precise hanging indent measurements from DOCX XML structure
-- **CSS Implementation**: Converts DOCX hanging indents to appropriate CSS using `text-indent` and `padding-left` properties
-- **Enhanced Text Wrapping**: Comprehensive word wrapping support with `overflow-wrap`, `word-wrap`, and `hyphens` for proper line breaking
-
-#### Technical Implementation
-
-- **Block Layout for TOC**: Uses block layout instead of flex for proper hanging indent behavior
-- **Negative Text Indent**: Implements hanging indents using negative `text-indent` values with corresponding `padding-left`
-- **Number Positioning**: Positions numbers using CSS `::before` pseudo-elements with precise `left` positioning
-- **Adaptive Logic**: Automatically adjusts hanging indent values when DOCX values are too small for proper display
-- **Clean Display**: Optional removal of TOC dots and page numbers for cleaner appearance while maintaining hanging indents
-
-#### Example CSS Output
-
-```css
-/* TOC entries with hanging indents */
-.docx-toc-entry {
-  text-indent: -1.5em;
-  padding-left: 1.5em;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
-  hyphens: auto;
-}
-
-/* Numbered content with hanging margins */
-.docx-numbering-level-0 {
-  text-indent: -36pt;
-  padding-left: 36pt;
-}
-
-.docx-numbering-level-0::before {
-  left: -36pt;
-  position: absolute;
-}
-```
-
-This implementation ensures that converted HTML documents maintain the same professional text formatting and readability as the original Word documents.
-
-#### Recent Hanging Indentation Fix (v4.2)
-
-- **CSS Rule Conflict Resolution**: Fixed margin compounding issues where multiple CSS selectors were applying conflicting margins to numbered elements
-- **Enhanced CSS Specificity**: Added `!important` declarations to override existing numbering styles and ensure proper hanging indentation
-- **Margin Reset Implementation**: Applied `margin-left: 0pt !important` to reset margins and prevent CSS rule conflicts
-- **Format-Specific Adjustments**: Implemented different hanging indent values for various numbering formats (letters: -24pt, Roman numerals: -30pt)
-- **Improved Display Fidelity**: Numbered items now display with proper hanging indentation matching Microsoft Word's behavior
 
 ### Enhanced Table Formatting
 
-doc2web now provides comprehensive table formatting improvements that significantly enhance the presentation and accessibility of tables from DOCX documents:
+Comprehensive table formatting improvements:
 
-#### Features
-
-- **Professional Styling**: Clean borders, consistent padding, and alternating row colors for improved readability
-- **Semantic HTML Structure**: Proper `<thead>` and `<tbody>` sections with `<th>` elements for headers
-- **Accessibility Enhancements**: Header cells with `scope="col"` attributes and proper table captions
-- **Responsive Design**: Tables adapt to different screen sizes with horizontal scrolling on mobile devices
-- **Hover Effects**: Visual feedback when hovering over table rows for better user interaction
-
-#### Technical Implementation
-
-- **Automatic Header Detection**: Intelligently converts the first row to proper table headers based on content patterns
-- **Default Styling**: Comprehensive CSS for `docx-table-default` class with professional appearance
-- **Responsive Wrapper**: `table-responsive` class provides horizontal scrolling on small screens
-- **Border Styling**: Clean 1pt borders with proper collapse behavior for professional appearance
-- **Cell Formatting**: Consistent padding and text alignment for optimal readability
-
-#### Example CSS Output
-
-```css
-/* Professional table styling */
-.docx-table-default {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 1em 0;
-}
-
-.docx-table-default th,
-.docx-table-default td {
-  padding: 8pt 12pt;
-  border: 1pt solid #d0d0d0;
-  text-align: left;
-  vertical-align: top;
-}
-
-.docx-table-default th {
-  background-color: #f8f9fa;
-  font-weight: bold;
-}
-
-.docx-table-default tbody tr:nth-child(even) {
-  background-color: #f8f9fa;
-}
-```
-
-This enhancement ensures that tables from DOCX documents are properly formatted with modern web standards while maintaining accessibility and professional appearance.
-
-### Technical Features
-
-doc2web implements advanced DOCX introspection and content preservation:
-
-- **Exact Numbering**: Extracts precise numbering definitions from DOCX XML structure
-- **Content Preservation**: Comprehensive DOM serialization with fallback mechanisms
-- **Structure Fidelity**: Maintains hierarchical relationships from original documents
-- **Modular Architecture**: Clean, focused modules for improved maintainability
-
-For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
+- **Professional Styling**: Clean borders, consistent padding, and alternating row colors
+- **Semantic HTML Structure**: Proper `<thead>` and `<tbody>` sections with `<th>` elements
+- **Accessibility Enhancements**: Header cells with `scope="col"` attributes and table captions
+- **Responsive Design**: Tables adapt to different screen sizes with horizontal scrolling
+- **Automatic Header Detection**: Intelligently converts first row to proper table headers
 
 ### Accessibility Compliance (WCAG 2.1 Level AA)
 
-doc2web now ensures that generated HTML meets WCAG 2.1 Level AA accessibility standards:
+Generated HTML meets WCAG 2.1 Level AA accessibility standards:
 
 - Proper semantic structure with HTML5 sectioning elements and ARIA landmarks
 - Accessible tables with captions, header cells, and proper scope attributes
 - Images with appropriate alt text and figure/figcaption elements
 - Proper heading hierarchy with no skipped levels
 - Skip navigation links for keyboard users
-- Keyboard focus indicators and proper tab order
-- High contrast mode support
-- Reduced motion support
-- Screen reader compatibility
-
-To enable accessibility features (enabled by default):
-
-```javascript
-// When using the API
-const { extractAndApplyStyles } = require('./lib');
-const options = { enhanceAccessibility: true };
-const result = await extractAndApplyStyles('document.docx', null, options);
-```
+- High contrast mode support and screen reader compatibility
 
 ### Metadata Preservation
 
-doc2web now extracts and preserves document metadata in the generated HTML:
+Extracts and preserves document metadata in the generated HTML:
 
 - Title, description, and keywords
 - Creation and modification dates
 - Document statistics (pages, words, characters)
-- Author is always set to "doc2web" (regardless of original document author)
 - Dublin Core metadata
 - Open Graph and Twitter Card metadata for social sharing
 - JSON-LD structured data for search engines
 
-To enable metadata preservation (enabled by default):
-
-```javascript
-// When using the API
-const { extractAndApplyStyles } = require('./lib');
-const options = { preserveMetadata: true };
-const result = await extractAndApplyStyles('document.docx', null, options);
-```
-
 ### Track Changes Support
 
-doc2web now handles tracked changes in documents:
+Handles tracked changes in documents:
 
 - Visual representation of insertions, deletions, moves, and formatting changes
 - Multiple view modes (show changes, hide changes, accept all, reject all)
 - Author and date information for each change
 - Track changes legend with toggle functionality
 - Keyboard shortcut (Alt+T) to toggle track changes visibility
-
-To configure track changes handling:
-
-```javascript
-// When using the API
-const { extractAndApplyStyles } = require('./lib');
-const options = {
-  trackChangesMode: 'show', // 'show', 'hide', 'accept', or 'reject'
-  showAuthor: true,
-  showDate: true
-};
-const result = await extractAndApplyStyles('document.docx', null, options);
-```
 
 ## API Usage
 
@@ -398,199 +201,76 @@ convertDocument('document.docx').catch(console.error);
 
 For detailed API options and configuration, see [`docs/architecture.md`](docs/architecture.md).
 
-## Recent Fixes and Enhancements
-
-### Recent Updates
-
-**v1.3.3 (2025-06-02)**
-
-- **HTML Formatting Optimization**: Optimized HTML output by removing all whitespace between elements while preserving newlines for improved file size and performance
-- **Compact Output**: Reduced HTML file size by eliminating unnecessary indentation spaces while maintaining readability through preserved line breaks
-- **Performance Enhancement**: Streamlined HTML formatting process for faster generation and smaller output files
-
-**v1.3.2 (2025-06-02)**
-
-- **Hanging Indentation Fix**: Resolved CSS rule conflicts causing margin compounding in numbered elements
-- **Enhanced CSS Specificity**: Added `!important` declarations to override conflicting numbering styles
-- **Margin Reset Implementation**: Applied margin resets to prevent CSS rule conflicts and ensure proper hanging indentation
-- **Format-Specific Adjustments**: Implemented different hanging indent values for various numbering formats
-- **Improved Display Fidelity**: Fixed hanging indentation to match Microsoft Word's behavior for numbered content
-- **TOC Page Number Removal**: Implemented targeted removal of page numbers from Table of Contents entries for web-appropriate navigation
-
-**v1.3.1 (2025-05-31)**
-
-- **Hanging Margins Fix**: Fixed hanging indent implementation for both TOC entries and main content
-- **TOC Layout Improvements**: Converted TOC from flex to block layout for proper text wrapping with hanging indents
-- **Enhanced Text Wrapping**: Added comprehensive word wrapping support with `overflow-wrap`, `word-wrap`, and `hyphens`
-- **Clean TOC Display**: Removed dots and page numbers from TOC for cleaner appearance while maintaining hanging indents
-- **Numbering Alignment**: Fixed hanging indent logic to ensure proper negative text-indent values for numbered content
-- **Header Image Extraction**: Implemented comprehensive header image extraction and positioning functionality
-- **Image Positioning**: Added DOCX XML introspection to extract and honor image positioning information from original documents
-- **Semantic HTML**: Enhanced image output with proper container structure and accessibility attributes
-- **Table Formatting Enhancement**: Improved table presentation with professional styling, semantic structure, and accessibility features
-
-**v1.3.0 (2025-05-26)**
-
-- **Modular Refactoring**: Split large files into focused, maintainable modules
-- **Enhanced Architecture**: Improved code organization with clear separation of concerns
-- **API Preservation**: Maintained backward compatibility while improving internal structure
-- **Better Maintainability**: Smaller, focused modules for easier development and testing
-
-**v1.2.8 (2025-05-23)**
-
-- Added comprehensive document header extraction and processing
-- Fixed TOC duplicate numbering issue using CSS-only approach
-- Enhanced page numbering filtering for cleaner header content
-
-**v1.2.7 (2025-05-23)**
-
-- Enhanced document parser to extract page margins and settings
-- Improved document layout fidelity
-
-**v1.2.6 (2025-05-23)**
-
-- Fixed missing paragraph numbers and subheader letters in TOC and document
-- Enhanced numbering display across all heading levels
-
-**v1.2.5 (2025-05-23)**
-
-- Fixed character overlap and numbering display issues
-- Added special handling for Roman numerals
-
-**v1.2.4 (2025-05-23)**
-
-- Added section IDs for direct navigation to numbered headings
-- Enhanced accessibility and navigation capabilities
-
-**v1.2.0-1.2.3 (2025-05-22/23)**
-
-- Comprehensive DOCX introspection for exact numbering preservation
-- Enhanced TOC implementation with improved visual fidelity
-- Fixed critical DOM serialization and content preservation issues
-
-For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
-
 ## Troubleshooting
 
 ### Using the Debug Script
 
-If you encounter issues with document conversion, use the debug script first:
+If you encounter issues with document conversion, use the debug script:
 
 ```bash
 node debug-test.js path/to/your/document.docx
 ```
 
-This will create a debug-output/ directory with:
+This creates a debug-output/ directory with test files and diagnostic information.
 
-- Test HTML and CSS files
-- Detailed diagnostic information
-- Component test results
+### Common Issues
 
-### Checking for Successful Conversion
+1. **Conversion Failures**
+   - Ensure DOCX file is not corrupted or password-protected
+   - Check that all required dependencies are installed
+   - For large files, process individually rather than in batch mode
 
-Look for these indicators of successful conversion:
+2. **Missing Content**
+   - Update to latest version which includes content preservation fixes
+   - Use the debug script to identify where content is being lost
+   - Check error logs for specific issues
 
-- HTML files > 1000 characters for typical documents
-- CSS files with generated styles
-- Proper directory structure maintained
-- Images extracted to images/ subdirectory
+3. **Formatting Issues**
+   - Ensure you're using the latest version for formatting fixes
+   - Check that HTML files are > 1000 characters for typical documents
+   - Verify CSS files contain generated styles appropriate for the document
 
-### XML Namespace Errors
+4. **Accessibility Issues**
+   - Update to latest version which includes accessibility processor fixes
+   - Check that the enhanceAccessibility option is enabled
+   - Use the debug script to test accessibility features
 
-If you encounter errors like `Cannot resolve QName w` or `Cannot resolve QName a`, this indicates an issue with XML namespace resolution in the DOCX file. These errors have been fixed in v1.0.1.
+### Performance Tips
 
-### Border Style Errors
+- For very large documents, increase Node.js memory limit:
 
-If you see errors related to border values or styles, ensure you're using the latest version which includes fixes for handling undefined or missing border properties.
+  ```bash
+  NODE_OPTIONS=--max-old-space-size=4096 node doc2web.js large-document.docx
+  ```
 
-### TOC and List Structure Issues
+- Process complex documents individually for better error isolation
+- Use the debug script for troubleshooting specific conversion issues
 
-If you notice problems with Table of Contents formatting or hierarchical list structures, make sure you're using v1.2.0 or later, which includes comprehensive DOCX introspection for exact numbering and formatting preservation.
+## Recent Updates
 
-### Numbering Format Issues
+**v1.3.3 (2025-06-02)**
 
-If you encounter issues with complex numbering formats (multi-level, mixed formats, etc.), ensure you're using v1.2.0 or later, which extracts exact numbering definitions from the DOCX XML structure rather than inferring them from text patterns.
+- HTML formatting optimization with compact output
+- Performance enhancement through streamlined processing
 
-### DOM Serialization Issues
+**v1.3.2 (2025-06-02)**
 
-If you encounter missing content, empty sections, or corrupted HTML output:
+- Hanging indentation fixes with enhanced CSS specificity
+- TOC page number removal for web-appropriate navigation
 
-1. Check the console for serialization metrics and error messages
-2. Ensure you're using v1.2.1 or later, which includes fixes for content preservation during DOM manipulation
-3. For complex documents with extensive DOM manipulation, consider enabling detailed logging
-4. If issues persist with specific documents, try processing them with the debug script
+**v1.3.1 (2025-05-31)**
 
-### Content Loss Issues
+- Hanging margins implementation for TOC and numbered content
+- Header image extraction and positioning functionality
+- Table formatting enhancement with professional styling
 
-If you notice content missing from the generated HTML:
+**v1.3.0 (2025-05-26)**
 
-1. Update to v1.2.1 which fixes content loss during DOM manipulation
-2. Check the error logs for specific issues
-3. Use the debug script to identify exactly where content is being lost
-4. Verify that the original DOCX file is not corrupted
+- Modular refactoring with focused, maintainable modules
+- Enhanced architecture with clear separation of concerns
+- API preservation with improved internal structure
 
-### Accessibility Processing Errors
-
-If accessibility features aren't working correctly:
-
-1. Update to v1.2.1 which fixes issues in the accessibility processor
-2. Check that the enhanceAccessibility option is enabled
-3. Use the debug script to test the accessibility processor independently
-
-### TOC and Numbering Display Issues
-
-If you encounter issues with Table of Contents formatting or paragraph numbering display:
-
-1. **TOC Formatting Problems**
-   - **Symptom**: Missing leader dots or misaligned page numbers
-   - **Solution**: Update to v1.2.2 which implements a flex-based layout for TOC entries
-   - **Diagnostic**: Check the HTML structure for proper TOC entry elements with text, dots, and page number spans
-   - **Fix**: Verify that the CSS contains proper TOC styles with flex layout and background-image for leader dots
-
-2. **Paragraph Numbering Issues**
-   - **Symptom**: Missing numbers or incorrect formatting in numbered paragraphs
-   - **Solution**: Update to v1.2.2 which uses CSS ::before pseudo-elements for numbering
-   - **Diagnostic**: Inspect the HTML for data-numbering-id and data-numbering-level attributes
-   - **Fix**: Ensure the CSS contains proper counter-reset and counter-increment rules for numbering
-
-3. **Hierarchical Numbering Problems**
-   - **Symptom**: Incorrect hierarchical numbering (e.g., 1.1, 1.2, etc.)
-   - **Solution**: Update to v1.2.2 which refines the counter reset strategy
-   - **Diagnostic**: Run the debug script and examine the numbering definitions in debug-output/debug-info.json
-   - **Fix**: Check that the CSS properly implements the hierarchical counter structure
-
-4. **Section ID Issues**
-   - **Symptom**: Missing or incorrect section IDs for headings and numbered paragraphs
-   - **Solution**: Update to v1.2.4 which implements automatic section ID generation
-   - **Diagnostic**: Run the debug script and check for section IDs in the HTML output
-   - **Fix**: Verify that the HTML contains proper id attributes with the pattern "section-X-Y-Z"
-
-5. **Character Overlap Issues**
-   - **Symptom**: Characters overlapping in paragraphs with indentation or numbering
-   - **Solution**: Update to v1.2.5 which fixes spacing and positioning for numbered elements
-   - **Diagnostic**: Inspect the HTML for proper padding and margin values
-   - **Fix**: Verify that the CSS contains proper box model properties for numbered elements
-
-6. **Roman Numeral Display Issues**
-   - **Symptom**: Roman numerals (I, II, V, VI, etc.) not displaying correctly in section headings
-   - **Solution**: Update to v1.2.5 which adds special handling for Roman numerals
-   - **Diagnostic**: Check the HTML for the roman-numeral-heading class
-   - **Fix**: Ensure the CSS contains specific rules for Roman numeral sections
-
-7. **Hanging Margins and Text Indentation Issues**
-   - **Symptom**: TOC entries truncating instead of wrapping with hanging indents, or numbered content not displaying proper hanging margins
-   - **Solution**: Update to v1.3.1 which fixes hanging indent implementation for both TOC and main content
-   - **Diagnostic**: Check the HTML for proper `text-indent` and `padding-left` CSS properties
-   - **Fix**: Verify that TOC uses block layout and numbered content has proper negative text-indent values
-   - **TOC Specific**: Ensure TOC entries use `text-indent: -1.5em` and `padding-left: 1.5em` with block display
-   - **Numbered Content**: Verify numbered elements have adequate hanging indents (typically `-36pt` text-indent with `36pt` padding-left)
-
-### General Issues
-
-1. Make sure your DOCX file is not corrupted or password-protected
-2. Check that you have all required dependencies installed
-3. For large files, consider processing them individually rather than in batch mode
-4. For complex documents with many styles, ensure you have sufficient memory allocated
+For complete version history and detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).
 
 ## Contributing
 

@@ -9,17 +9,17 @@
 5. [Command Reference](#command-reference)
 6. [Output Files](#output-files)
 7. [Formatting Features](#formatting-features)
-8. [Multilingual Support](#multilingual-support)
-9. [Batch Processing](#batch-processing)
-10. [Interactive Mode](#interactive-mode)
-11. [Accessibility Features](#accessibility-features)
-12. [Metadata Preservation](#metadata-preservation)
-13. [Track Changes Support](#track-changes-support)
-14. [DOCX Introspection](#docx-introspection)
-15. [API Usage](#api-usage)
-16. [Architecture Overview](#architecture-overview)
+8. [Accessibility Features](#accessibility-features)
+9. [Metadata Preservation](#metadata-preservation)
+10. [Track Changes Support](#track-changes-support)
+11. [DOCX Introspection](#docx-introspection)
+12. [API Usage](#api-usage)
+13. [Architecture Overview](#architecture-overview)
+14. [Multilingual Support](#multilingual-support)
+15. [Batch Processing](#batch-processing)
+16. [Interactive Mode](#interactive-mode)
 17. [Troubleshooting](#troubleshooting)
-18. [FAQ](#faq) 
+18. [FAQ](#faq)
 
 ## Introduction
 
@@ -44,9 +44,8 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Modular architecture for improved maintainability and extensibility**
 - **Generates properly formatted HTML with indentation and line breaks for improved readability and debugging**
 - **Enhanced table formatting with professional styling, semantic structure, and accessibility features**
-- **Bullet point enhancement with proper display and indentation from DOCX documents**
-- **Italic formatting fix with comprehensive style mapping and validation to ensure proper conversion from DOCX to HTML**
-- **Hanging indentation fix with CSS rule conflict resolution to ensure proper display of numbered headings and paragraphs**
+- **Comprehensive text formatting preservation including italic, bold, and mixed formatting**
+- **Advanced CSS generation with rule conflict resolution for proper display**
 - **TOC page number removal for web-appropriate navigation where page numbers are irrelevant**
 
 ## Installation
@@ -223,9 +222,9 @@ For each processed DOCX file, doc2web generates:
 - Contains detailed styling for leader lines and page number alignment
 - Preserves indentation and formatting for different list levels
 - **Contains CSS counters that exactly match DOCX numbering definitions**
-- **Includes enhanced bullet point styles with high CSS specificity for proper display and indentation**
-- **Contains comprehensive italic formatting styles with fallback rules and enhanced specificity**
-- **Includes hanging indentation fixes with !important declarations to resolve CSS rule conflicts and ensure proper display**
+- **Includes enhanced styling with high CSS specificity for proper display**
+- **Contains comprehensive formatting styles with fallback rules and enhanced specificity**
+- **Includes CSS rule conflict resolution with !important declarations for proper display**
 
 ### Images Folder
 
@@ -246,7 +245,7 @@ doc2web preserves the following elements and provides special handling for navig
 
 ### Text Formatting
 
-- Bold, italic, underline (with comprehensive italic formatting preservation from DOCX)
+- Bold, italic, underline with comprehensive preservation from DOCX
 - Strikethrough
 - Superscript and subscript
 - Font styles and sizes (in HTML output)
@@ -262,7 +261,7 @@ doc2web preserves the following elements and provides special handling for navig
 
 ### Enhanced Table Formatting
 
-doc2web now provides comprehensive table formatting improvements:
+doc2web provides comprehensive table formatting improvements:
 
 - **Professional Styling**: Clean borders, consistent padding, and alternating row colors
 - **Semantic Structure**: Proper `<thead>` and `<tbody>` sections with `<th>` elements for headers
@@ -306,8 +305,8 @@ doc2web provides advanced handling of hierarchical lists:
 - **Resolves actual sequential numbers based on document position**
 - **Maintains hierarchical relationships from original document**
 - **Generates CSS counters that precisely match DOCX numbering**
-- **Ensures proper bullet point display with enhanced CSS specificity to override inline styles**
-- **Fixes hanging indentation display issues with CSS rule conflict resolution and margin reset techniques**
+- **Ensures proper display with enhanced CSS specificity to override inline styles**
+- **Fixes display issues with CSS rule conflict resolution and margin reset techniques**
 
 ## Accessibility Features
 
@@ -368,6 +367,7 @@ doc2web extracts and preserves document metadata in the generated HTML:
 ### Metadata Usage
 
 The preserved metadata improves:
+
 - Search engine optimization (SEO)
 - Social media sharing
 - Document organization and cataloging
@@ -406,7 +406,7 @@ doc2web handles tracked changes in documents:
 
 ## DOCX Introspection
 
-doc2web now uses comprehensive DOCX introspection to extract exact numbering and formatting information directly from the DOCX XML structure:
+doc2web uses comprehensive DOCX introspection to extract exact numbering and formatting information directly from the DOCX XML structure:
 
 ### Numbering Extraction
 
@@ -450,7 +450,7 @@ doc2web now uses comprehensive DOCX introspection to extract exact numbering and
 
 For developers who want to integrate doc2web into their own applications, the tool provides a JavaScript API:
 
-### Basic Usage
+### Basic API Usage
 
 ```javascript
 const { extractAndApplyStyles } = require('./lib');
@@ -500,22 +500,24 @@ doc2web features a modular architecture designed for maintainability and extensi
 The application has been refactored into focused, single-responsibility modules:
 
 #### CSS Generation Modules (`lib/css/generators/`)
+
 - **base-styles.js**: Document defaults and font utilities
 - **paragraph-styles.js**: Word-like paragraph formatting
-- **character-styles.js**: Inline text styling
+- **character-styles.js**: Inline text styling including comprehensive italic formatting with fallback rules
 - **table-styles.js**: Table layout and borders
 - **numbering-styles.js**: CSS counters, hierarchical numbering, and bullet point display with enhanced CSS specificity
-- **character-styles.js**: Inline text styling including comprehensive italic formatting with fallback rules
 - **toc-styles.js**: Table of Contents with flex layout
 - **utility-styles.js**: General utility classes
 - **specialized-styles.js**: Accessibility and track changes styles
 
 #### HTML Processing Modules (`lib/html/`)
+
 - **generators/**: Style mapping, image processing, HTML formatting with proper indentation
 - **processors/**: Heading, TOC, and numbering processors
 - **Main orchestrator**: Coordinates all HTML generation with enhanced formatting
 
 #### Benefits of Modular Architecture
+
 - **Improved Maintainability**: Each module has a focused purpose
 - **Better Testing**: Components can be tested in isolation
 - **Enhanced Readability**: Smaller, focused files
@@ -668,7 +670,7 @@ A: The HTML output attempts to preserve styling, but complex layouts may differ 
 A: These navigation elements are automatically detected and properly decorated with appropriate styling in the output. This maintains their visual structure while preventing unnecessary duplication in web formats. Additionally, page numbers are automatically removed from TOC entries since they are irrelevant for web-based navigation where users click hyperlinks instead of referencing page numbers.
 
 **Q: How does doc2web handle hierarchical lists?**  
-A: With the new DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting.
+A: With the DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting.
 
 **Q: Can doc2web convert to PDF?**  
 A: No, only Markdown and HTML outputs are currently supported.
@@ -688,13 +690,10 @@ A: Not yet, but you can use it directly from the source code.
 A: The modular architecture improves maintainability, makes the code easier to understand, and allows for better testing and debugging. While users don't directly interact with the modules, they benefit from more reliable and maintainable software.
 
 **Q: Is the generated HTML properly formatted for debugging?**  
-A: Yes, doc2web now generates properly formatted HTML with indentation and line breaks, making it easy to read, debug, and inspect. The HTML follows web development best practices while preserving all document content and structure.
+A: Yes, doc2web generates properly formatted HTML with indentation and line breaks, making it easy to read, debug, and inspect. The HTML follows web development best practices while preserving all document content and structure.
 
-**Q: How does doc2web handle table formatting from DOCX documents?**  
-A: doc2web now provides comprehensive table formatting with professional styling, semantic HTML structure, and accessibility features. Tables automatically get proper `<thead>` and `<tbody>` sections, header detection, responsive design, and modern CSS styling with borders, padding, and hover effects.
-
-**Q: Does doc2web properly convert italic text from DOCX documents?**  
-A: Yes, doc2web now includes a comprehensive italic formatting fix that ensures all types of italic text (direct formatting, character styles, and mixed formatting) are properly converted from DOCX to HTML. The fix includes enhanced mammoth.js configuration, comprehensive style mapping, and validation to ensure italic formatting is preserved throughout the conversion process.
+**Q: How does doc2web handle formatting from DOCX documents?**  
+A: doc2web provides comprehensive formatting preservation including table styling with professional appearance, semantic HTML structure, and accessibility features. Text formatting (italic, bold, mixed styles) is preserved through enhanced style mapping and CSS generation with proper specificity and conflict resolution.
 
 ---
 
