@@ -1,6 +1,6 @@
 # doc2web Product Requirements Document
 
-**Document Version:** 4.5  
+**Document Version:** 4.6  
 **Last Updated:** June 3, 2025  
 **Status:** Draft  
 **Authors:** Technical Team  
@@ -25,6 +25,7 @@
 | 4.3 | June 2, 2025 | Technical Team | Added TOC page number removal functionality for web-appropriate navigation |
 | 4.4 | June 2, 2025 | Technical Team | Optimized HTML formatting to remove whitespace between elements while preserving newlines for compact output |
 | 4.5 | June 3, 2025 | Technical Team | Added TOC linking functionality with hierarchical navigation from TOC entries to document sections |
+| 4.6 | June 3, 2025 | Technical Team | Added return to top button functionality with theme-aware styling and accessibility support |
 
 ## Table of Contents
 
@@ -89,6 +90,8 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 - Ensure proper text formatting conversion including italic, bold, and mixed styles
 - Remove page numbers from Table of Contents entries for web-appropriate navigation
 - Implement clickable TOC navigation with hierarchical section mapping and accessibility compliance
+- Provide return to top button with theme-aware styling, smooth scrolling, and full accessibility support
+- Provide return to top button functionality for improved user navigation and accessibility
 
 ### 1.3 Project Scope
 
@@ -195,6 +198,8 @@ The scope explicitly excludes:
 - Ensure proper text formatting conversion with comprehensive style mapping
 - Remove page numbers from Table of Contents entries for web-appropriate navigation
 - Implement clickable TOC navigation with hierarchical section mapping and accessibility compliance
+- Provide return to top button with theme-aware styling, smooth scrolling, and full accessibility support
+- Provide return to top button functionality for improved user navigation and accessibility
 
 #### Style Preservation
 
@@ -452,5 +457,6 @@ The application has undergone significant enhancements to improve document conve
 - **Table Formatting Enhancement**: Improved table presentation with professional styling and accessibility
 - **Text Formatting Enhancement**: Fixed text formatting conversion with comprehensive style mapping
 - **TOC Page Number Removal**: Implemented targeted removal of page numbers from Table of Contents entries
+- **Return to Top Button**: Added always-visible return to top button with theme-aware styling, smooth scrolling, and accessibility support
 
 For detailed technical implementation information, see [`docs/architecture.md`](docs/architecture.md).

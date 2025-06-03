@@ -17,6 +17,7 @@ This tool extracts content from DOCX files while maintaining:
 - Track changes visualization and handling
 - Exact DOCX numbering preservation through XML introspection
 - Section IDs for direct navigation to numbered headings and paragraphs
+- Return to top button for improved navigation and user experience
 
 The app treats generated CSS and HTML as ephemeral - they are regenerated for each document based on its unique structure. All styling is extracted from the DOCX XML structure, not hardcoded patterns.
 
@@ -152,6 +153,17 @@ Automatically extracts and processes document headers from DOCX files:
 - **Graphics Inclusion**: Preserves images and graphics within headers with proper positioning
 - **Responsive Design**: Headers adapt to different screen sizes and print media
 - **Accessibility**: Proper semantic HTML with ARIA roles for screen readers
+
+### Return to Top Button
+
+Provides convenient navigation back to the document start:
+
+- **Always Visible**: Button remains visible in the bottom left corner for easy access
+- **Theme-Aware Styling**: Automatically matches document colors and fonts for visual consistency
+- **Smooth Scrolling**: Animated scrolling to the top of the document for better user experience
+- **Accessibility Compliant**: Full keyboard navigation support with proper ARIA labels
+- **Responsive Design**: Adapts to different screen sizes and devices
+- **Visual Feedback**: Hover and focus states provide clear interaction cues
 
 ### Enhanced Table Formatting
 

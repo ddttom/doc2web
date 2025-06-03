@@ -49,6 +49,7 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **Advanced CSS generation with rule conflict resolution for proper display**
 - **TOC page number removal for web-appropriate navigation where page numbers are irrelevant**
 - **Clickable TOC navigation with intelligent section linking and accessibility compliance**
+- **Return to top button for improved navigation and user experience**
 
 ## Installation
 
@@ -273,6 +274,32 @@ doc2web automatically converts Table of Contents sections into interactive navig
 - **Multi-Strategy Matching**: Robust algorithm handles various document structures
 - **Performance Optimized**: Efficient processing with minimal impact on conversion time
 - **Error Resilient**: Graceful handling of malformed or unusual TOC structures
+
+## Return to Top Button
+
+doc2web automatically adds a return to top button to all generated HTML documents for improved navigation:
+
+### Features
+
+- **Always Visible**: The button remains visible in the bottom left corner of the viewport for easy access
+- **Theme Integration**: Automatically styled to match the document's color scheme and fonts
+- **Smooth Scrolling**: Provides animated scrolling to the top of the document for better user experience
+- **Accessibility Compliant**: Full keyboard navigation support with proper ARIA labels and screen reader compatibility
+
+### User Experience
+
+- **Visual Feedback**: Hover and focus states provide clear interaction cues
+- **Responsive Design**: Adapts to different screen sizes and devices
+- **Consistent Positioning**: Fixed position ensures the button is always accessible regardless of document length
+- **Professional Appearance**: Circular design with up arrow icon matches modern web standards
+
+### Technical Implementation
+
+- **Theme-Aware Styling**: Uses CSS variables derived from the document's theme colors
+- **Performance Optimized**: Lightweight implementation with minimal impact on page load
+- **Cross-Browser Compatible**: Works consistently across all modern browsers
+- **Accessibility Standards**: Meets WCAG 2.1 Level AA compliance requirements
+
 ## Formatting Features
 
 doc2web preserves the following elements and provides special handling for navigation elements:
@@ -733,6 +760,9 @@ A: The modular architecture improves maintainability, makes the code easier to u
 
 **Q: Is the generated HTML properly formatted for debugging?**  
 A: Yes, doc2web generates properly formatted HTML with indentation and line breaks, making it easy to read, debug, and inspect. The HTML follows web development best practices while preserving all document content and structure.
+
+**Q: Does doc2web add navigation aids to the generated HTML?**  
+A: Yes, doc2web automatically adds a return to top button that appears in the bottom left corner of all generated HTML documents. The button is always visible, uses theme-aware styling to match the document's appearance, provides smooth scrolling to the top, and includes full accessibility support with keyboard navigation and ARIA labels.
 
 **Q: How does doc2web handle formatting from DOCX documents?**  
 A: doc2web provides comprehensive formatting preservation including table styling with professional appearance, semantic HTML structure, and accessibility features. Text formatting (italic, bold, mixed styles) is preserved through enhanced style mapping and CSS generation with proper specificity and conflict resolution.
