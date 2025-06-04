@@ -435,26 +435,31 @@ The italic formatting fix addresses a critical issue where italic text from DOCX
 #### 8.2.2 Multi-Phase Solution
 
 **Phase 1: Mammoth.js Configuration Fix**
+
 - Changed `includeDefaultStyleMap: false` to `includeDefaultStyleMap: true` in [`lib/html/html-generator.js`](lib/html/html-generator.js)
 - Added default style map to all fallback conversions
 - Added debug logging for mammoth conversion
 
 **Phase 2: Enhanced Style Mappings**
+
 - Added comprehensive italic mappings in [`lib/html/generators/style-mapping.js`](lib/html/generators/style-mapping.js)
 - Added support for character style italics
 - Added debug logging to track italic mapping application
 
 **Phase 3: Improved CSS Generation**
+
 - Enhanced [`lib/css/generators/character-styles.js`](lib/css/generators/character-styles.js) with `!important` specificity
 - Added fallback CSS rules to ensure em tags are always styled as italic
 
 **Phase 4: Added Validation**
+
 - Created `preserveItalicFormatting()` function in [`lib/html/generators/html-processing.js`](lib/html/generators/html-processing.js)
 - Added validation before HTML serialization to ensure italic elements are preserved
 
 #### 8.2.3 Enhanced Mammoth Configuration (`lib/html/html-generator.js`)
 
 **Before**:
+
 ```javascript
 const result = await mammoth.convertToHtml({
   path: docxPath,
@@ -466,6 +471,7 @@ const result = await mammoth.convertToHtml({
 ```
 
 **After**:
+
 ```javascript
 // First try with custom style map AND default mappings for basic formatting
 const result = await mammoth.convertToHtml({
@@ -482,6 +488,7 @@ console.log('Mammoth conversion completed with default style map enabled');
 #### 8.2.4 Enhanced Style Mappings (`lib/html/generators/style-mapping.js`)
 
 **Added Comprehensive Italic Mappings**:
+
 ```javascript
 // Enhanced italic mappings for better coverage
 styleMap.push("r[italic=true] => em");
@@ -507,11 +514,13 @@ if (italicMappings.length > 0) {
 #### 8.2.5 Enhanced CSS Generation (`lib/css/generators/character-styles.js`)
 
 **Improved CSS Specificity**:
+
 ```javascript
 ${style.italic ? "font-style: italic !important;" : ""}
 ```
 
 **Added Fallback Rules**:
+
 ```css
 /* Fallback italic styles */
 em, .italic, [style*="font-style: italic"] {
@@ -527,6 +536,7 @@ em {
 #### 8.2.6 Italic Preservation Validation (`lib/html/generators/html-processing.js`)
 
 **New Validation Function**:
+
 ```javascript
 function preserveItalicFormatting(document) {
   try {
@@ -605,15 +615,18 @@ The bullet point enhancement addresses critical issues with bullet point display
 #### 8.2.2 Multi-Phase Solution
 
 **Phase 1: CSS Generation Fix**
+
 - Removed syntax errors that were breaking CSS template literals
 - Ensured proper CSS generation for bullet points with selectors like `li[data-format="bullet"]::before`
 
 **Phase 2: Numbering Duplication Resolution**
+
 - Removed CSS counter generation that was duplicating existing DOCX numbering
 - Preserved structural CSS for positioning and indentation
 - Maintained working bullet point functionality
 
 **Phase 3: Enhanced CSS Specificity**
+
 - Implemented high-specificity selectors with `!important` declarations
 - Added container-level indentation with `ul.docx-bullet-list` margins
 - Used multiple targeting strategies for maximum compatibility
