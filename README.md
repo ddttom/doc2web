@@ -1,6 +1,6 @@
 # doc2web
 
-doc2web is a powerful tool for converting Microsoft Word (.docx) documents to web-friendly formats, including Markdown and HTML with preserved styling.
+doc2web is a powerful tool for converting Microsoft Word (.docx) documents to HTML with preserved styling.
 
 ## Overview
 
@@ -28,7 +28,6 @@ The codebase follows a modular architecture with organized library modules:
 ```bash
 doc2web/
 ├── doc2web.js             # Main entry point and orchestrator
-├── markdownify.js         # HTML to Markdown converter
 ├── lib/                   # Modular library code
 │   ├── index.js           # Main entry point that re-exports public API
 │   ├── xml/               # XML parsing utilities

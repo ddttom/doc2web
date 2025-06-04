@@ -64,11 +64,11 @@
 
 ### 1.1 Vision Statement
 
-doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (Markdown and HTML) while preserving document styling, structure, and multilingual content. The tool aims to bridge the gap between traditional document authoring and modern web publishing by providing a reliable, efficient conversion process that maintains document fidelity.
+doc2web transforms Microsoft Word documents (.docx) into web-friendly HTML format while preserving document styling, structure, and multilingual content. The tool aims to bridge the gap between traditional document authoring and modern web publishing by providing a reliable, efficient conversion process that maintains document fidelity.
 
 ### 1.2 Product Goals
 
-- Enable seamless conversion of DOCX documents to both Markdown and HTML
+- Enable seamless conversion of DOCX documents to HTML
 - Preserve the visual appearance and style elements from the original document
 - Support international and multilingual content
 - Provide an intuitive interface for both individual and batch processing
@@ -95,7 +95,7 @@ doc2web transforms Microsoft Word documents (.docx) into web-friendly formats (M
 
 ### 1.3 Project Scope
 
-doc2web is focused on the conversion of DOCX documents to HTML and Markdown formats. The scope includes:
+doc2web is focused on the conversion of DOCX documents to HTML format. The scope includes:
 
 - Processing individual files, directories of files, and file lists
 - Extracting and preserving styles, images, and document structure
@@ -175,7 +175,6 @@ The scope explicitly excludes:
 
 #### Document Conversion
 
-- Convert DOCX files to Markdown format
 - Generate HTML with preserved styling
 - Extract and save document images
 - Process documents with mixed language content
@@ -267,8 +266,7 @@ The scope explicitly excludes:
 #### Output Quality
 
 - Generated HTML should closely match original document appearance
-- Markdown output should maintain document structure
-- Markdown output should comply with standard linting rules
+
 - HTML output should follow web best practices with external CSS files
 - Images should be properly extracted and referenced
 - Unicode and international character support
@@ -316,13 +314,7 @@ doc2web follows a modular architecture with these primary components:
    - Implements input file validation
    - Includes performance timing and metrics
 
-2. **Markdown Generator (markdownify.js)**
-   - Converts HTML to well-structured Markdown
-   - Preserves document organization and formatting
-   - Ensures generated markdown is compliant with linting standards
-   - Fixes common markdown formatting issues automatically
-
-3. **Library Modules (lib/)**
+2. **Library Modules (lib/)**
    - Organized into logical function groups:
      - **XML Utilities (lib/xml/)**: XPath utilities and XML processing
      - **Parsers (lib/parsers/)**: Style, theme, TOC, numbering, document, and metadata parsers
@@ -330,7 +322,7 @@ doc2web follows a modular architecture with these primary components:
      - **CSS Generation (lib/css/)**: Style generation and mapping
      - **Utilities (lib/utils/)**: Common utility functions
 
-4. **Style Processing**
+3. **Style Processing**
    - **Style Parser**: Parses DOCX XML structure and extracts detailed style information
    - **Numbering Parser**: Extracts numbering definitions and level properties
    - **Numbering Resolver**: Resolves actual sequential numbers based on document position
@@ -339,20 +331,20 @@ doc2web follows a modular architecture with these primary components:
    - **CSS Generator**: Generates clean, readable CSS with proper formatting
    - **Content Processors**: Orchestrates content processing through specialized modules
 
-5. **User Interface (doc2web-run.js)**
+4. **User Interface (doc2web-run.js)**
    - Provides interactive command-line interface
    - Guides users through conversion options
    - Displays progress and results
    - Handles user input validation
 
-6. **Utility Scripts**
+5. **Utility Scripts**
    - Installation and initialization scripts
    - Batch processing helpers
    - System compatibility checks
    - Error logging and reporting
    - Diagnostic tools
 
-7. **Documentation**
+6. **Documentation**
    - Project overview and quick start guide
    - Product Requirements Document
    - Technical architecture documentation

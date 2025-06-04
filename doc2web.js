@@ -3,7 +3,6 @@ const fs = require('fs');
 const path = require('path');
 const { promisify } = require('util');
 const mammoth = require('mammoth');
-const { markdownify } = require('./markdownify');
 // Import extractAndApplyStyles and extractImagesFromDocx from the lib
 const { extractAndApplyStyles, extractImagesFromDocx } = require('./lib');
 
@@ -27,7 +26,6 @@ function processArgs() {
     console.log('Usage:');
     console.log('  node doc2web.js <file.docx|directory|list-file.txt> [--html-only]');
     console.log('\nOptions:');
-    console.log('  --html-only    Generate only HTML output, skip markdown');
     console.log('  --list         Treat the input file as a list of files to process');
     console.log('\nExamples:');
     console.log('  node doc2web.js document.docx');
@@ -79,7 +77,6 @@ function getOutputPath(inputFilePath) {
   
   return {
     directory: outputDir,
-    markdownFile: path.join(outputDir, `${fileName}.md`),
     htmlFile: path.join(outputDir, `${fileName}.html`),
     cssFile: path.join(outputDir, `${fileName}.css`)
   };
@@ -197,29 +194,7 @@ async function processDocxFile(filePath, options) {
     console.log(`✓ Styled HTML saved to "${outputPaths.htmlFile}"`);
     console.log(`✓ CSS styles saved to "${outputPaths.cssFile}"`);
     
-    // If HTML only mode is enabled, skip markdown conversion
-    if (options.htmlOnly) {
-      console.log('HTML-only mode enabled. Skipping markdown conversion.');
-      return;
-    }
     
-    // Convert HTML to markdown
-    console.log('Converting HTML to markdown...');
-    try {
-      const markdown = markdownify(result.html);
-      
-      if (!markdown || markdown.trim().length === 0) {
-        console.warn('WARNING: Markdown conversion resulted in empty content');
-        return;
-      }
-      
-      // Write markdown to file with explicit UTF-8 encoding
-      await writeFile(outputPaths.markdownFile, markdown, 'utf8');
-      console.log(`✓ Markdown saved to "${outputPaths.markdownFile}"`);
-    } catch (markdownError) {
-      console.error(`Error converting to markdown: ${markdownError.message}`);
-      // Don't fail the entire process if markdown conversion fails
-    }
     
     console.log(`✓ Processing completed successfully for "${filePath}"`);
     

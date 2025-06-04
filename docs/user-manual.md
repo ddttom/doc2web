@@ -24,11 +24,11 @@
 
 ## Introduction
 
-doc2web is a powerful tool for converting Microsoft Word (.docx) documents to web-friendly formats, specifically Markdown and HTML. Unlike simple converters, doc2web preserves document styling, structure, images, and supports multilingual content including mixed scripts.
+doc2web is a powerful tool for converting Microsoft Word (.docx) documents to web-friendly HTML format. Unlike simple converters, doc2web preserves document styling, structure, images, and supports multilingual content including mixed scripts.
 
 ### Key Features
 
-- Converts DOCX to both Markdown and HTML formats
+- Converts DOCX to HTML format
 - Preserves document styling in the HTML output
 - Extracts and properly organizes images
 - Maintains document structure (headings, lists, tables)
@@ -93,7 +93,6 @@ node doc2web.js path/to/your/document.docx
 
 This will create in the `output` directory:
 
-- A markdown version (.md)
 - An HTML version with styles (.html)
 - A CSS file with extracted styles (.css)
 - An images folder with any extracted images
@@ -104,20 +103,13 @@ All output files are stored under the `./output` directory, preserving the origi
 
 - Input: `/home/user/documents/report.docx`
 - Output:
-  - `./output/home/user/documents/report.md`
   - `./output/home/user/documents/report.html`
   - `./output/home/user/documents/report.css`
   - `./output/home/user/documents/images/`
 
 ## Advanced Features
 
-### HTML-Only Mode
 
-If you only need the HTML version (without Markdown):
-
-```bash
-node doc2web.js document.docx --html-only
-```
 
 ### Processing a Directory
 
@@ -171,7 +163,6 @@ node doc2web.js <input> [options]
   - Path to a text file containing a list of files
 
 - Options:
-  - `--html-only`: Skip markdown generation
   - `--list`: Treat the input file as a list of files
   - `--accessibility=<level>`: Set accessibility compliance level ('A', 'AA', or 'AAA', default: 'AA')
   - `--preserve-metadata`: Enable metadata preservation (default: enabled)
@@ -200,13 +191,6 @@ Launches the interactive command-line interface.
 
 For each processed DOCX file, doc2web generates:
 
-### Markdown File (.md)
-
-- Clean, formatted Markdown
-- Preserves document structure
-- Includes references to images
-- Suitable for use in static site generators, documentation systems, etc.
-
 ### HTML File (.html)
 
 - Complete HTML document with styles
@@ -232,7 +216,7 @@ For each processed DOCX file, doc2web generates:
 ### Images Folder
 
 - Contains all images extracted from the document
-- Images are referenced from both Markdown and HTML
+- Images are referenced from the HTML
 
 ## Table of Contents Navigation
 
@@ -348,7 +332,6 @@ doc2web intelligently detects and handles navigation elements:
 - Detects Index sections at the end of documents
 - Properly decorates these elements with appropriate styling in the output
 - In HTML output: Elements are styled with the appropriate CSS classes
-- In Markdown output: Elements are formatted with proper structure
 - Preserves TOC leader lines (dots, dashes, or underscores) connecting entries to page numbers
 - Maintains proper right alignment of page numbers for better readability
 - Applies appropriate indentation for different TOC levels
@@ -425,7 +408,7 @@ doc2web extracts and preserves document metadata in the generated HTML:
 - Title, description, and keywords
 - Creation and modification dates
 - Document statistics (pages, words, characters)
-- Author is always set to "doc2web" (regardless of original document author)
+- Author metadata is configurable (preserves original author by default, can be overridden)
 
 ### Enhanced Metadata
 
@@ -553,7 +536,7 @@ async function convertDocument(docxPath) {
   // Access conversion results
   console.log('HTML generated:', result.html);
   console.log('CSS generated:', result.styles);
-  console.log('Metadata extracted:', result.metadata); // Note: Author will always be "doc2web"
+  console.log('Metadata extracted:', result.metadata); // Note: Author is configurable
   console.log('Track changes detected:', result.trackChanges.hasTrackedChanges);
 }
 
@@ -664,7 +647,7 @@ This provides a menu-driven interface with options to:
 3. Process a list of files from a text file
 4. Search and process DOCX files (using find command)
 
-The interactive mode guides you through each step, including selecting input files and choosing whether to generate HTML only or both HTML and Markdown.
+The interactive mode guides you through each step, including selecting input files for HTML generation.
 
 ## Troubleshooting
 
@@ -742,7 +725,7 @@ A: These navigation elements are automatically detected and properly decorated w
 A: With the DOCX introspection feature, doc2web extracts exact numbering definitions from the DOCX XML structure, resolves actual sequential numbers based on document position, and generates CSS counters that precisely match the original formatting.
 
 **Q: Can doc2web convert to PDF?**  
-A: No, only Markdown and HTML outputs are currently supported.
+A: No, only HTML output is currently supported.
 
 ### Technical Questions
 
