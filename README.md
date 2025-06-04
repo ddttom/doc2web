@@ -18,6 +18,8 @@ This tool extracts content from DOCX files while maintaining:
 - Exact DOCX numbering preservation through XML introspection
 - Section IDs for direct navigation to numbered headings and paragraphs
 - Return to top button for improved navigation and user experience
+- Proper bullet point margin alignment with document margins and table cell exclusion
+- Enhanced bullet point formatting with correct hanging indent and round bullet characters
 
 The app treats generated CSS and HTML as ephemeral - they are regenerated for each document based on its unique structure. All styling is extracted from the DOCX XML structure, not hardcoded patterns.
 
@@ -267,6 +269,13 @@ This creates a debug-output/ directory with test files and diagnostic informatio
 - Use the debug script for troubleshooting specific conversion issues
 
 ## Recent Updates
+
+**v1.3.4 (2025-06-04)**
+
+- Bullet point margin alignment fix with document margin integration
+- Table cell bullet exclusion to prevent incorrect bullet formatting
+- Enhanced bullet point formatting with proper hanging indent and round bullet characters
+- Improved text readability by preventing aggressive word-breaking in bullet lists
 
 **v1.3.3 (2025-06-02)**
 

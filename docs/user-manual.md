@@ -50,6 +50,8 @@ doc2web is a powerful tool for converting Microsoft Word (.docx) documents to we
 - **TOC page number removal for web-appropriate navigation where page numbers are irrelevant**
 - **Clickable TOC navigation with intelligent section linking and accessibility compliance**
 - **Return to top button for improved navigation and user experience**
+- **Proper bullet point margin alignment with document margins and table cell exclusion**
+- **Enhanced bullet point formatting with correct hanging indent behavior and round bullet characters**
 
 ## Installation
 
@@ -359,6 +361,32 @@ doc2web provides advanced handling of hierarchical lists:
 - **Generates CSS counters that precisely match DOCX numbering**
 - **Ensures proper display with enhanced CSS specificity to override inline styles**
 - **Fixes display issues with CSS rule conflict resolution and margin reset techniques**
+
+### Bullet Point Formatting
+
+doc2web provides comprehensive bullet point formatting that accurately reflects the original DOCX document:
+
+#### Margin Alignment
+- **Document Margin Integration**: Bullet points align with the document's standard margins extracted from DOCX introspection
+- **Dynamic Calculation**: Uses the same margin calculation as regular paragraphs to ensure consistent alignment
+- **Base Margin Respect**: Bullet lists use the document's base margin plus appropriate bullet indentation
+
+#### Table Cell Exclusion
+- **Smart Detection**: Automatically detects when content is inside table cells
+- **Selective Application**: Only applies bullet formatting to content outside of tables
+- **DOCX Fidelity**: Ensures table cell content appears as plain text when the original DOCX has no bullets in tables
+
+#### Proper Hanging Indent
+- **Word-Style Formatting**: Implements proper hanging indent behavior matching Microsoft Word's bullet formatting
+- **Round Bullet Characters**: Uses appropriate round bullet characters (•, ○) instead of square characters
+- **Text Readability**: Prevents aggressive word-breaking that can make bullet text difficult to read
+- **CSS Specificity**: Uses high-specificity CSS rules to override conflicting DOCX abstract numbering styles
+
+#### Technical Implementation
+- **DOCX Introspection**: Analyzes the original DOCX structure to determine appropriate bullet formatting
+- **Context-Aware Processing**: Distinguishes between actual bullet lists and table cell content
+- **Enhanced CSS Generation**: Creates CSS with proper specificity to ensure correct display
+- **Accessibility Compliance**: Maintains proper semantic structure for screen readers and assistive technologies
 
 ## Accessibility Features
 
